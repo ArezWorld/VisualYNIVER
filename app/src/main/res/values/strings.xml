@@ -56,4 +56,30 @@
     <string name="settings_desc_show_radius">Показывать окружности радиуса задач</string>
     <string name="settings_desc_notifications">Уведомлять при приближении к месту задачи</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
-</resources>
+    <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
+    <string name="map_toast_add_marker">Нажмите на карту, чтобы поставить метку</string>
+    <string name="map_result_default">Результат</string>
+    <string name="map_add_task_title">Добавить задачу</string>
+    <string name="map_add_task_positive">Добавить</string>
+    <string name="map_add_task_negative">Отмена</string>
+    <string name="map_task_added">Задача добавлена</string>
+    <string name="map_task_title_required">Введите название задачи</string>
+    <string name="map_task_coords">Координаты</string>
+    <string name="map_task_radius">Радиус уведомления</string>
+    <string name="map_task_status">Статус</string>
+    <string name="map_status_done">Выполнено</string>
+    <string name="map_status_in_progress">В процессе</string>
+    <string name="map_action_restore">Вернуть в работу</string>
+    <string name="map_action_complete">Отметить выполненной</string>
+    <string name="map_action_delete">Удалить</string>
+    <string name="map_action_close">Закрыть</string>
+    <string name="map_confirm_title">Подтверждение</string>
+    <string name="map_confirm_message">Вы уверены, что хотите %1$s?</string>
+    <string name="map_confirm_yes">Да</string>
+    <string name="map_confirm_no">Отмена</string>
+    <string name="map_channel_name">Напоминания о задачах</string>
+    <string name="map_channel_desc">Уведомления о задачах на основе местоположения</string>
+    <string name="cd_search">Поиск</string>
+    <string name="cd_my_location">Моё местоположение</string>
+    <string name="cd_add_task">Добавить задачу</string></resources>
+

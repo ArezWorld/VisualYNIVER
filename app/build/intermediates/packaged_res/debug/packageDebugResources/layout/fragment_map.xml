@@ -42,6 +42,7 @@
                 app:layout_constraintEnd_toStartOf="@id/button_search"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
+
                 <AutoCompleteTextView
                     android:id="@+id/search_query"
                     android:layout_width="match_parent"
@@ -60,7 +61,7 @@
                 android:layout_height="40dp"
                 android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Поиск"
+                android:contentDescription="@string/cd_search"
                 android:src="@drawable/ic_search"
                 app:tint="?attr/colorOnSurface"
                 app:layout_constraintBottom_toBottomOf="@id/search_input"
@@ -75,7 +76,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:contentDescription="Поиск"
+        android:contentDescription="@string/cd_search"
         android:src="@drawable/ic_search"
         app:backgroundTint="?attr/colorPrimary"
         app:tint="?attr/colorOnPrimary"
@@ -87,7 +88,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:contentDescription="Моё местоположение"
+        android:contentDescription="@string/cd_my_location"
         android:src="@drawable/ic_my_location"
         app:backgroundTint="?attr/colorPrimary"
         app:tint="?attr/colorOnPrimary"
@@ -100,7 +101,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:contentDescription="Добавить задачу"
+        android:contentDescription="@string/cd_add_task"
         android:src="@drawable/ic_add"
         app:backgroundTint="?attr/colorSecondary"
         app:tint="?attr/colorOnSecondary"
@@ -108,5 +109,3 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-
-

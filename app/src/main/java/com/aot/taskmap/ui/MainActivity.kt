@@ -1,4 +1,4 @@
-package com.aot.taskmap.ui
+﻿package com.aot.taskmap.ui
 
 import android.Manifest
 import android.content.Intent
@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.setupWithNavController
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
@@ -16,9 +17,10 @@ import com.aot.taskmap.databinding.ActivityMainBinding
 import com.aot.taskmap.service.LocationService
 
 class MainActivity : AppCompatActivity() {
-    
+
     private lateinit var binding: ActivityMainBinding
-    
+    private var lastNavClickTime = 0L
+
     private val notificationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -26,27 +28,39 @@ class MainActivity : AppCompatActivity() {
             startLocationService()
         }
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        
+
         setupNavigation()
         requestNotificationPermission()
         handleIntent(intent)
     }
-    
+
     private fun setupNavigation() {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
-        
+
         binding.bottomNavigation.setupWithNavController(navController)
-        // Повторное нажатие на текущую вкладку игнорируем, чтобы не было крэша
+        // Повторное нажатие на текущую вкладку игнорируем
         binding.bottomNavigation.setOnItemReselectedListener { }
+        // Защита от двойных быстрых нажатий при переходе на вкладку «Карта»
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            val now = System.currentTimeMillis()
+            if (now - lastNavClickTime < 400) {
+                return@setOnItemSelectedListener false
+            }
+            if (navController.currentDestination?.id == item.itemId) {
+                return@setOnItemSelectedListener false
+            }
+            lastNavClickTime = now
+            NavigationUI.onNavDestinationSelected(item, navController)
+        }
     }
-    
+
     private fun requestNotificationPermission() {
         if (!SettingsPreferences.isNotificationsEnabled(this)) {
             stopLocationService()
@@ -73,20 +87,20 @@ class MainActivity : AppCompatActivity() {
         val serviceIntent = Intent(this, LocationService::class.java)
         stopService(serviceIntent)
     }
-    
+
     private fun startLocationService() {
         val serviceIntent = Intent(this, LocationService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
     }
-    
+
     private fun handleIntent(intent: Intent?) {
         intent?.getLongExtra("task_id", -1)?.let { taskId ->
             if (taskId != -1L) {
-                // Navigate to task details if needed
+                // Навигация к задаче при необходимости
             }
         }
     }
-    
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)

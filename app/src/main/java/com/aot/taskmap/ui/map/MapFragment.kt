@@ -22,7 +22,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
@@ -87,7 +86,7 @@ class MapFragment : Fragment() {
             else -> {
                 Toast.makeText(
                     requireContext(),
-                    "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                    getString(R.string.map_toast_location_permission),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -106,7 +105,7 @@ class MapFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+        // Инициализация карты
         Configuration.getInstance().userAgentValue = requireContext().packageName
         binding.mapView.setTileSource(TileSourceFactory.MAPNIK)
         binding.mapView.setMultiTouchControls(true)
@@ -134,13 +133,13 @@ class MapFragment : Fragment() {
             isAddMode = true
             Toast.makeText(
                 requireContext(),
-                "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ",
+                getString(R.string.map_toast_add_marker),
                 Toast.LENGTH_SHORT
             ).show()
         }
 
         binding.fabMyLocation.setOnClickListener {
-            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ + пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+            // Однократное центрирование и обновление позиции
             shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
             getCurrentLocation()
         }
@@ -154,12 +153,6 @@ class MapFragment : Fragment() {
         )
         binding.searchQuery.setAdapter(searchAdapter)
         binding.searchQuery.threshold = 1
-
-        val searchHint = getString(R.string.search_hint)
-        binding.searchQuery.hint = searchHint
-        binding.searchQuery.addTextChangedListener { text ->
-            binding.searchQuery.hint = if (text.isNullOrEmpty()) searchHint else ""
-        }
 
         binding.buttonSearch.setOnClickListener {
             val query = binding.searchQuery.text?.toString()?.trim().orEmpty()
@@ -235,7 +228,7 @@ class MapFragment : Fragment() {
                     address.subThoroughfare,
                     address.locality
                 ).distinct().joinToString(", ").ifBlank {
-                    address.getAddressLine(0) ?: "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"
+                    address.getAddressLine(0) ?: getString(R.string.map_result_default)
                 }
 
                 val point = GeoPoint(address.latitude, address.longitude)
@@ -256,7 +249,7 @@ class MapFragment : Fragment() {
     }
 
     private fun moveToSearchResult(point: GeoPoint) {
-        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+        // Перемещаем карту к выбранному адресу без постановки метки
         binding.mapView.controller.animateTo(point)
     }
 
@@ -367,9 +360,9 @@ class MapFragment : Fragment() {
         dialogBinding.editLongitude.setText(longitude.toString())
 
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ")
+            .setTitle(getString(R.string.map_add_task_title))
             .setView(dialogBinding.root)
-            .setPositiveButton("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ") { _, _ ->
+            .setPositiveButton(getString(R.string.map_add_task_positive)) { _, _ ->
                 val title = dialogBinding.editTitle.text.toString()
                 val description = dialogBinding.editDescription.text.toString()
                 val radius = dialogBinding.editRadius.text.toString().toIntOrNull() ?: 100
@@ -387,54 +380,65 @@ class MapFragment : Fragment() {
                     )
                     Toast.makeText(
                         requireContext(),
-                        "пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                        getString(R.string.map_task_added),
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
                     Toast.makeText(
                         requireContext(),
-                        "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ",
+                        getString(R.string.map_task_title_required),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             }
-            .setNegativeButton("пїЅпїЅпїЅпїЅпїЅпїЅ", null)
+            .setNegativeButton(getString(R.string.map_add_task_negative), null)
             .show()
     }
 
     private fun showTaskDetailsDialog(task: Task) {
+        val statusText = if (task.isCompleted) {
+            getString(R.string.map_status_done)
+        } else {
+            getString(R.string.map_status_in_progress)
+        }
+
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(task.title)
             .setMessage(
                 """
                 ${task.description}
-                
-                пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ${task.latitude}, ${task.longitude}
-                пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ${task.radius} пїЅ
-                пїЅпїЅпїЅпїЅпїЅпїЅ: ${if (task.isCompleted) "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" else "пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"}
+
+                ${getString(R.string.map_task_coords)}: ${task.latitude}, ${task.longitude}
+                ${getString(R.string.map_task_radius)}: ${task.radius} м
+                ${getString(R.string.map_task_status)}: $statusText
                 """.trimIndent()
             )
             .setPositiveButton(
-                if (task.isCompleted) "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ" else "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"
+                if (task.isCompleted) getString(R.string.map_action_restore)
+                else getString(R.string.map_action_complete)
             ) { _, _ ->
                 showConfirmToggleDialog(task)
             }
-            .setNegativeButton("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ") { _, _ ->
+            .setNegativeButton(getString(R.string.map_action_delete)) { _, _ ->
                 viewModel.deleteTask(task)
             }
-            .setNeutralButton("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", null)
+            .setNeutralButton(getString(R.string.map_action_close), null)
             .show()
     }
 
     private fun showConfirmToggleDialog(task: Task) {
-        val action = if (task.isCompleted) "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ" else "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"
+        val action = if (task.isCompleted) {
+            getString(R.string.map_action_restore).lowercase(Locale.getDefault())
+        } else {
+            getString(R.string.map_action_complete).lowercase(Locale.getDefault())
+        }
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
-            .setMessage("пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ $action?")
-            .setPositiveButton("пїЅпїЅ") { _, _ ->
+            .setTitle(getString(R.string.map_confirm_title))
+            .setMessage(getString(R.string.map_confirm_message, action))
+            .setPositiveButton(getString(R.string.map_confirm_yes)) { _, _ ->
                 viewModel.toggleTaskCompletion(task)
             }
-            .setNegativeButton("пїЅпїЅпїЅпїЅпїЅпїЅ", null)
+            .setNegativeButton(getString(R.string.map_confirm_no), null)
             .show()
     }
 
@@ -468,7 +472,8 @@ class MapFragment : Fragment() {
             if (myLocationOverlay == null) {
                 myLocationOverlay = MyLocationNewOverlay(provider, binding.mapView).apply {
                     enableMyLocation()
-                    isDrawAccuracyEnabled = true
+                    // Убираем синюю область точности под меткой пользователя
+                    isDrawAccuracyEnabled = false
                     disableFollowLocation()
                     val iconDrawable = ContextCompat.getDrawable(
                         requireContext(),
@@ -516,10 +521,10 @@ class MapFragment : Fragment() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "task_reminders",
-                "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
+                getString(R.string.map_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"
+                description = getString(R.string.map_channel_desc)
                 enableVibration(true)
                 enableLights(true)
                 lightColor = Color.BLUE
@@ -544,14 +549,14 @@ class MapFragment : Fragment() {
     private fun setupMapInteractionListener() {
         binding.mapView.addMapListener(object : MapListener {
             override fun onScroll(event: ScrollEvent?): Boolean {
-                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                // Пользователь двигает карту — отключаем автослежение
                 shouldAutoCenter = false
                 collapseSearchUi()
                 return false
             }
 
             override fun onZoom(event: ZoomEvent?): Boolean {
-                // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                // Зум тоже отключает автослежение, чтобы карта не прыгала
                 shouldAutoCenter = false
                 return false
             }
@@ -685,9 +690,10 @@ class MapFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
-        myLocationOverlay?.enableMyLocation()
+        // Перезапускаем слой геопозиции корректно через provider
+        enableMyLocation()
 
-        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        // Обновляем поведение после изменения настроек
         shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
         updateMapMarkers(viewModel.activeTasks.value)
 
@@ -699,6 +705,8 @@ class MapFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         binding.mapView.onPause()
+        // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
+        myLocationOverlay?.disableMyLocation()
     }
 
     override fun onDestroyView() {
@@ -706,4 +714,3 @@ class MapFragment : Fragment() {
         _binding = null
     }
 }
-
