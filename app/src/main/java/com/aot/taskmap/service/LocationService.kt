@@ -6,9 +6,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.TaskDatabase
@@ -20,6 +22,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.aot.taskmap.service.TrackingModeResolver.TrackingMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,6 +41,10 @@ class LocationService : Service() {
     private var tasksJob: Job? = null
     private var trackedTasks: List<Task> = emptyList()
     private val lastInsideState = mutableMapOf<Long, Boolean>()
+    private var isLocationUpdatesRunning = false
+    private var currentTrackingMode = TrackingMode.BALANCED
+    private var lastKnownLatitude: Double? = null
+    private var lastKnownLongitude: Double? = null
 
     companion object {
         const val CHANNEL_ID = "task_reminders"
@@ -53,8 +60,7 @@ class LocationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, createNotification("Tracking location..."))
-        startLocationUpdates()
+        startForeground(NOTIFICATION_ID, createNotification(getString(R.string.service_tracking_text)))
         startTrackingTasks()
         return START_STICKY
     }
@@ -71,14 +77,36 @@ class LocationService : Service() {
         }
     }
 
-    private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            10_000L
-        ).apply {
-            setMinUpdateIntervalMillis(5_000L)
-            setWaitForAccurateLocation(false)
-        }.build()
+    private fun startLocationUpdates(mode: TrackingMode) {
+        if (!hasLocationPermission()) return
+        if (isLocationUpdatesRunning && currentTrackingMode == mode) return
+
+        if (isLocationUpdatesRunning) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+
+        val locationRequest = when (mode) {
+            TrackingMode.BALANCED -> {
+                LocationRequest.Builder(
+                    Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                    45_000L
+                ).apply {
+                    setMinUpdateIntervalMillis(25_000L)
+                    setMinUpdateDistanceMeters(60f)
+                    setWaitForAccurateLocation(false)
+                }.build()
+            }
+            TrackingMode.PRECISE -> {
+                LocationRequest.Builder(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    15_000L
+                ).apply {
+                    setMinUpdateIntervalMillis(8_000L)
+                    setMinUpdateDistanceMeters(15f)
+                    setWaitForAccurateLocation(true)
+                }.build()
+            }
+        }
 
         try {
             fusedLocationClient.requestLocationUpdates(
@@ -86,9 +114,17 @@ class LocationService : Service() {
                 locationCallback,
                 Looper.getMainLooper()
             )
+            currentTrackingMode = mode
+            isLocationUpdatesRunning = true
         } catch (e: SecurityException) {
             stopSelf()
         }
+    }
+
+    private fun stopLocationUpdates() {
+        if (!isLocationUpdatesRunning) return
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+        isLocationUpdatesRunning = false
     }
 
     private fun startTrackingTasks() {
@@ -98,14 +134,17 @@ class LocationService : Service() {
                 trackedTasks = tasks
                 val activeIds = tasks.map { it.id }.toSet()
                 lastInsideState.keys.retainAll(activeIds)
+                refreshTrackingMode()
             }
         }
     }
 
     private fun checkProximityToTasks(currentLat: Double, currentLng: Double) {
+        lastKnownLatitude = currentLat
+        lastKnownLongitude = currentLng
         val snapshot = trackedTasks
         for (task in snapshot) {
-            val distance = calculateDistance(
+            val distance = TrackingModeResolver.calculateDistanceMeters(
                 currentLat, currentLng,
                 task.latitude, task.longitude
             )
@@ -129,24 +168,7 @@ class LocationService : Service() {
 
             lastInsideState[task.id] = isInside
         }
-    }
-
-    private fun calculateDistance(
-        lat1: Double, lon1: Double,
-        lat2: Double, lon2: Double
-    ): Double {
-        val earthRadius = 6_371_000.0
-
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2)
-
-        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-        return earthRadius * c
+        refreshTrackingMode()
     }
 
     private fun showTaskNotification(task: Task) {
@@ -164,7 +186,7 @@ class LocationService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Task nearby")
+            .setContentTitle(getString(R.string.service_task_nearby))
             .setContentText(task.title)
             .setStyle(
                 NotificationCompat.BigTextStyle()
@@ -191,7 +213,7 @@ class LocationService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("AOT - Task tracking")
+            .setContentTitle(getString(R.string.service_tracking_title))
             .setContentText(content)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
@@ -203,10 +225,10 @@ class LocationService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Task reminders",
+                getString(R.string.map_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Location-based task reminders"
+                description = getString(R.string.map_channel_desc)
                 enableVibration(true)
                 enableLights(true)
             }
@@ -216,9 +238,33 @@ class LocationService : Service() {
         }
     }
 
+    private fun refreshTrackingMode() {
+        val mode = TrackingModeResolver.resolveMode(
+            tasks = trackedTasks,
+            currentLat = lastKnownLatitude,
+            currentLng = lastKnownLongitude
+        )
+        if (mode == null) {
+            stopLocationUpdates()
+            return
+        }
+        startLocationUpdates(mode)
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        stopLocationUpdates()
         tasksJob?.cancel()
         serviceScope.cancel()
     }

@@ -48,7 +48,7 @@ class TasksFragment : Fragment() {
             onTaskToggle = { task ->
                 if (SettingsPreferences.isConfirmCompleteEnabled(requireContext())) {
                     val action = if (task.isCompleted) "вернуть в работу" else "отметить выполненной"
-                    androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    val dialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
                         .setTitle("Подтвердить действие")
                         .setMessage("Вы уверены, что хотите $action?")
                         .setPositiveButton("Да") { _, _ ->
@@ -56,6 +56,7 @@ class TasksFragment : Fragment() {
                         }
                         .setNegativeButton("Отмена", null)
                         .show()
+                    dialog.setCanceledOnTouchOutside(false)
                 } else {
                     viewModel.toggleTaskCompletion(task)
                 }

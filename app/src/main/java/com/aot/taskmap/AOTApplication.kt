@@ -15,6 +15,8 @@ class AOTApplication : Application() {
             userAgentValue = packageName
             osmdroidBasePath = filesDir
             osmdroidTileCache = cacheDir
+            tileFileSystemCacheMaxBytes = 300L * 1024L * 1024L
+            tileFileSystemCacheTrimBytes = 220L * 1024L * 1024L
         }
     }
 }

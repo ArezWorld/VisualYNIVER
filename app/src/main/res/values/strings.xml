@@ -44,6 +44,10 @@
     <string name="settings_dark_theme">Тёмная тема</string>
     <string name="settings_follow_location">Следовать за геопозицией</string>
     <string name="settings_show_radius">Показывать радиус задач</string>
+    <string name="settings_offline_map">Оффлайн-карта</string>
+    <string name="settings_map_style">Стиль карты</string>
+    <string name="settings_map_style_standard">Стандартная</string>
+    <string name="settings_map_style_terrain">Рельефная</string>
     <string name="settings_search_expand">Показывать поиск при запуске</string>
     <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
     <string name="settings_notifications_enabled">Уведомления о приближении</string>
@@ -54,6 +58,8 @@
     <string name="settings_desc_search_expand">Показывать строку поиска при открытии карты</string>
     <string name="settings_desc_follow_location">Автоматически держать карту на вашей позиции</string>
     <string name="settings_desc_show_radius">Показывать окружности радиуса задач</string>
+    <string name="settings_desc_offline_map">Показывать карту из локального кеша без интернет-запросов</string>
+    <string name="settings_desc_map_style">Переключение между стандартной и рельефной картой</string>
     <string name="settings_desc_notifications">Уведомлять при приближении к месту задачи</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
     <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
@@ -64,11 +70,14 @@
     <string name="map_add_task_negative">Отмена</string>
     <string name="map_edit_task_title">Редактировать метку</string>
     <string name="map_action_edit">Редактировать</string>
+    <string name="map_action_show_coordinates">Показать координаты</string>
+    <string name="map_action_hide_coordinates">Скрыть координаты</string>
     <string name="map_save_task">Сохранить</string>
     <string name="map_task_added">Задача добавлена</string>
     <string name="map_task_title_required">Введите название задачи</string>
     <string name="map_task_coords">Координаты</string>
     <string name="map_task_radius">Радиус уведомления</string>
+    <string name="map_task_radius_trigger">Радиус срабатывания</string>
     <string name="map_task_color">Цвет метки</string>
     <string name="map_task_icon">Значок</string>
     <string name="map_task_auto_remove">Удалять после срабатывания</string>
@@ -85,6 +94,9 @@
     <string name="map_confirm_no">Отмена</string>
     <string name="map_channel_name">Напоминания о задачах</string>
     <string name="map_channel_desc">Уведомления о задачах на основе местоположения</string>
+    <string name="service_tracking_title">AOT - отслеживание задач</string>
+    <string name="service_tracking_text">Фоновая геолокация включена</string>
+    <string name="service_task_nearby">Рядом задача</string>
     <string name="marker_section_main">Данные метки</string>
     <string name="marker_title">Название</string>
     <string name="marker_description">Описание</string>
@@ -103,9 +115,12 @@
     <string name="marker_icon_pin">Классика</string>
     <string name="marker_icon_flag">Флаг</string>
     <string name="marker_icon_star">Звезда</string>
+    <string name="marker_icon_target">Цель</string>
+    <string name="marker_icon_briefcase">Портфель</string>
     <string name="marker_auto_remove">Скрывать метку после срабатывания</string>
     <string name="marker_notify">Уведомлять при приближении</string>
     <string name="cd_search">Поиск</string>
     <string name="cd_my_location">Моё местоположение</string>
-    <string name="cd_add_task">Добавить задачу</string></resources>
+    <string name="cd_add_task">Добавить задачу</string>
+</resources>
 

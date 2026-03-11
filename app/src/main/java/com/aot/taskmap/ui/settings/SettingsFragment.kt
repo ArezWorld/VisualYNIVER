@@ -79,6 +79,27 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.setShowRadiusEnabled(context, checked)
         }
 
+        binding.switchOfflineMap.isChecked =
+            SettingsPreferences.isOfflineMapEnabled(context)
+        binding.switchOfflineMap.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setOfflineMapEnabled(context, checked)
+        }
+
+        val selectedStyle = SettingsPreferences.getMapStyle(context)
+        binding.radioMapStyle.check(
+            when (selectedStyle) {
+                SettingsPreferences.MAP_STYLE_TERRAIN -> binding.radioMapTerrain.id
+                else -> binding.radioMapStandard.id
+            }
+        )
+        binding.radioMapStyle.setOnCheckedChangeListener { _, checkedId ->
+            val style = when (checkedId) {
+                binding.radioMapTerrain.id -> SettingsPreferences.MAP_STYLE_TERRAIN
+                else -> SettingsPreferences.MAP_STYLE_STANDARD
+            }
+            SettingsPreferences.setMapStyle(context, style)
+        }
+
         binding.switchConfirmComplete.isChecked =
             SettingsPreferences.isConfirmCompleteEnabled(context)
         binding.switchConfirmComplete.setOnCheckedChangeListener { _, checked ->
@@ -89,7 +110,6 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.isNotificationsEnabled(context)
         binding.switchNotifications.setOnCheckedChangeListener { _, checked ->
             if (checked) {
-                // Запрос разрешения на уведомления только при включении
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(
                         context,
@@ -111,7 +131,6 @@ class SettingsFragment : Fragment() {
     }
 
     private fun startLocationService() {
-        // Старт фонового сервиса только при включённых уведомлениях
         val serviceIntent = Intent(requireContext(), LocationService::class.java)
         ContextCompat.startForegroundService(requireContext(), serviceIntent)
     }

@@ -31,6 +31,10 @@ data class TaskDto(
     val longitude: Double,
     val address: String,
     val radius: Int,
+    val markerColor: Int,
+    val markerIcon: String,
+    val category: String,
+    val autoRemoveAfterTrigger: Boolean,
     val isCompleted: Boolean,
     val isNotificationEnabled: Boolean,
     val createdAt: String,
@@ -45,6 +49,10 @@ data class TaskCreateRequest(
     val longitude: Double,
     val address: String = "",
     val radius: Int = 100,
+    val markerColor: Int = 0xFF2196F3.toInt(),
+    val markerIcon: String = "pin",
+    val category: String = "general",
+    val autoRemoveAfterTrigger: Boolean = false,
     val isNotificationEnabled: Boolean = true
 )
 
@@ -55,6 +63,10 @@ data class TaskUpdateRequest(
     val longitude: Double? = null,
     val address: String? = null,
     val radius: Int? = null,
+    val markerColor: Int? = null,
+    val markerIcon: String? = null,
+    val category: String? = null,
+    val autoRemoveAfterTrigger: Boolean? = null,
     val isCompleted: Boolean? = null,
     val isNotificationEnabled: Boolean? = null
 )

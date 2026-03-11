@@ -67,6 +67,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                             remoteTask.copy(
                                 markerColor = localTask.markerColor,
                                 markerIcon = localTask.markerIcon,
+                                category = localTask.category,
                                 autoRemoveAfterTrigger = localTask.autoRemoveAfterTrigger
                             )
                         } else {
@@ -92,6 +93,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         enableNotification: Boolean = true,
         markerColor: Int = 0xFF2196F3.toInt(),
         markerIcon: String = "pin",
+        category: String = "general",
         autoRemoveAfterTrigger: Boolean = false
     ) {
         viewModelScope.launch {
@@ -107,6 +109,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 radius = radius,
                 markerColor = markerColor,
                 markerIcon = markerIcon,
+                category = category,
                 autoRemoveAfterTrigger = autoRemoveAfterTrigger,
                 isNotificationEnabled = enableNotification
             )
@@ -120,7 +123,11 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                     longitude = longitude,
                     address = address,
                     radius = radius,
-                    enableNotification = enableNotification
+                    enableNotification = enableNotification,
+                    markerColor = markerColor,
+                    markerIcon = markerIcon,
+                    category = category,
+                    autoRemoveAfterTrigger = autoRemoveAfterTrigger
                 )
                 result.onFailure { e ->
                     _error.value = e.message

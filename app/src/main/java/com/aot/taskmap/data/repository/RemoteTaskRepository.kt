@@ -22,7 +22,11 @@ class RemoteTaskRepository(private val apiClient: ApiClient) {
         longitude: Double,
         address: String,
         radius: Int,
-        enableNotification: Boolean
+        enableNotification: Boolean,
+        markerColor: Int,
+        markerIcon: String,
+        category: String,
+        autoRemoveAfterTrigger: Boolean
     ): Result<Task> {
         return apiClient.createTask(
             title = title,
@@ -31,6 +35,10 @@ class RemoteTaskRepository(private val apiClient: ApiClient) {
             longitude = longitude,
             address = address,
             radius = radius,
+            markerColor = markerColor,
+            markerIcon = markerIcon,
+            category = category,
+            autoRemoveAfterTrigger = autoRemoveAfterTrigger,
             isNotificationEnabled = enableNotification
         ).map { it.toDomain() }
     }
@@ -43,6 +51,10 @@ class RemoteTaskRepository(private val apiClient: ApiClient) {
             "longitude" to task.longitude,
             "address" to task.address,
             "radius" to task.radius,
+            "marker_color" to task.markerColor,
+            "marker_icon" to task.markerIcon,
+            "category" to task.category,
+            "auto_remove_after_trigger" to task.autoRemoveAfterTrigger,
             "is_completed" to task.isCompleted,
             "is_notification_enabled" to task.isNotificationEnabled
         )
@@ -68,9 +80,10 @@ class RemoteTaskRepository(private val apiClient: ApiClient) {
             longitude = longitude,
             address = address,
             radius = radius,
-            markerColor = 0xFF2196F3.toInt(),
-            markerIcon = "pin",
-            autoRemoveAfterTrigger = false,
+            markerColor = markerColor,
+            markerIcon = markerIcon,
+            category = category,
+            autoRemoveAfterTrigger = autoRemoveAfterTrigger,
             isCompleted = isCompleted,
             isNotificationEnabled = isNotificationEnabled,
             createdAt = createdAtMs,

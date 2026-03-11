@@ -11,6 +11,9 @@ import android.graphics.drawable.Drawable
 import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -18,7 +21,6 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
-import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.annotation.ColorRes
@@ -37,6 +39,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.databinding.DialogAddTaskBinding
+import com.aot.taskmap.databinding.DialogTaskDetailsBinding
 import com.aot.taskmap.databinding.FragmentMapBinding
 import com.aot.taskmap.domain.model.Task
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -52,7 +55,9 @@ import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
@@ -62,6 +67,21 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.util.Locale
 
 class MapFragment : Fragment() {
+
+    companion object {
+        private val TERRAIN_TILE_SOURCE: OnlineTileSourceBase = XYTileSource(
+            "OpenTopoMap",
+            0,
+            17,
+            256,
+            ".png",
+            arrayOf(
+                "https://a.tile.opentopomap.org/",
+                "https://b.tile.opentopomap.org/",
+                "https://c.tile.opentopomap.org/"
+            )
+        )
+    }
 
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
@@ -80,6 +100,7 @@ class MapFragment : Fragment() {
 
     private data class MarkerIconOption(
         val key: String,
+        val radioId: Int,
         @DrawableRes val iconRes: Int,
         @StringRes val labelRes: Int
     )
@@ -91,9 +112,11 @@ class MapFragment : Fragment() {
     )
 
     private val markerIconOptions = listOf(
-        MarkerIconOption("pin", R.drawable.ic_marker_pin, R.string.marker_icon_pin),
-        MarkerIconOption("flag", R.drawable.ic_marker_flag, R.string.marker_icon_flag),
-        MarkerIconOption("star", R.drawable.ic_marker_star, R.string.marker_icon_star)
+        MarkerIconOption("pin", R.id.icon_pin, R.drawable.ic_marker_pin, R.string.marker_icon_pin),
+        MarkerIconOption("flag", R.id.icon_flag, R.drawable.ic_marker_flag, R.string.marker_icon_flag),
+        MarkerIconOption("star", R.id.icon_star, R.drawable.ic_marker_star, R.string.marker_icon_star),
+        MarkerIconOption("target", R.id.icon_target, R.drawable.ic_marker_target, R.string.marker_icon_target),
+        MarkerIconOption("briefcase", R.id.icon_briefcase, R.drawable.ic_marker_briefcase, R.string.marker_icon_briefcase)
     )
 
     private val markerColorOptions = listOf(
@@ -139,9 +162,10 @@ class MapFragment : Fragment() {
 
         // Инициализация карты
         Configuration.getInstance().userAgentValue = requireContext().packageName
-        binding.mapView.setTileSource(TileSourceFactory.MAPNIK)
         binding.mapView.setMultiTouchControls(true)
+        binding.mapView.setTilesScaledToDpi(true)
         binding.mapView.controller.setZoom(15.0)
+        applyMapPresentation()
 
         val defaultLocation = GeoPoint(51.2, 58.3)
         binding.mapView.controller.setCenter(defaultLocation)
@@ -175,6 +199,16 @@ class MapFragment : Fragment() {
             shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
             getCurrentLocation()
         }
+    }
+
+    private fun applyMapPresentation() {
+        val tileSource = when (SettingsPreferences.getMapStyle(requireContext())) {
+            SettingsPreferences.MAP_STYLE_TERRAIN -> TERRAIN_TILE_SOURCE
+            else -> TileSourceFactory.MAPNIK
+        }
+        binding.mapView.setTileSource(tileSource)
+        binding.mapView.setUseDataConnection(!SettingsPreferences.isOfflineMapEnabled(requireContext()))
+        binding.mapView.invalidate()
     }
 
     private fun setupSearch() {
@@ -287,7 +321,7 @@ class MapFragment : Fragment() {
 
     private fun showSearchResultsDialog(results: List<Pair<String, GeoPoint>>) {
         val titles = results.map { it.first }.toTypedArray()
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.search_choose_title))
             .setItems(titles) { _, index ->
                 val (title, point) = results[index]
@@ -296,6 +330,7 @@ class MapFragment : Fragment() {
             }
             .setNegativeButton(getString(R.string.search_choose_cancel), null)
             .show()
+        dialog.setCanceledOnTouchOutside(false)
     }
 
     private fun observeTasks() {
@@ -381,6 +416,16 @@ class MapFragment : Fragment() {
         return markerIconOptions.firstOrNull { it.key == key } ?: markerIconOptions.first()
     }
 
+    private fun selectMarkerIcon(group: RadioGroup, key: String?) {
+        val option = resolveMarkerIconOption(key)
+        group.check(option.radioId)
+    }
+
+    private fun getSelectedMarkerIcon(group: RadioGroup): MarkerIconOption {
+        val checkedId = group.checkedRadioButtonId
+        return markerIconOptions.firstOrNull { it.radioId == checkedId } ?: markerIconOptions.first()
+    }
+
     private fun applyAlpha(color: Int, alpha: Int): Int {
         val safeAlpha = alpha.coerceIn(0, 255)
         return (color and 0x00FFFFFF) or (safeAlpha shl 24)
@@ -398,6 +443,43 @@ class MapFragment : Fragment() {
         return getString(resolveMarkerIconOption(key).labelRes)
     }
 
+    private fun buildColoredLabel(label: String, value: String, valueColor: Int): SpannableString {
+        val fullText = "$label: $value"
+        return SpannableString(fullText).apply {
+            setSpan(
+                ForegroundColorSpan(valueColor),
+                label.length + 2,
+                fullText.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+    }
+
+    private fun animateCoordinatesCard(card: View, show: Boolean) {
+        if (show) {
+            card.visibility = View.VISIBLE
+            card.translationY = -16f
+            card.alpha = 0f
+            card.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(220)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .start()
+        } else {
+            card.animate()
+                .translationY(-16f)
+                .alpha(0f)
+                .setDuration(180)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .withEndAction {
+                    card.visibility = View.GONE
+                    card.translationY = 0f
+                }
+                .start()
+        }
+    }
+
     private fun selectMarkerColor(group: RadioGroup, color: Int) {
         val match = markerColorOptions.firstOrNull {
             ContextCompat.getColor(requireContext(), it.colorRes) == color
@@ -408,9 +490,9 @@ class MapFragment : Fragment() {
     private fun getSelectedMarkerColor(group: RadioGroup, defaultColor: Int): Int {
         val selectedId = group.checkedRadioButtonId
         if (selectedId == View.NO_ID) return defaultColor
-        val selected = group.findViewById<RadioButton>(selectedId)
-        val colorRes = selected?.tag as? Int
-        return colorRes?.let { ContextCompat.getColor(requireContext(), it) } ?: defaultColor
+        val selectedOption = markerColorOptions.firstOrNull { it.radioId == selectedId }
+        return selectedOption?.let { ContextCompat.getColor(requireContext(), it.colorRes) }
+            ?: defaultColor
     }
 
     private fun updateRadiusLabel(binding: DialogAddTaskBinding, radius: Int) {
@@ -454,25 +536,13 @@ class MapFragment : Fragment() {
         }
 
         selectMarkerColor(dialogBinding.radioMarkerColor, defaultColor)
-
-        val iconAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            markerIconOptions.map { getString(it.labelRes) }
-        )
-        dialogBinding.dropdownIcon.setAdapter(iconAdapter)
         val defaultIcon = resolveMarkerIconOption("pin")
-        dialogBinding.dropdownIcon.setText(getString(defaultIcon.labelRes), false)
-        dialogBinding.dropdownIcon.tag = defaultIcon.key
-        dialogBinding.dropdownIcon.setOnItemClickListener { _, _, position, _ ->
-            val option = markerIconOptions.getOrNull(position) ?: defaultIcon
-            dialogBinding.dropdownIcon.tag = option.key
-        }
+        selectMarkerIcon(dialogBinding.radioMarkerIcon, defaultIcon.key)
 
         dialogBinding.switchNotification.isChecked = true
         dialogBinding.switchAutoRemove.isChecked = false
 
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.map_add_task_title))
             .setView(dialogBinding.root)
             .setPositiveButton(getString(R.string.map_add_task_positive)) { _, _ ->
@@ -486,7 +556,7 @@ class MapFragment : Fragment() {
                 val enableNotification = dialogBinding.switchNotification.isChecked
                 val autoRemove = dialogBinding.switchAutoRemove.isChecked
                 val color = getSelectedMarkerColor(dialogBinding.radioMarkerColor, defaultColor)
-                val iconKey = dialogBinding.dropdownIcon.tag as? String ?: defaultIcon.key
+                val iconKey = getSelectedMarkerIcon(dialogBinding.radioMarkerIcon).key
 
                 if (title.isNotBlank()) {
                     viewModel.createTask(
@@ -499,6 +569,7 @@ class MapFragment : Fragment() {
                         enableNotification = enableNotification,
                         markerColor = color,
                         markerIcon = iconKey,
+                        category = iconKey,
                         autoRemoveAfterTrigger = autoRemove
                     )
                     Toast.makeText(
@@ -516,6 +587,7 @@ class MapFragment : Fragment() {
             }
             .setNegativeButton(getString(R.string.map_add_task_negative), null)
             .show()
+        dialog.setCanceledOnTouchOutside(false)
     }
 
     private fun showEditTaskDialog(task: Task) {
@@ -527,32 +599,21 @@ class MapFragment : Fragment() {
         dialogBinding.editTitle.setText(task.title)
         dialogBinding.editDescription.setText(task.description)
 
-        dialogBinding.sliderRadius.value = task.radius.toFloat()
-        updateRadiusLabel(dialogBinding, task.radius)
+        val clampedRadius = task.radius.coerceIn(5, 250)
+        dialogBinding.sliderRadius.value = clampedRadius.toFloat()
+        updateRadiusLabel(dialogBinding, clampedRadius)
         dialogBinding.sliderRadius.addOnChangeListener { _, value, _ ->
             updateRadiusLabel(dialogBinding, value.toInt())
         }
 
         selectMarkerColor(dialogBinding.radioMarkerColor, task.markerColor)
-
-        val iconAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            markerIconOptions.map { getString(it.labelRes) }
-        )
-        dialogBinding.dropdownIcon.setAdapter(iconAdapter)
         val currentIcon = resolveMarkerIconOption(task.markerIcon)
-        dialogBinding.dropdownIcon.setText(getString(currentIcon.labelRes), false)
-        dialogBinding.dropdownIcon.tag = currentIcon.key
-        dialogBinding.dropdownIcon.setOnItemClickListener { _, _, position, _ ->
-            val option = markerIconOptions.getOrNull(position) ?: currentIcon
-            dialogBinding.dropdownIcon.tag = option.key
-        }
+        selectMarkerIcon(dialogBinding.radioMarkerIcon, currentIcon.key)
 
         dialogBinding.switchNotification.isChecked = task.isNotificationEnabled
         dialogBinding.switchAutoRemove.isChecked = task.autoRemoveAfterTrigger
 
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.map_edit_task_title))
             .setView(dialogBinding.root)
             .setPositiveButton(getString(R.string.map_save_task)) { _, _ ->
@@ -566,7 +627,7 @@ class MapFragment : Fragment() {
                 val enableNotification = dialogBinding.switchNotification.isChecked
                 val autoRemove = dialogBinding.switchAutoRemove.isChecked
                 val color = getSelectedMarkerColor(dialogBinding.radioMarkerColor, defaultColor)
-                val iconKey = dialogBinding.dropdownIcon.tag as? String ?: currentIcon.key
+                val iconKey = getSelectedMarkerIcon(dialogBinding.radioMarkerIcon).key
 
                 if (title.isNotBlank()) {
                     viewModel.updateTask(
@@ -579,7 +640,8 @@ class MapFragment : Fragment() {
                             isNotificationEnabled = enableNotification,
                             autoRemoveAfterTrigger = autoRemove,
                             markerColor = color,
-                            markerIcon = iconKey
+                            markerIcon = iconKey,
+                            category = iconKey
                         )
                     )
                 } else {
@@ -592,29 +654,52 @@ class MapFragment : Fragment() {
             }
             .setNegativeButton(getString(R.string.map_add_task_negative), null)
             .show()
+        dialog.setCanceledOnTouchOutside(false)
     }
 
     private fun showTaskDetailsDialog(task: Task) {
+        val dialogBinding = DialogTaskDetailsBinding.inflate(layoutInflater)
         val statusText = if (task.isCompleted) {
             getString(R.string.map_status_done)
         } else {
             getString(R.string.map_status_in_progress)
         }
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(task.title)
-            .setMessage(
-                """
-                ${task.description}
+        dialogBinding.textTitle.text = task.title
+        dialogBinding.textDescription.text = task.description.ifBlank {
+            getString(R.string.map_result_default)
+        }
+        dialogBinding.textRadius.text =
+            getString(R.string.map_task_radius_trigger) + ": ${task.radius} м"
+        dialogBinding.textStatus.text =
+            getString(R.string.map_task_status) + ": $statusText"
+        dialogBinding.textColor.text = buildColoredLabel(
+            getString(R.string.map_task_color),
+            resolveMarkerColorName(task.markerColor),
+            task.markerColor
+        )
+        dialogBinding.textIcon.text =
+            getString(R.string.map_task_icon) + ": ${resolveMarkerIconName(task.markerIcon)}"
+        dialogBinding.textAutoRemove.text =
+            getString(R.string.map_task_auto_remove) + ": " +
+            if (task.autoRemoveAfterTrigger) getString(R.string.map_confirm_yes)
+            else getString(R.string.map_confirm_no)
+        dialogBinding.textCoordinates.text =
+            "${task.latitude}, ${task.longitude}"
 
-                ${getString(R.string.map_task_coords)}: ${task.latitude}, ${task.longitude}
-                ${getString(R.string.map_task_radius)}: ${task.radius} м
-                ${getString(R.string.map_task_color)}: ${resolveMarkerColorName(task.markerColor)}
-                ${getString(R.string.map_task_icon)}: ${resolveMarkerIconName(task.markerIcon)}
-                ${getString(R.string.map_task_auto_remove)}: ${if (task.autoRemoveAfterTrigger) getString(R.string.map_confirm_yes) else getString(R.string.map_confirm_no)}
-                ${getString(R.string.map_task_status)}: $statusText
-                """.trimIndent()
-            )
+        var coordinatesVisible = false
+        dialogBinding.buttonToggleCoordinates.setOnClickListener {
+            coordinatesVisible = !coordinatesVisible
+            dialogBinding.buttonToggleCoordinates.text = if (coordinatesVisible) {
+                getString(R.string.map_action_hide_coordinates)
+            } else {
+                getString(R.string.map_action_show_coordinates)
+            }
+            animateCoordinatesCard(dialogBinding.cardCoordinates, coordinatesVisible)
+        }
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogBinding.root)
             .setPositiveButton(
                 if (task.isCompleted) getString(R.string.map_action_restore)
                 else getString(R.string.map_action_complete)
@@ -628,6 +713,7 @@ class MapFragment : Fragment() {
                 showEditTaskDialog(task)
             }
             .show()
+        dialog.setCanceledOnTouchOutside(false)
     }
 
     private fun showConfirmToggleDialog(task: Task) {
@@ -636,7 +722,7 @@ class MapFragment : Fragment() {
         } else {
             getString(R.string.map_action_complete).lowercase(Locale.getDefault())
         }
-        MaterialAlertDialogBuilder(requireContext())
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.map_confirm_title))
             .setMessage(getString(R.string.map_confirm_message, action))
             .setPositiveButton(getString(R.string.map_confirm_yes)) { _, _ ->
@@ -644,6 +730,7 @@ class MapFragment : Fragment() {
             }
             .setNegativeButton(getString(R.string.map_confirm_no), null)
             .show()
+        dialog.setCanceledOnTouchOutside(false)
     }
 
     private fun requestLocationPermissions() {
@@ -899,6 +986,7 @@ class MapFragment : Fragment() {
 
         // Обновляем поведение после изменения настроек
         shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
+        applyMapPresentation()
         updateMapMarkers(viewModel.activeTasks.value)
 
         if (!isSearchExpanded) {

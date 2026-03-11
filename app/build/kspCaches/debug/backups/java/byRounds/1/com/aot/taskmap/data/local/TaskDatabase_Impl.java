@@ -31,12 +31,12 @@ public final class TaskDatabase_Impl extends TaskDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(3) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `tasks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `address` TEXT NOT NULL, `radius` INTEGER NOT NULL, `markerColor` INTEGER NOT NULL, `markerIcon` TEXT NOT NULL, `autoRemoveAfterTrigger` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `isNotificationEnabled` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `tasks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `address` TEXT NOT NULL, `radius` INTEGER NOT NULL, `markerColor` INTEGER NOT NULL, `markerIcon` TEXT NOT NULL, `category` TEXT NOT NULL, `autoRemoveAfterTrigger` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `isNotificationEnabled` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dd360116db4d71652e477226d276e786')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ec53f0870a5bdc4eb5add69b86e6f4ee')");
       }
 
       @Override
@@ -85,7 +85,7 @@ public final class TaskDatabase_Impl extends TaskDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsTasks = new HashMap<String, TableInfo.Column>(14);
+        final HashMap<String, TableInfo.Column> _columnsTasks = new HashMap<String, TableInfo.Column>(15);
         _columnsTasks.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("title", new TableInfo.Column("title", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("description", new TableInfo.Column("description", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -95,6 +95,7 @@ public final class TaskDatabase_Impl extends TaskDatabase {
         _columnsTasks.put("radius", new TableInfo.Column("radius", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("markerColor", new TableInfo.Column("markerColor", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("markerIcon", new TableInfo.Column("markerIcon", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("category", new TableInfo.Column("category", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("autoRemoveAfterTrigger", new TableInfo.Column("autoRemoveAfterTrigger", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("isCompleted", new TableInfo.Column("isCompleted", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("isNotificationEnabled", new TableInfo.Column("isNotificationEnabled", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -111,7 +112,7 @@ public final class TaskDatabase_Impl extends TaskDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "dd360116db4d71652e477226d276e786", "ae5e76a2f119ba6d89258cf30cd18aac");
+    }, "ec53f0870a5bdc4eb5add69b86e6f4ee", "d4288efbb7d3187e85500fe603a2faa2");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

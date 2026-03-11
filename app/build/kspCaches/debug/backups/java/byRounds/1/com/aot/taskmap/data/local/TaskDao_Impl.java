@@ -51,7 +51,7 @@ public final class TaskDao_Impl implements TaskDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`latitude`,`longitude`,`address`,`radius`,`markerColor`,`markerIcon`,`autoRemoveAfterTrigger`,`isCompleted`,`isNotificationEnabled`,`createdAt`,`completedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`latitude`,`longitude`,`address`,`radius`,`markerColor`,`markerIcon`,`category`,`autoRemoveAfterTrigger`,`isCompleted`,`isNotificationEnabled`,`createdAt`,`completedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -66,17 +66,18 @@ public final class TaskDao_Impl implements TaskDao {
         statement.bindLong(7, entity.getRadius());
         statement.bindLong(8, entity.getMarkerColor());
         statement.bindString(9, entity.getMarkerIcon());
+        statement.bindString(10, entity.getCategory());
         final int _tmp = entity.getAutoRemoveAfterTrigger() ? 1 : 0;
-        statement.bindLong(10, _tmp);
+        statement.bindLong(11, _tmp);
         final int _tmp_1 = entity.isCompleted() ? 1 : 0;
-        statement.bindLong(11, _tmp_1);
+        statement.bindLong(12, _tmp_1);
         final int _tmp_2 = entity.isNotificationEnabled() ? 1 : 0;
-        statement.bindLong(12, _tmp_2);
-        statement.bindLong(13, entity.getCreatedAt());
+        statement.bindLong(13, _tmp_2);
+        statement.bindLong(14, entity.getCreatedAt());
         if (entity.getCompletedAt() == null) {
-          statement.bindNull(14);
+          statement.bindNull(15);
         } else {
-          statement.bindLong(14, entity.getCompletedAt());
+          statement.bindLong(15, entity.getCompletedAt());
         }
       }
     };
@@ -97,7 +98,7 @@ public final class TaskDao_Impl implements TaskDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`latitude` = ?,`longitude` = ?,`address` = ?,`radius` = ?,`markerColor` = ?,`markerIcon` = ?,`autoRemoveAfterTrigger` = ?,`isCompleted` = ?,`isNotificationEnabled` = ?,`createdAt` = ?,`completedAt` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`latitude` = ?,`longitude` = ?,`address` = ?,`radius` = ?,`markerColor` = ?,`markerIcon` = ?,`category` = ?,`autoRemoveAfterTrigger` = ?,`isCompleted` = ?,`isNotificationEnabled` = ?,`createdAt` = ?,`completedAt` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -112,19 +113,20 @@ public final class TaskDao_Impl implements TaskDao {
         statement.bindLong(7, entity.getRadius());
         statement.bindLong(8, entity.getMarkerColor());
         statement.bindString(9, entity.getMarkerIcon());
+        statement.bindString(10, entity.getCategory());
         final int _tmp = entity.getAutoRemoveAfterTrigger() ? 1 : 0;
-        statement.bindLong(10, _tmp);
+        statement.bindLong(11, _tmp);
         final int _tmp_1 = entity.isCompleted() ? 1 : 0;
-        statement.bindLong(11, _tmp_1);
+        statement.bindLong(12, _tmp_1);
         final int _tmp_2 = entity.isNotificationEnabled() ? 1 : 0;
-        statement.bindLong(12, _tmp_2);
-        statement.bindLong(13, entity.getCreatedAt());
+        statement.bindLong(13, _tmp_2);
+        statement.bindLong(14, entity.getCreatedAt());
         if (entity.getCompletedAt() == null) {
-          statement.bindNull(14);
+          statement.bindNull(15);
         } else {
-          statement.bindLong(14, entity.getCompletedAt());
+          statement.bindLong(15, entity.getCompletedAt());
         }
-        statement.bindLong(15, entity.getId());
+        statement.bindLong(16, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteTaskById = new SharedSQLiteStatement(__db) {
@@ -296,6 +298,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfRadius = CursorUtil.getColumnIndexOrThrow(_cursor, "radius");
           final int _cursorIndexOfMarkerColor = CursorUtil.getColumnIndexOrThrow(_cursor, "markerColor");
           final int _cursorIndexOfMarkerIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "markerIcon");
+          final int _cursorIndexOfCategory = CursorUtil.getColumnIndexOrThrow(_cursor, "category");
           final int _cursorIndexOfAutoRemoveAfterTrigger = CursorUtil.getColumnIndexOrThrow(_cursor, "autoRemoveAfterTrigger");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfIsNotificationEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "isNotificationEnabled");
@@ -322,6 +325,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpMarkerColor = _cursor.getInt(_cursorIndexOfMarkerColor);
             final String _tmpMarkerIcon;
             _tmpMarkerIcon = _cursor.getString(_cursorIndexOfMarkerIcon);
+            final String _tmpCategory;
+            _tmpCategory = _cursor.getString(_cursorIndexOfCategory);
             final boolean _tmpAutoRemoveAfterTrigger;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfAutoRemoveAfterTrigger);
@@ -342,7 +347,7 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpCompletedAt = _cursor.getLong(_cursorIndexOfCompletedAt);
             }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpCategory,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
             _result.add(_item);
           }
           return _result;
@@ -377,6 +382,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfRadius = CursorUtil.getColumnIndexOrThrow(_cursor, "radius");
           final int _cursorIndexOfMarkerColor = CursorUtil.getColumnIndexOrThrow(_cursor, "markerColor");
           final int _cursorIndexOfMarkerIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "markerIcon");
+          final int _cursorIndexOfCategory = CursorUtil.getColumnIndexOrThrow(_cursor, "category");
           final int _cursorIndexOfAutoRemoveAfterTrigger = CursorUtil.getColumnIndexOrThrow(_cursor, "autoRemoveAfterTrigger");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfIsNotificationEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "isNotificationEnabled");
@@ -403,6 +409,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpMarkerColor = _cursor.getInt(_cursorIndexOfMarkerColor);
             final String _tmpMarkerIcon;
             _tmpMarkerIcon = _cursor.getString(_cursorIndexOfMarkerIcon);
+            final String _tmpCategory;
+            _tmpCategory = _cursor.getString(_cursorIndexOfCategory);
             final boolean _tmpAutoRemoveAfterTrigger;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfAutoRemoveAfterTrigger);
@@ -423,7 +431,7 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpCompletedAt = _cursor.getLong(_cursorIndexOfCompletedAt);
             }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpCategory,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
             _result.add(_item);
           }
           return _result;
@@ -458,6 +466,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfRadius = CursorUtil.getColumnIndexOrThrow(_cursor, "radius");
           final int _cursorIndexOfMarkerColor = CursorUtil.getColumnIndexOrThrow(_cursor, "markerColor");
           final int _cursorIndexOfMarkerIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "markerIcon");
+          final int _cursorIndexOfCategory = CursorUtil.getColumnIndexOrThrow(_cursor, "category");
           final int _cursorIndexOfAutoRemoveAfterTrigger = CursorUtil.getColumnIndexOrThrow(_cursor, "autoRemoveAfterTrigger");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfIsNotificationEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "isNotificationEnabled");
@@ -484,6 +493,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpMarkerColor = _cursor.getInt(_cursorIndexOfMarkerColor);
             final String _tmpMarkerIcon;
             _tmpMarkerIcon = _cursor.getString(_cursorIndexOfMarkerIcon);
+            final String _tmpCategory;
+            _tmpCategory = _cursor.getString(_cursorIndexOfCategory);
             final boolean _tmpAutoRemoveAfterTrigger;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfAutoRemoveAfterTrigger);
@@ -504,7 +515,7 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpCompletedAt = _cursor.getLong(_cursorIndexOfCompletedAt);
             }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpCategory,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
             _result.add(_item);
           }
           return _result;
@@ -542,6 +553,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfRadius = CursorUtil.getColumnIndexOrThrow(_cursor, "radius");
           final int _cursorIndexOfMarkerColor = CursorUtil.getColumnIndexOrThrow(_cursor, "markerColor");
           final int _cursorIndexOfMarkerIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "markerIcon");
+          final int _cursorIndexOfCategory = CursorUtil.getColumnIndexOrThrow(_cursor, "category");
           final int _cursorIndexOfAutoRemoveAfterTrigger = CursorUtil.getColumnIndexOrThrow(_cursor, "autoRemoveAfterTrigger");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfIsNotificationEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "isNotificationEnabled");
@@ -567,6 +579,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpMarkerColor = _cursor.getInt(_cursorIndexOfMarkerColor);
             final String _tmpMarkerIcon;
             _tmpMarkerIcon = _cursor.getString(_cursorIndexOfMarkerIcon);
+            final String _tmpCategory;
+            _tmpCategory = _cursor.getString(_cursorIndexOfCategory);
             final boolean _tmpAutoRemoveAfterTrigger;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfAutoRemoveAfterTrigger);
@@ -587,7 +601,7 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpCompletedAt = _cursor.getLong(_cursorIndexOfCompletedAt);
             }
-            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
+            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpCategory,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
           } else {
             _result = null;
           }
@@ -620,6 +634,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfRadius = CursorUtil.getColumnIndexOrThrow(_cursor, "radius");
           final int _cursorIndexOfMarkerColor = CursorUtil.getColumnIndexOrThrow(_cursor, "markerColor");
           final int _cursorIndexOfMarkerIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "markerIcon");
+          final int _cursorIndexOfCategory = CursorUtil.getColumnIndexOrThrow(_cursor, "category");
           final int _cursorIndexOfAutoRemoveAfterTrigger = CursorUtil.getColumnIndexOrThrow(_cursor, "autoRemoveAfterTrigger");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfIsNotificationEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "isNotificationEnabled");
@@ -646,6 +661,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpMarkerColor = _cursor.getInt(_cursorIndexOfMarkerColor);
             final String _tmpMarkerIcon;
             _tmpMarkerIcon = _cursor.getString(_cursorIndexOfMarkerIcon);
+            final String _tmpCategory;
+            _tmpCategory = _cursor.getString(_cursorIndexOfCategory);
             final boolean _tmpAutoRemoveAfterTrigger;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfAutoRemoveAfterTrigger);
@@ -666,7 +683,7 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpCompletedAt = _cursor.getLong(_cursorIndexOfCompletedAt);
             }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpCategory,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
             _result.add(_item);
           }
           return _result;
@@ -697,6 +714,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfRadius = CursorUtil.getColumnIndexOrThrow(_cursor, "radius");
           final int _cursorIndexOfMarkerColor = CursorUtil.getColumnIndexOrThrow(_cursor, "markerColor");
           final int _cursorIndexOfMarkerIcon = CursorUtil.getColumnIndexOrThrow(_cursor, "markerIcon");
+          final int _cursorIndexOfCategory = CursorUtil.getColumnIndexOrThrow(_cursor, "category");
           final int _cursorIndexOfAutoRemoveAfterTrigger = CursorUtil.getColumnIndexOrThrow(_cursor, "autoRemoveAfterTrigger");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfIsNotificationEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "isNotificationEnabled");
@@ -723,6 +741,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpMarkerColor = _cursor.getInt(_cursorIndexOfMarkerColor);
             final String _tmpMarkerIcon;
             _tmpMarkerIcon = _cursor.getString(_cursorIndexOfMarkerIcon);
+            final String _tmpCategory;
+            _tmpCategory = _cursor.getString(_cursorIndexOfCategory);
             final boolean _tmpAutoRemoveAfterTrigger;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfAutoRemoveAfterTrigger);
@@ -743,7 +763,7 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpCompletedAt = _cursor.getLong(_cursorIndexOfCompletedAt);
             }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpLatitude,_tmpLongitude,_tmpAddress,_tmpRadius,_tmpMarkerColor,_tmpMarkerIcon,_tmpCategory,_tmpAutoRemoveAfterTrigger,_tmpIsCompleted,_tmpIsNotificationEnabled,_tmpCreatedAt,_tmpCompletedAt);
             _result.add(_item);
           }
           return _result;

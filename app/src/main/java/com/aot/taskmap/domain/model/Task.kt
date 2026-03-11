@@ -15,6 +15,7 @@ data class Task(
     val radius: Int = 100, // Radius in meters for geofence
     val markerColor: Int = 0xFF2196F3.toInt(),
     val markerIcon: String = "pin",
+    val category: String = "general",
     val autoRemoveAfterTrigger: Boolean = false,
     val isCompleted: Boolean = false,
     val isNotificationEnabled: Boolean = true,

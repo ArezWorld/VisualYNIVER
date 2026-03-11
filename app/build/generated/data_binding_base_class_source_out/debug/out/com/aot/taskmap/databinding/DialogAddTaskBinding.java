@@ -4,8 +4,8 @@ package com.aot.taskmap.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,7 +15,6 @@ import com.aot.taskmap.R;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
-import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -23,7 +22,7 @@ import java.lang.String;
 
 public final class DialogAddTaskBinding implements ViewBinding {
   @NonNull
-  private final LinearLayout rootView;
+  private final ScrollView rootView;
 
   @NonNull
   public final MaterialRadioButton colorBlue;
@@ -38,9 +37,6 @@ public final class DialogAddTaskBinding implements ViewBinding {
   public final MaterialRadioButton colorRed;
 
   @NonNull
-  public final MaterialAutoCompleteTextView dropdownIcon;
-
-  @NonNull
   public final TextInputEditText editDescription;
 
   @NonNull
@@ -53,7 +49,25 @@ public final class DialogAddTaskBinding implements ViewBinding {
   public final TextInputEditText editTitle;
 
   @NonNull
+  public final MaterialRadioButton iconBriefcase;
+
+  @NonNull
+  public final MaterialRadioButton iconFlag;
+
+  @NonNull
+  public final MaterialRadioButton iconPin;
+
+  @NonNull
+  public final MaterialRadioButton iconStar;
+
+  @NonNull
+  public final MaterialRadioButton iconTarget;
+
+  @NonNull
   public final RadioGroup radioMarkerColor;
+
+  @NonNull
+  public final RadioGroup radioMarkerIcon;
 
   @NonNull
   public final Slider sliderRadius;
@@ -67,26 +81,32 @@ public final class DialogAddTaskBinding implements ViewBinding {
   @NonNull
   public final TextView textRadiusValue;
 
-  private DialogAddTaskBinding(@NonNull LinearLayout rootView,
-      @NonNull MaterialRadioButton colorBlue, @NonNull MaterialRadioButton colorGreen,
-      @NonNull MaterialRadioButton colorOrange, @NonNull MaterialRadioButton colorRed,
-      @NonNull MaterialAutoCompleteTextView dropdownIcon,
-      @NonNull TextInputEditText editDescription, @NonNull TextInputEditText editLatitude,
-      @NonNull TextInputEditText editLongitude, @NonNull TextInputEditText editTitle,
-      @NonNull RadioGroup radioMarkerColor, @NonNull Slider sliderRadius,
-      @NonNull SwitchMaterial switchAutoRemove, @NonNull SwitchMaterial switchNotification,
-      @NonNull TextView textRadiusValue) {
+  private DialogAddTaskBinding(@NonNull ScrollView rootView, @NonNull MaterialRadioButton colorBlue,
+      @NonNull MaterialRadioButton colorGreen, @NonNull MaterialRadioButton colorOrange,
+      @NonNull MaterialRadioButton colorRed, @NonNull TextInputEditText editDescription,
+      @NonNull TextInputEditText editLatitude, @NonNull TextInputEditText editLongitude,
+      @NonNull TextInputEditText editTitle, @NonNull MaterialRadioButton iconBriefcase,
+      @NonNull MaterialRadioButton iconFlag, @NonNull MaterialRadioButton iconPin,
+      @NonNull MaterialRadioButton iconStar, @NonNull MaterialRadioButton iconTarget,
+      @NonNull RadioGroup radioMarkerColor, @NonNull RadioGroup radioMarkerIcon,
+      @NonNull Slider sliderRadius, @NonNull SwitchMaterial switchAutoRemove,
+      @NonNull SwitchMaterial switchNotification, @NonNull TextView textRadiusValue) {
     this.rootView = rootView;
     this.colorBlue = colorBlue;
     this.colorGreen = colorGreen;
     this.colorOrange = colorOrange;
     this.colorRed = colorRed;
-    this.dropdownIcon = dropdownIcon;
     this.editDescription = editDescription;
     this.editLatitude = editLatitude;
     this.editLongitude = editLongitude;
     this.editTitle = editTitle;
+    this.iconBriefcase = iconBriefcase;
+    this.iconFlag = iconFlag;
+    this.iconPin = iconPin;
+    this.iconStar = iconStar;
+    this.iconTarget = iconTarget;
     this.radioMarkerColor = radioMarkerColor;
+    this.radioMarkerIcon = radioMarkerIcon;
     this.sliderRadius = sliderRadius;
     this.switchAutoRemove = switchAutoRemove;
     this.switchNotification = switchNotification;
@@ -95,7 +115,7 @@ public final class DialogAddTaskBinding implements ViewBinding {
 
   @Override
   @NonNull
-  public LinearLayout getRoot() {
+  public ScrollView getRoot() {
     return rootView;
   }
 
@@ -144,12 +164,6 @@ public final class DialogAddTaskBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.dropdown_icon;
-      MaterialAutoCompleteTextView dropdownIcon = ViewBindings.findChildViewById(rootView, id);
-      if (dropdownIcon == null) {
-        break missingId;
-      }
-
       id = R.id.edit_description;
       TextInputEditText editDescription = ViewBindings.findChildViewById(rootView, id);
       if (editDescription == null) {
@@ -174,9 +188,45 @@ public final class DialogAddTaskBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.icon_briefcase;
+      MaterialRadioButton iconBriefcase = ViewBindings.findChildViewById(rootView, id);
+      if (iconBriefcase == null) {
+        break missingId;
+      }
+
+      id = R.id.icon_flag;
+      MaterialRadioButton iconFlag = ViewBindings.findChildViewById(rootView, id);
+      if (iconFlag == null) {
+        break missingId;
+      }
+
+      id = R.id.icon_pin;
+      MaterialRadioButton iconPin = ViewBindings.findChildViewById(rootView, id);
+      if (iconPin == null) {
+        break missingId;
+      }
+
+      id = R.id.icon_star;
+      MaterialRadioButton iconStar = ViewBindings.findChildViewById(rootView, id);
+      if (iconStar == null) {
+        break missingId;
+      }
+
+      id = R.id.icon_target;
+      MaterialRadioButton iconTarget = ViewBindings.findChildViewById(rootView, id);
+      if (iconTarget == null) {
+        break missingId;
+      }
+
       id = R.id.radio_marker_color;
       RadioGroup radioMarkerColor = ViewBindings.findChildViewById(rootView, id);
       if (radioMarkerColor == null) {
+        break missingId;
+      }
+
+      id = R.id.radio_marker_icon;
+      RadioGroup radioMarkerIcon = ViewBindings.findChildViewById(rootView, id);
+      if (radioMarkerIcon == null) {
         break missingId;
       }
 
@@ -204,9 +254,10 @@ public final class DialogAddTaskBinding implements ViewBinding {
         break missingId;
       }
 
-      return new DialogAddTaskBinding((LinearLayout) rootView, colorBlue, colorGreen, colorOrange,
-          colorRed, dropdownIcon, editDescription, editLatitude, editLongitude, editTitle,
-          radioMarkerColor, sliderRadius, switchAutoRemove, switchNotification, textRadiusValue);
+      return new DialogAddTaskBinding((ScrollView) rootView, colorBlue, colorGreen, colorOrange,
+          colorRed, editDescription, editLatitude, editLongitude, editTitle, iconBriefcase,
+          iconFlag, iconPin, iconStar, iconTarget, radioMarkerColor, radioMarkerIcon, sliderRadius,
+          switchAutoRemove, switchNotification, textRadiusValue);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

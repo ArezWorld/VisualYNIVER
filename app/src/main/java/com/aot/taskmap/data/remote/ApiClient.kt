@@ -166,6 +166,10 @@ class ApiClient(private val baseUrl: String) {
         longitude: Double,
         address: String,
         radius: Int,
+        markerColor: Int,
+        markerIcon: String,
+        category: String,
+        autoRemoveAfterTrigger: Boolean,
         isNotificationEnabled: Boolean
     ): Result<TaskDto> = withContext(Dispatchers.IO) {
         try {
@@ -177,6 +181,10 @@ class ApiClient(private val baseUrl: String) {
                     "longitude" to longitude,
                     "address" to address,
                     "radius" to radius,
+                    "marker_color" to markerColor,
+                    "marker_icon" to markerIcon,
+                    "category" to category,
+                    "auto_remove_after_trigger" to autoRemoveAfterTrigger,
                     "is_notification_enabled" to isNotificationEnabled
                 )
             )
@@ -269,6 +277,10 @@ class ApiClient(private val baseUrl: String) {
             longitude = json.getDouble("longitude"),
             address = json.optString("address", ""),
             radius = json.optInt("radius", 100),
+            markerColor = json.optInt("marker_color", 0xFF2196F3.toInt()),
+            markerIcon = json.optString("marker_icon", "pin"),
+            category = json.optString("category", "general"),
+            autoRemoveAfterTrigger = json.optBoolean("auto_remove_after_trigger", false),
             isCompleted = json.getBoolean("is_completed"),
             isNotificationEnabled = json.getBoolean("is_notification_enabled"),
             createdAt = json.getString("created_at"),

@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import os
+import sqlite3
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -35,6 +37,10 @@ class Task(db.Model):
     longitude = db.Column(db.Float, nullable=False)
     address = db.Column(db.String(256), default="")
     radius = db.Column(db.Integer, default=100)
+    marker_color = db.Column(db.Integer, default=0xFF2196F3)
+    marker_icon = db.Column(db.String(64), default="pin")
+    category = db.Column(db.String(64), default="general")
+    auto_remove_after_trigger = db.Column(db.Boolean, default=False)
     is_completed = db.Column(db.Boolean, default=False)
     is_notification_enabled = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -44,6 +50,49 @@ class Task(db.Model):
 
 with app.app_context():
     db.create_all()
+
+
+def ensure_task_columns():
+    db_path = os.path.join(app.instance_path, "aot.db")
+    with sqlite3.connect(db_path) as connection:
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA table_info(task)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        if "marker_color" not in existing_columns:
+            cursor.execute("ALTER TABLE task ADD COLUMN marker_color INTEGER DEFAULT 4280391411")
+        if "marker_icon" not in existing_columns:
+            cursor.execute("ALTER TABLE task ADD COLUMN marker_icon TEXT DEFAULT 'pin'")
+        if "category" not in existing_columns:
+            cursor.execute("ALTER TABLE task ADD COLUMN category TEXT DEFAULT 'general'")
+        if "auto_remove_after_trigger" not in existing_columns:
+            cursor.execute(
+                "ALTER TABLE task ADD COLUMN auto_remove_after_trigger BOOLEAN DEFAULT 0"
+            )
+        connection.commit()
+
+
+ensure_task_columns()
+
+
+def serialize_task(task):
+    return {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "latitude": task.latitude,
+        "longitude": task.longitude,
+        "address": task.address,
+        "radius": task.radius,
+        "marker_color": task.marker_color,
+        "marker_icon": task.marker_icon,
+        "category": task.category,
+        "auto_remove_after_trigger": task.auto_remove_after_trigger,
+        "is_completed": task.is_completed,
+        "is_notification_enabled": task.is_notification_enabled,
+        "created_at": task.created_at.isoformat(),
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+        "user_id": task.user_id,
+    }
 
 
 def get_json_or_form():
@@ -136,23 +185,7 @@ def get_tasks():
 
     tasks = query.order_by(Task.created_at.desc()).all()
     return jsonify(
-        [
-            {
-                "id": t.id,
-                "title": t.title,
-                "description": t.description,
-                "latitude": t.latitude,
-                "longitude": t.longitude,
-                "address": t.address,
-                "radius": t.radius,
-                "is_completed": t.is_completed,
-                "is_notification_enabled": t.is_notification_enabled,
-                "created_at": t.created_at.isoformat(),
-                "completed_at": t.completed_at.isoformat() if t.completed_at else None,
-                "user_id": t.user_id,
-            }
-            for t in tasks
-        ]
+        [serialize_task(t) for t in tasks]
     )
 
 
@@ -165,22 +198,7 @@ def get_task(task_id):
     if not task:
         return jsonify({"detail": "Task not found"}), 404
 
-    return jsonify(
-        {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "latitude": task.latitude,
-            "longitude": task.longitude,
-            "address": task.address,
-            "radius": task.radius,
-            "is_completed": task.is_completed,
-            "is_notification_enabled": task.is_notification_enabled,
-            "created_at": task.created_at.isoformat(),
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-            "user_id": task.user_id,
-        }
-    )
+    return jsonify(serialize_task(task))
 
 
 @app.route("/tasks", methods=["POST"])
@@ -199,28 +217,17 @@ def create_task():
         longitude=float(data["longitude"]),
         address=data.get("address", ""),
         radius=int(data.get("radius", 100)),
+        marker_color=int(data.get("marker_color", 0xFF2196F3)),
+        marker_icon=data.get("marker_icon", "pin"),
+        category=data.get("category", "general"),
+        auto_remove_after_trigger=bool(data.get("auto_remove_after_trigger", False)),
         is_notification_enabled=bool(data.get("is_notification_enabled", True)),
         user_id=user_id,
     )
     db.session.add(task)
     db.session.commit()
 
-    return jsonify(
-        {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "latitude": task.latitude,
-            "longitude": task.longitude,
-            "address": task.address,
-            "radius": task.radius,
-            "is_completed": task.is_completed,
-            "is_notification_enabled": task.is_notification_enabled,
-            "created_at": task.created_at.isoformat(),
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-            "user_id": task.user_id,
-        }
-    ), 201
+    return jsonify(serialize_task(task)), 201
 
 
 @app.route("/tasks/<int:task_id>", methods=["PUT"])
@@ -245,6 +252,14 @@ def update_task(task_id):
         task.address = data["address"]
     if "radius" in data:
         task.radius = int(data["radius"])
+    if "marker_color" in data:
+        task.marker_color = int(data["marker_color"])
+    if "marker_icon" in data:
+        task.marker_icon = data["marker_icon"]
+    if "category" in data:
+        task.category = data["category"]
+    if "auto_remove_after_trigger" in data:
+        task.auto_remove_after_trigger = bool(data["auto_remove_after_trigger"])
     if "is_completed" in data:
         is_completed = bool(data["is_completed"])
         task.is_completed = is_completed
@@ -254,22 +269,7 @@ def update_task(task_id):
 
     db.session.commit()
 
-    return jsonify(
-        {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "latitude": task.latitude,
-            "longitude": task.longitude,
-            "address": task.address,
-            "radius": task.radius,
-            "is_completed": task.is_completed,
-            "is_notification_enabled": task.is_notification_enabled,
-            "created_at": task.created_at.isoformat(),
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-            "user_id": task.user_id,
-        }
-    )
+    return jsonify(serialize_task(task))
 
 
 @app.route("/tasks/<int:task_id>", methods=["DELETE"])
@@ -300,22 +300,7 @@ def toggle_task(task_id):
     task.completed_at = datetime.utcnow() if task.is_completed else None
     db.session.commit()
 
-    return jsonify(
-        {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "latitude": task.latitude,
-            "longitude": task.longitude,
-            "address": task.address,
-            "radius": task.radius,
-            "is_completed": task.is_completed,
-            "is_notification_enabled": task.is_notification_enabled,
-            "created_at": task.created_at.isoformat(),
-            "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-            "user_id": task.user_id,
-        }
-    )
+    return jsonify(serialize_task(task))
 
 
 @app.route("/", methods=["GET"])
