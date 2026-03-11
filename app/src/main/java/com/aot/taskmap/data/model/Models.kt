@@ -1,0 +1,60 @@
+package com.aot.taskmap.data.model
+
+data class UserDto(
+    val id: Int,
+    val username: String,
+    val email: String,
+    val isActive: Boolean
+)
+
+data class LoginRequest(
+    val username: String,
+    val password: String
+)
+
+data class LoginResponse(
+    val accessToken: String,
+    val tokenType: String
+)
+
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    val password: String
+)
+
+data class TaskDto(
+    val id: Long,
+    val title: String,
+    val description: String,
+    val latitude: Double,
+    val longitude: Double,
+    val address: String,
+    val radius: Int,
+    val isCompleted: Boolean,
+    val isNotificationEnabled: Boolean,
+    val createdAt: String,
+    val completedAt: String?,
+    val userId: Long
+)
+
+data class TaskCreateRequest(
+    val title: String,
+    val description: String,
+    val latitude: Double,
+    val longitude: Double,
+    val address: String = "",
+    val radius: Int = 100,
+    val isNotificationEnabled: Boolean = true
+)
+
+data class TaskUpdateRequest(
+    val title: String? = null,
+    val description: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val address: String? = null,
+    val radius: Int? = null,
+    val isCompleted: Boolean? = null,
+    val isNotificationEnabled: Boolean? = null
+)

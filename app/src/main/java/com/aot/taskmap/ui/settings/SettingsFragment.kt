@@ -1,0 +1,128 @@
+package com.aot.taskmap.ui.settings
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import com.aot.taskmap.R
+import com.aot.taskmap.data.local.SettingsPreferences
+import com.aot.taskmap.data.local.ThemePreferences
+import com.aot.taskmap.databinding.FragmentSettingsBinding
+import com.aot.taskmap.service.LocationService
+
+class SettingsFragment : Fragment() {
+
+    private var _binding: FragmentSettingsBinding? = null
+    private val binding get() = _binding!!
+
+    private var pendingEnableNotifications = false
+
+    private val notificationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (pendingEnableNotifications) {
+            pendingEnableNotifications = false
+            if (isGranted) {
+                SettingsPreferences.setNotificationsEnabled(requireContext(), true)
+                binding.switchNotifications.isChecked = true
+                startLocationService()
+            } else {
+                binding.switchNotifications.isChecked = false
+            }
+        }
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentSettingsBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.textVersion.text = getString(R.string.settings_version)
+        binding.textDeveloper.text = getString(R.string.settings_developers)
+
+        val context = requireContext()
+
+        binding.switchDarkTheme.isChecked = ThemePreferences.isDarkMode(context)
+        binding.switchDarkTheme.setOnCheckedChangeListener { _, checked ->
+            ThemePreferences.setDarkMode(context, checked)
+        }
+
+        binding.switchSearchExpand.isChecked =
+            SettingsPreferences.isSearchAutoExpandEnabled(context)
+        binding.switchSearchExpand.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setSearchAutoExpandEnabled(context, checked)
+        }
+
+        binding.switchFollowLocation.isChecked =
+            SettingsPreferences.isFollowLocationEnabled(context)
+        binding.switchFollowLocation.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setFollowLocationEnabled(context, checked)
+        }
+
+        binding.switchShowRadius.isChecked =
+            SettingsPreferences.isShowRadiusEnabled(context)
+        binding.switchShowRadius.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setShowRadiusEnabled(context, checked)
+        }
+
+        binding.switchConfirmComplete.isChecked =
+            SettingsPreferences.isConfirmCompleteEnabled(context)
+        binding.switchConfirmComplete.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setConfirmCompleteEnabled(context, checked)
+        }
+
+        binding.switchNotifications.isChecked =
+            SettingsPreferences.isNotificationsEnabled(context)
+        binding.switchNotifications.setOnCheckedChangeListener { _, checked ->
+            if (checked) {
+                // Запрос разрешения на уведомления только при включении
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    pendingEnableNotifications = true
+                    binding.switchNotifications.isChecked = false
+                    notificationPermissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    return@setOnCheckedChangeListener
+                }
+                SettingsPreferences.setNotificationsEnabled(context, true)
+                startLocationService()
+            } else {
+                SettingsPreferences.setNotificationsEnabled(context, false)
+                stopLocationService()
+            }
+        }
+    }
+
+    private fun startLocationService() {
+        // Старт фонового сервиса только при включённых уведомлениях
+        val serviceIntent = Intent(requireContext(), LocationService::class.java)
+        ContextCompat.startForegroundService(requireContext(), serviceIntent)
+    }
+
+    private fun stopLocationService() {
+        val serviceIntent = Intent(requireContext(), LocationService::class.java)
+        requireContext().stopService(serviceIntent)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

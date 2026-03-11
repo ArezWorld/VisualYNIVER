@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AOT - Геозадачи</string>
+    <string name="title_map">Карта</string>
+    <string name="title_tasks">Задачи</string>
+    <string name="title_settings">Настройки</string>
+
+    <string name="login_title">AOT</string>
+    <string name="login_subtitle">Absolutely Optimize Task</string>
+    <string name="hint_username">Имя пользователя</string>
+    <string name="hint_password">Пароль</string>
+    <string name="action_login">Войти</string>
+    <string name="action_register">Регистрация</string>
+
+    <string name="register_title">Регистрация</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_confirm_password">Подтвердите пароль</string>
+    <string name="action_register_submit">Зарегистрироваться</string>
+    <string name="action_back_to_login">Назад ко входу</string>
+
+    <string name="error_username_required">Введите имя пользователя</string>
+    <string name="error_username_short">Минимум 3 символа</string>
+    <string name="error_email_required">Введите email</string>
+    <string name="error_email_invalid">Неверный формат email</string>
+    <string name="error_password_required">Введите пароль</string>
+    <string name="error_password_short">Минимум 6 символов</string>
+    <string name="error_password_mismatch">Пароли не совпадают</string>
+    <string name="error_login_failed">Ошибка входа</string>
+    <string name="error_register_failed">Ошибка регистрации</string>
+    <string name="error_register_login_failed">Регистрация успешна, но не удалось войти. Используйте вход.</string>
+    <string name="debug_skip_auth">Debug: вход без сервера</string>
+    <string name="debug_register_disabled">Debug: регистрация отключена</string>
+
+    <string name="search_hint">Поиск места, адреса, кафе</string>
+    <string name="search_choose_title">Выберите место</string>
+    <string name="search_choose_cancel">Отмена</string>
+    <string name="search_empty">Введите запрос для поиска</string>
+    <string name="search_not_found">Ничего не найдено</string>
+
+    <string name="settings_section_appearance">Внешний вид</string>
+    <string name="settings_section_map">Карта</string>
+    <string name="settings_section_notifications">Уведомления</string>
+    <string name="settings_section_about">О приложении</string>
+    <string name="settings_dark_theme">Тёмная тема</string>
+    <string name="settings_follow_location">Следовать за геопозицией</string>
+    <string name="settings_show_radius">Показывать радиус задач</string>
+    <string name="settings_search_expand">Показывать поиск при запуске</string>
+    <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
+    <string name="settings_notifications_enabled">Уведомления о приближении</string>
+    <string name="settings_version">Версия приложения: 1.0</string>
+    <string name="settings_developers">Разработано: студенты БПИ-23\nАстафьев Д.А., Осадчук И.Д.</string>
+    <string name="settings_about_text">AOT (Absolutely Optimize Task) — мобильное приложение-органайзер с геопривязкой задач. Оно помогает планировать задачи и получать уведомления при приближении к месту выполнения.</string>
+    <string name="settings_desc_dark_theme">Переключение светлой и тёмной темы</string>
+    <string name="settings_desc_search_expand">Показывать строку поиска при открытии карты</string>
+    <string name="settings_desc_follow_location">Автоматически держать карту на вашей позиции</string>
+    <string name="settings_desc_show_radius">Показывать окружности радиуса задач</string>
+    <string name="settings_desc_notifications">Уведомлять при приближении к месту задачи</string>
+    <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
+</resources>

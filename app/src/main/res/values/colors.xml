@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1B5E7A</color>
+    <color name="primary_variant">#164C63</color>
+    <color name="secondary">#00A389</color>
+    <color name="secondary_variant">#00806C</color>
+    <color name="surface">#F7F9FC</color>
+    <color name="surface_elevated">#FFFFFF</color>
+    <color name="background">#F2F5F9</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="on_surface">#121417</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="marker_active">#00A389</color>
+    <color name="marker_completed">#FF9E9E9E</color>
+    <color name="ic_launcher_background">#1B5E7A</color>
+    <color name="hint_on_surface">#7A121417</color>
+</resources>
