@@ -10,8 +10,9 @@ import com.aot.taskmap.domain.model.Task
 
 class TasksAdapter(
     private val onTaskClick: (Task) -> Unit,
-    private val onTaskToggle: (Task) -> Unit,
-    private val onTaskDelete: (Task) -> Unit
+    private val onTaskToggleRequest: (task: Task, newChecked: Boolean, position: Int) -> Unit,
+    private val onTaskDelete: (Task) -> Unit,
+    private val onTaskNavigate: (Task) -> Unit
 ) : ListAdapter<Task, TasksAdapter.TaskViewHolder>(TaskDiffCallback()) {
     
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TaskViewHolder {
@@ -26,6 +27,12 @@ class TasksAdapter(
     override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
         holder.bind(getItem(position))
     }
+
+    fun restoreCheckState(position: Int) {
+        if (position in 0 until itemCount) {
+            notifyItemChanged(position)
+        }
+    }
     
     inner class TaskViewHolder(
         private val binding: ItemTaskBinding
@@ -36,15 +43,22 @@ class TasksAdapter(
                 textTitle.text = task.title
                 textDescription.text = task.description
                 textLocation.text = "${task.latitude}, ${task.longitude}"
+                checkBox.setOnCheckedChangeListener(null)
                 checkBox.isChecked = task.isCompleted
-                
+
                 // Strike through if completed
                 textTitle.paint.isStrikeThruText = task.isCompleted
                 textDescription.paint.isStrikeThruText = task.isCompleted
-                
+
                 root.setOnClickListener { onTaskClick(task) }
-                checkBox.setOnClickListener { onTaskToggle(task) }
+                checkBox.setOnCheckedChangeListener { _, isChecked ->
+                    val position = adapterPosition
+                    if (position != RecyclerView.NO_POSITION && isChecked != task.isCompleted) {
+                        onTaskToggleRequest(task, isChecked, position)
+                    }
+                }
                 buttonDelete.setOnClickListener { onTaskDelete(task) }
+                buttonNavigate.setOnClickListener { onTaskNavigate(task) }
             }
         }
     }

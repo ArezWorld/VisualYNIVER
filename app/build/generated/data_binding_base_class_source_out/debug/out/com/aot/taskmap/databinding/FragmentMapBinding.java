@@ -34,6 +34,12 @@ public final class FragmentMapBinding implements ViewBinding {
   public final FloatingActionButton fabMyLocation;
 
   @NonNull
+  public final FloatingActionButton fabZoomIn;
+
+  @NonNull
+  public final FloatingActionButton fabZoomOut;
+
+  @NonNull
   public final MapView mapView;
 
   @NonNull
@@ -50,6 +56,7 @@ public final class FragmentMapBinding implements ViewBinding {
 
   private FragmentMapBinding(@NonNull ConstraintLayout rootView, @NonNull ImageButton buttonSearch,
       @NonNull FloatingActionButton fabAddTask, @NonNull FloatingActionButton fabMyLocation,
+      @NonNull FloatingActionButton fabZoomIn, @NonNull FloatingActionButton fabZoomOut,
       @NonNull MapView mapView, @NonNull MaterialCardView searchCard,
       @NonNull FloatingActionButton searchFab, @NonNull TextInputLayout searchInput,
       @NonNull AutoCompleteTextView searchQuery) {
@@ -57,6 +64,8 @@ public final class FragmentMapBinding implements ViewBinding {
     this.buttonSearch = buttonSearch;
     this.fabAddTask = fabAddTask;
     this.fabMyLocation = fabMyLocation;
+    this.fabZoomIn = fabZoomIn;
+    this.fabZoomOut = fabZoomOut;
     this.mapView = mapView;
     this.searchCard = searchCard;
     this.searchFab = searchFab;
@@ -109,6 +118,18 @@ public final class FragmentMapBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.fab_zoom_in;
+      FloatingActionButton fabZoomIn = ViewBindings.findChildViewById(rootView, id);
+      if (fabZoomIn == null) {
+        break missingId;
+      }
+
+      id = R.id.fab_zoom_out;
+      FloatingActionButton fabZoomOut = ViewBindings.findChildViewById(rootView, id);
+      if (fabZoomOut == null) {
+        break missingId;
+      }
+
       id = R.id.mapView;
       MapView mapView = ViewBindings.findChildViewById(rootView, id);
       if (mapView == null) {
@@ -140,7 +161,8 @@ public final class FragmentMapBinding implements ViewBinding {
       }
 
       return new FragmentMapBinding((ConstraintLayout) rootView, buttonSearch, fabAddTask,
-          fabMyLocation, mapView, searchCard, searchFab, searchInput, searchQuery);
+          fabMyLocation, fabZoomIn, fabZoomOut, mapView, searchCard, searchFab, searchInput,
+          searchQuery);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

@@ -10,6 +10,8 @@
         android:id="@+id/text_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
         android:textColor="@color/on_surface"
         android:textStyle="bold" />
@@ -19,6 +21,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
         android:textColor="@color/on_surface" />
 
@@ -29,7 +33,7 @@
         app:cardBackgroundColor="@color/surface"
         app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
-        app:strokeColor="@color/background"
+        app:strokeColor="@color/menu_border_primary"
         app:strokeWidth="1dp">
 
         <LinearLayout
@@ -42,6 +46,8 @@
                 android:id="@+id/text_radius"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                 android:textColor="@color/on_surface" />
 
@@ -50,6 +56,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                 android:textColor="@color/on_surface" />
 
@@ -58,6 +66,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                 android:textColor="@color/on_surface" />
 
@@ -66,6 +76,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                 android:textColor="@color/on_surface" />
 
@@ -74,6 +86,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
                 android:textColor="@color/on_surface" />
         </LinearLayout>
@@ -85,6 +99,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
+        app:strokeColor="@color/menu_border_secondary"
+        app:strokeWidth="1dp"
         android:text="@string/map_action_show_coordinates" />
 
     <com.google.android.material.card.MaterialCardView
@@ -96,7 +112,9 @@
         android:visibility="gone"
         app:cardBackgroundColor="@color/surface_elevated"
         app:cardCornerRadius="14dp"
-        app:cardElevation="1dp">
+        app:cardElevation="1dp"
+        app:strokeColor="@color/menu_border_muted"
+        app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -108,6 +126,8 @@
                 android:id="@+id/text_coordinates"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
                 android:textColor="@color/on_surface" />
         </LinearLayout>

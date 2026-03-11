@@ -118,6 +118,23 @@
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
             android:textColor="@color/on_surface" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_toggle_color_picker"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/marker_pick_color"
+            app:icon="@drawable/ic_expand_more"
+            app:iconGravity="textEnd" />
+
+        <LinearLayout
+            android:id="@+id/panel_color_picker"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
         <RadioGroup
             android:id="@+id/radio_marker_color"
             android:layout_width="match_parent"
@@ -153,6 +170,25 @@
                 android:buttonTint="@color/marker_red"
                 android:text="@string/marker_color_red" />
         </RadioGroup>
+
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_toggle_icon_picker"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/marker_pick_icon"
+            app:icon="@drawable/ic_expand_more"
+            app:iconGravity="textEnd" />
+
+        <LinearLayout
+            android:id="@+id/panel_icon_picker"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
 
         <RadioGroup
             android:id="@+id/radio_marker_icon"
@@ -191,6 +227,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/marker_icon_briefcase" />
         </RadioGroup>
+        </LinearLayout>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/switch_auto_remove"

@@ -32,6 +32,9 @@ public final class FragmentSettingsBinding implements ViewBinding {
   public final MaterialRadioButton radioMapTerrain;
 
   @NonNull
+  public final SwitchMaterial switchAnimations;
+
+  @NonNull
   public final SwitchMaterial switchConfirmComplete;
 
   @NonNull
@@ -60,15 +63,17 @@ public final class FragmentSettingsBinding implements ViewBinding {
 
   private FragmentSettingsBinding(@NonNull ScrollView rootView,
       @NonNull MaterialRadioButton radioMapStandard, @NonNull RadioGroup radioMapStyle,
-      @NonNull MaterialRadioButton radioMapTerrain, @NonNull SwitchMaterial switchConfirmComplete,
-      @NonNull SwitchMaterial switchDarkTheme, @NonNull SwitchMaterial switchFollowLocation,
-      @NonNull SwitchMaterial switchNotifications, @NonNull SwitchMaterial switchOfflineMap,
-      @NonNull SwitchMaterial switchSearchExpand, @NonNull SwitchMaterial switchShowRadius,
-      @NonNull TextView textDeveloper, @NonNull TextView textVersion) {
+      @NonNull MaterialRadioButton radioMapTerrain, @NonNull SwitchMaterial switchAnimations,
+      @NonNull SwitchMaterial switchConfirmComplete, @NonNull SwitchMaterial switchDarkTheme,
+      @NonNull SwitchMaterial switchFollowLocation, @NonNull SwitchMaterial switchNotifications,
+      @NonNull SwitchMaterial switchOfflineMap, @NonNull SwitchMaterial switchSearchExpand,
+      @NonNull SwitchMaterial switchShowRadius, @NonNull TextView textDeveloper,
+      @NonNull TextView textVersion) {
     this.rootView = rootView;
     this.radioMapStandard = radioMapStandard;
     this.radioMapStyle = radioMapStyle;
     this.radioMapTerrain = radioMapTerrain;
+    this.switchAnimations = switchAnimations;
     this.switchConfirmComplete = switchConfirmComplete;
     this.switchDarkTheme = switchDarkTheme;
     this.switchFollowLocation = switchFollowLocation;
@@ -122,6 +127,12 @@ public final class FragmentSettingsBinding implements ViewBinding {
       id = R.id.radio_map_terrain;
       MaterialRadioButton radioMapTerrain = ViewBindings.findChildViewById(rootView, id);
       if (radioMapTerrain == null) {
+        break missingId;
+      }
+
+      id = R.id.switch_animations;
+      SwitchMaterial switchAnimations = ViewBindings.findChildViewById(rootView, id);
+      if (switchAnimations == null) {
         break missingId;
       }
 
@@ -180,9 +191,9 @@ public final class FragmentSettingsBinding implements ViewBinding {
       }
 
       return new FragmentSettingsBinding((ScrollView) rootView, radioMapStandard, radioMapStyle,
-          radioMapTerrain, switchConfirmComplete, switchDarkTheme, switchFollowLocation,
-          switchNotifications, switchOfflineMap, switchSearchExpand, switchShowRadius,
-          textDeveloper, textVersion);
+          radioMapTerrain, switchAnimations, switchConfirmComplete, switchDarkTheme,
+          switchFollowLocation, switchNotifications, switchOfflineMap, switchSearchExpand,
+          switchShowRadius, textDeveloper, textVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

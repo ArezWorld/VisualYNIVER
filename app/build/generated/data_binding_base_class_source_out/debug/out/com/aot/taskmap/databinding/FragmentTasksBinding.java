@@ -4,6 +4,7 @@ package com.aot.taskmap.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,6 +22,9 @@ public final class FragmentTasksBinding implements ViewBinding {
   private final ConstraintLayout rootView;
 
   @NonNull
+  public final ImageButton buttonFilter;
+
+  @NonNull
   public final RecyclerView recyclerViewTasks;
 
   @NonNull
@@ -30,9 +34,10 @@ public final class FragmentTasksBinding implements ViewBinding {
   public final TextView textTitle;
 
   private FragmentTasksBinding(@NonNull ConstraintLayout rootView,
-      @NonNull RecyclerView recyclerViewTasks, @NonNull TextView textEmpty,
-      @NonNull TextView textTitle) {
+      @NonNull ImageButton buttonFilter, @NonNull RecyclerView recyclerViewTasks,
+      @NonNull TextView textEmpty, @NonNull TextView textTitle) {
     this.rootView = rootView;
+    this.buttonFilter = buttonFilter;
     this.recyclerViewTasks = recyclerViewTasks;
     this.textEmpty = textEmpty;
     this.textTitle = textTitle;
@@ -65,6 +70,12 @@ public final class FragmentTasksBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.button_filter;
+      ImageButton buttonFilter = ViewBindings.findChildViewById(rootView, id);
+      if (buttonFilter == null) {
+        break missingId;
+      }
+
       id = R.id.recyclerViewTasks;
       RecyclerView recyclerViewTasks = ViewBindings.findChildViewById(rootView, id);
       if (recyclerViewTasks == null) {
@@ -83,8 +94,8 @@ public final class FragmentTasksBinding implements ViewBinding {
         break missingId;
       }
 
-      return new FragmentTasksBinding((ConstraintLayout) rootView, recyclerViewTasks, textEmpty,
-          textTitle);
+      return new FragmentTasksBinding((ConstraintLayout) rootView, buttonFilter, recyclerViewTasks,
+          textEmpty, textTitle);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

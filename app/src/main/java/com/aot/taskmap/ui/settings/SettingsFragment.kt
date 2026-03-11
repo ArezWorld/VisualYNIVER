@@ -27,14 +27,15 @@ class SettingsFragment : Fragment() {
     private val notificationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        val context = context ?: return@registerForActivityResult
         if (pendingEnableNotifications) {
             pendingEnableNotifications = false
             if (isGranted) {
-                SettingsPreferences.setNotificationsEnabled(requireContext(), true)
-                binding.switchNotifications.isChecked = true
+                SettingsPreferences.setNotificationsEnabled(context, true)
+                _binding?.switchNotifications?.isChecked = true
                 startLocationService()
             } else {
-                binding.switchNotifications.isChecked = false
+                _binding?.switchNotifications?.isChecked = false
             }
         }
     }
@@ -65,6 +66,12 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.isSearchAutoExpandEnabled(context)
         binding.switchSearchExpand.setOnCheckedChangeListener { _, checked ->
             SettingsPreferences.setSearchAutoExpandEnabled(context, checked)
+        }
+
+        binding.switchAnimations.isChecked =
+            SettingsPreferences.isAnimationsEnabled(context)
+        binding.switchAnimations.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setAnimationsEnabled(context, checked)
         }
 
         binding.switchFollowLocation.isChecked =
@@ -131,13 +138,27 @@ class SettingsFragment : Fragment() {
     }
 
     private fun startLocationService() {
-        val serviceIntent = Intent(requireContext(), LocationService::class.java)
-        ContextCompat.startForegroundService(requireContext(), serviceIntent)
+        val context = context ?: return
+        if (!hasLocationPermission(context)) return
+        val serviceIntent = Intent(context, LocationService::class.java)
+        ContextCompat.startForegroundService(context, serviceIntent)
     }
 
     private fun stopLocationService() {
-        val serviceIntent = Intent(requireContext(), LocationService::class.java)
-        requireContext().stopService(serviceIntent)
+        val context = context ?: return
+        val serviceIntent = Intent(context, LocationService::class.java)
+        context.stopService(serviceIntent)
+    }
+
+    private fun hasLocationPermission(context: android.content.Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onDestroyView() {

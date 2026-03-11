@@ -43,6 +43,7 @@ import com.aot.taskmap.databinding.DialogTaskDetailsBinding
 import com.aot.taskmap.databinding.FragmentMapBinding
 import com.aot.taskmap.domain.model.Task
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.button.MaterialButton
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -57,8 +58,9 @@ import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
+import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
@@ -69,18 +71,23 @@ import java.util.Locale
 class MapFragment : Fragment() {
 
     companion object {
-        private val TERRAIN_TILE_SOURCE: OnlineTileSourceBase = XYTileSource(
-            "OpenTopoMap",
+        // Более быстрый рельефный источник: ArcGIS Topographic.
+        private val TERRAIN_TILE_SOURCE: OnlineTileSourceBase = object : OnlineTileSourceBase(
+            "EsriWorldTopo",
             0,
-            17,
+            19,
             256,
             ".png",
-            arrayOf(
-                "https://a.tile.opentopomap.org/",
-                "https://b.tile.opentopomap.org/",
-                "https://c.tile.opentopomap.org/"
-            )
-        )
+            arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/")
+        ) {
+            override fun getTileURLString(pMapTileIndex: Long): String {
+                val zoom = MapTileIndex.getZoom(pMapTileIndex)
+                val x = MapTileIndex.getX(pMapTileIndex)
+                val y = MapTileIndex.getY(pMapTileIndex)
+                // ArcGIS ожидает формат /z/y/x.
+                return "$baseUrl$zoom/$y/$x.png"
+            }
+        }
     }
 
     private var _binding: FragmentMapBinding? = null
@@ -129,6 +136,7 @@ class MapFragment : Fragment() {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
+        if (!isAdded || _binding == null) return@registerForActivityResult
         when {
             permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true -> {
                 enableMyLocation()
@@ -139,11 +147,13 @@ class MapFragment : Fragment() {
                 getCurrentLocation()
             }
             else -> {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.map_toast_location_permission),
-                    Toast.LENGTH_SHORT
-                ).show()
+                context?.let { safeContext ->
+                    Toast.makeText(
+                        safeContext,
+                        getString(R.string.map_toast_location_permission),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
@@ -163,6 +173,7 @@ class MapFragment : Fragment() {
         // Инициализация карты
         Configuration.getInstance().userAgentValue = requireContext().packageName
         binding.mapView.setMultiTouchControls(true)
+        binding.mapView.zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
         binding.mapView.setTilesScaledToDpi(true)
         binding.mapView.controller.setZoom(15.0)
         applyMapPresentation()
@@ -199,6 +210,15 @@ class MapFragment : Fragment() {
             shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
             getCurrentLocation()
         }
+
+        binding.fabZoomIn.setOnClickListener {
+            val nextZoom = (binding.mapView.zoomLevelDouble + 1.0).coerceAtMost(20.0)
+            binding.mapView.controller.animateTo(binding.mapView.mapCenter, nextZoom, 280L)
+        }
+        binding.fabZoomOut.setOnClickListener {
+            val nextZoom = (binding.mapView.zoomLevelDouble - 1.0).coerceAtLeast(2.0)
+            binding.mapView.controller.animateTo(binding.mapView.mapCenter, nextZoom, 280L)
+        }
     }
 
     private fun applyMapPresentation() {
@@ -209,6 +229,10 @@ class MapFragment : Fragment() {
         binding.mapView.setTileSource(tileSource)
         binding.mapView.setUseDataConnection(!SettingsPreferences.isOfflineMapEnabled(requireContext()))
         binding.mapView.invalidate()
+    }
+
+    private fun animationsEnabled(): Boolean {
+        return SettingsPreferences.isAnimationsEnabled(requireContext())
     }
 
     private fun setupSearch() {
@@ -351,6 +375,13 @@ class MapFragment : Fragment() {
                         }
                     }
                 }
+                launch {
+                    viewModel.selectedTask.collect { task ->
+                        task ?: return@collect
+                        val point = GeoPoint(task.latitude, task.longitude)
+                        binding.mapView.controller.animateTo(point)
+                    }
+                }
             }
         }
     }
@@ -456,6 +487,12 @@ class MapFragment : Fragment() {
     }
 
     private fun animateCoordinatesCard(card: View, show: Boolean) {
+        if (!animationsEnabled()) {
+            card.visibility = if (show) View.VISIBLE else View.GONE
+            card.alpha = if (show) 1f else 0f
+            card.translationY = 0f
+            return
+        }
         if (show) {
             card.visibility = View.VISIBLE
             card.translationY = -16f
@@ -475,6 +512,38 @@ class MapFragment : Fragment() {
                 .withEndAction {
                     card.visibility = View.GONE
                     card.translationY = 0f
+                }
+                .start()
+        }
+    }
+
+    private fun togglePanel(panel: View, trigger: MaterialButton, expand: Boolean) {
+        val iconRes = if (expand) R.drawable.ic_expand_less else R.drawable.ic_expand_more
+        trigger.setIconResource(iconRes)
+        if (!animationsEnabled()) {
+            panel.visibility = if (expand) View.VISIBLE else View.GONE
+            return
+        }
+        if (expand) {
+            panel.visibility = View.VISIBLE
+            panel.alpha = 0f
+            panel.translationY = -18f
+            panel.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(320)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .start()
+        } else {
+            panel.animate()
+                .alpha(0f)
+                .translationY(-18f)
+                .setDuration(220)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .withEndAction {
+                    panel.visibility = View.GONE
+                    panel.translationY = 0f
+                    panel.alpha = 1f
                 }
                 .start()
         }
@@ -538,6 +607,26 @@ class MapFragment : Fragment() {
         selectMarkerColor(dialogBinding.radioMarkerColor, defaultColor)
         val defaultIcon = resolveMarkerIconOption("pin")
         selectMarkerIcon(dialogBinding.radioMarkerIcon, defaultIcon.key)
+        dialogBinding.panelColorPicker.visibility = View.GONE
+        dialogBinding.panelIconPicker.visibility = View.GONE
+        dialogBinding.buttonToggleColorPicker.setIconResource(R.drawable.ic_expand_more)
+        dialogBinding.buttonToggleIconPicker.setIconResource(R.drawable.ic_expand_more)
+        dialogBinding.buttonToggleColorPicker.setOnClickListener {
+            val open = dialogBinding.panelColorPicker.visibility != View.VISIBLE
+            togglePanel(
+                panel = dialogBinding.panelColorPicker,
+                trigger = dialogBinding.buttonToggleColorPicker,
+                expand = open
+            )
+        }
+        dialogBinding.buttonToggleIconPicker.setOnClickListener {
+            val open = dialogBinding.panelIconPicker.visibility != View.VISIBLE
+            togglePanel(
+                panel = dialogBinding.panelIconPicker,
+                trigger = dialogBinding.buttonToggleIconPicker,
+                expand = open
+            )
+        }
 
         dialogBinding.switchNotification.isChecked = true
         dialogBinding.switchAutoRemove.isChecked = false
@@ -588,6 +677,7 @@ class MapFragment : Fragment() {
             .setNegativeButton(getString(R.string.map_add_task_negative), null)
             .show()
         dialog.setCanceledOnTouchOutside(false)
+        animateMenuOpen(dialogBinding.root)
     }
 
     private fun showEditTaskDialog(task: Task) {
@@ -609,6 +699,26 @@ class MapFragment : Fragment() {
         selectMarkerColor(dialogBinding.radioMarkerColor, task.markerColor)
         val currentIcon = resolveMarkerIconOption(task.markerIcon)
         selectMarkerIcon(dialogBinding.radioMarkerIcon, currentIcon.key)
+        dialogBinding.panelColorPicker.visibility = View.GONE
+        dialogBinding.panelIconPicker.visibility = View.GONE
+        dialogBinding.buttonToggleColorPicker.setIconResource(R.drawable.ic_expand_more)
+        dialogBinding.buttonToggleIconPicker.setIconResource(R.drawable.ic_expand_more)
+        dialogBinding.buttonToggleColorPicker.setOnClickListener {
+            val open = dialogBinding.panelColorPicker.visibility != View.VISIBLE
+            togglePanel(
+                panel = dialogBinding.panelColorPicker,
+                trigger = dialogBinding.buttonToggleColorPicker,
+                expand = open
+            )
+        }
+        dialogBinding.buttonToggleIconPicker.setOnClickListener {
+            val open = dialogBinding.panelIconPicker.visibility != View.VISIBLE
+            togglePanel(
+                panel = dialogBinding.panelIconPicker,
+                trigger = dialogBinding.buttonToggleIconPicker,
+                expand = open
+            )
+        }
 
         dialogBinding.switchNotification.isChecked = task.isNotificationEnabled
         dialogBinding.switchAutoRemove.isChecked = task.autoRemoveAfterTrigger
@@ -655,6 +765,7 @@ class MapFragment : Fragment() {
             .setNegativeButton(getString(R.string.map_add_task_negative), null)
             .show()
         dialog.setCanceledOnTouchOutside(false)
+        animateMenuOpen(dialogBinding.root)
     }
 
     private fun showTaskDetailsDialog(task: Task) {
@@ -714,6 +825,7 @@ class MapFragment : Fragment() {
             }
             .show()
         dialog.setCanceledOnTouchOutside(false)
+        animateMenuOpen(dialogBinding.root)
     }
 
     private fun showConfirmToggleDialog(task: Task) {
@@ -734,10 +846,18 @@ class MapFragment : Fragment() {
     }
 
     private fun requestLocationPermissions() {
+        if (!isAdded) return
         when {
             ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                enableMyLocation()
+                getCurrentLocation()
+            }
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED -> {
                 enableMyLocation()
                 getCurrentLocation()
@@ -754,49 +874,59 @@ class MapFragment : Fragment() {
     }
 
     private fun enableMyLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!isAdded || _binding == null) return
+        val hasFine = ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
             val provider = GpsMyLocationProvider(requireContext())
-            if (myLocationOverlay == null) {
-                myLocationOverlay = MyLocationNewOverlay(provider, binding.mapView).apply {
-                    enableMyLocation()
-                    // Убираем синюю область точности под меткой пользователя
-                    isDrawAccuracyEnabled = false
-                    disableFollowLocation()
-                    val iconDrawable = ContextCompat.getDrawable(
-                        requireContext(),
-                        R.drawable.ic_my_location_arrow
-                    )
-                    if (iconDrawable != null) {
-                        val bmp = drawableToBitmap(iconDrawable)
-                        setPersonIcon(bmp)
-                        setDirectionIcon(bmp)
-                    }
-                }
-                binding.mapView.overlays.add(myLocationOverlay)
+            myLocationOverlay?.let { oldOverlay ->
+                oldOverlay.disableMyLocation()
+                binding.mapView.overlays.remove(oldOverlay)
             }
-            provider.startLocationProvider { location, _ ->
-                activity?.runOnUiThread {
-                    location?.let {
-                        viewModel.updateCurrentLocation(it.latitude, it.longitude)
+            myLocationOverlay = MyLocationNewOverlay(provider, binding.mapView).apply {
+                enableMyLocation()
+                // Убираем синюю область точности под меткой пользователя
+                isDrawAccuracyEnabled = false
+                disableFollowLocation()
+                val iconDrawable = ContextCompat.getDrawable(
+                    requireContext(),
+                    R.drawable.ic_my_location_arrow
+                )
+                if (iconDrawable != null) {
+                    val bmp = drawableToBitmap(iconDrawable)
+                    setPersonIcon(bmp)
+                }
+                runOnFirstFix {
+                    myLocation?.let { location ->
+                        viewModel.updateCurrentLocation(location.latitude, location.longitude)
                     }
                 }
             }
+            binding.mapView.overlays.add(myLocationOverlay)
+            binding.mapView.invalidate()
         }
     }
 
     private fun getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!isAdded || _binding == null) return
+        val hasFine = ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
             val cancellationToken = CancellationTokenSource()
             fusedLocationClient.getCurrentLocation(
-                Priority.PRIORITY_HIGH_ACCURACY,
+                if (hasFine) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY,
                 cancellationToken.token
             ).addOnSuccessListener { location ->
                 location?.let {
@@ -855,6 +985,32 @@ class MapFragment : Fragment() {
     }
 
     private fun animateChrome() {
+        if (!animationsEnabled()) {
+            binding.searchCard.alpha = if (binding.searchCard.visibility == View.VISIBLE) 1f else 0f
+            binding.searchCard.translationY = 0f
+            binding.searchCard.scaleX = 1f
+            binding.searchCard.scaleY = 1f
+
+            binding.fabAddTask.alpha = 1f
+            binding.fabAddTask.scaleX = 1f
+            binding.fabAddTask.scaleY = 1f
+
+            binding.fabMyLocation.alpha = 1f
+            binding.fabMyLocation.scaleX = 1f
+            binding.fabMyLocation.scaleY = 1f
+
+            binding.searchFab.alpha = if (binding.searchFab.visibility == View.VISIBLE) 1f else 0f
+            binding.searchFab.scaleX = 1f
+            binding.searchFab.scaleY = 1f
+
+            binding.fabZoomIn.alpha = 1f
+            binding.fabZoomIn.scaleX = 1f
+            binding.fabZoomIn.scaleY = 1f
+            binding.fabZoomOut.alpha = 1f
+            binding.fabZoomOut.scaleX = 1f
+            binding.fabZoomOut.scaleY = 1f
+            return
+        }
         val interpolator = FastOutSlowInInterpolator()
 
         if (binding.searchCard.visibility == View.VISIBLE) {
@@ -867,7 +1023,7 @@ class MapFragment : Fragment() {
                 .translationY(0f)
                 .scaleX(1f)
                 .scaleY(1f)
-                .setDuration(260)
+                .setDuration(440)
                 .setInterpolator(interpolator)
                 .start()
         }
@@ -879,7 +1035,7 @@ class MapFragment : Fragment() {
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(240)
+            .setDuration(420)
             .setInterpolator(interpolator)
             .start()
 
@@ -890,7 +1046,7 @@ class MapFragment : Fragment() {
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(240)
+            .setDuration(420)
             .setInterpolator(interpolator)
             .start()
 
@@ -901,7 +1057,29 @@ class MapFragment : Fragment() {
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(240)
+            .setDuration(420)
+            .setInterpolator(interpolator)
+            .start()
+
+        binding.fabZoomIn.scaleX = 0.78f
+        binding.fabZoomIn.scaleY = 0.78f
+        binding.fabZoomIn.alpha = 0f
+        binding.fabZoomIn.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(430)
+            .setInterpolator(interpolator)
+            .start()
+
+        binding.fabZoomOut.scaleX = 0.78f
+        binding.fabZoomOut.scaleY = 0.78f
+        binding.fabZoomOut.alpha = 0f
+        binding.fabZoomOut.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(430)
             .setInterpolator(interpolator)
             .start()
     }
@@ -918,12 +1096,27 @@ class MapFragment : Fragment() {
     private fun collapseSearchUi() {
         if (!isSearchExpanded) return
         isSearchExpanded = false
+        if (!animationsEnabled()) {
+            binding.searchCard.clearAnimation()
+            binding.searchFab.clearAnimation()
+            binding.searchCard.visibility = View.GONE
+            binding.searchCard.alpha = 0f
+            binding.searchCard.translationY = 0f
+            binding.searchCard.scaleX = 1f
+            binding.searchCard.scaleY = 1f
+            binding.searchFab.visibility = View.VISIBLE
+            binding.searchFab.alpha = 1f
+            binding.searchFab.scaleX = 1f
+            binding.searchFab.scaleY = 1f
+            hideKeyboard()
+            return
+        }
         binding.searchCard.animate()
             .alpha(0f)
             .translationY(-12f)
             .scaleX(0.92f)
             .scaleY(0.92f)
-            .setDuration(220)
+            .setDuration(420)
             .setInterpolator(FastOutSlowInInterpolator())
             .withEndAction { binding.searchCard.visibility = View.GONE }
             .start()
@@ -934,7 +1127,7 @@ class MapFragment : Fragment() {
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(200)
+            .setDuration(360)
             .setInterpolator(FastOutSlowInInterpolator())
             .start()
         hideKeyboard()
@@ -943,6 +1136,22 @@ class MapFragment : Fragment() {
     private fun expandSearchUi() {
         if (isSearchExpanded) return
         isSearchExpanded = true
+        if (!animationsEnabled()) {
+            binding.searchCard.clearAnimation()
+            binding.searchFab.clearAnimation()
+            binding.searchCard.visibility = View.VISIBLE
+            binding.searchCard.alpha = 1f
+            binding.searchCard.translationY = 0f
+            binding.searchCard.scaleX = 1f
+            binding.searchCard.scaleY = 1f
+            binding.searchFab.visibility = View.GONE
+            binding.searchFab.alpha = 0f
+            binding.searchFab.scaleX = 1f
+            binding.searchFab.scaleY = 1f
+            binding.searchQuery.requestFocus()
+            showKeyboard()
+            return
+        }
         binding.searchCard.visibility = View.VISIBLE
         binding.searchCard.alpha = 0f
         binding.searchCard.translationY = -12f
@@ -953,14 +1162,14 @@ class MapFragment : Fragment() {
             .translationY(0f)
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(240)
+            .setDuration(480)
             .setInterpolator(FastOutSlowInInterpolator())
             .start()
         binding.searchFab.animate()
             .alpha(0f)
             .scaleX(0.8f)
             .scaleY(0.8f)
-            .setDuration(180)
+            .setDuration(360)
             .setInterpolator(FastOutSlowInInterpolator())
             .withEndAction { binding.searchFab.visibility = View.GONE }
             .start()
@@ -976,6 +1185,22 @@ class MapFragment : Fragment() {
     private fun hideKeyboard() {
         val imm = ContextCompat.getSystemService(requireContext(), InputMethodManager::class.java)
         imm?.hideSoftInputFromWindow(binding.searchQuery.windowToken, 0)
+    }
+
+    private fun animateMenuOpen(view: View) {
+        if (!animationsEnabled()) {
+            view.alpha = 1f
+            view.translationY = 0f
+            return
+        }
+        view.alpha = 0f
+        view.translationY = 14f
+        view.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(200)
+            .setInterpolator(FastOutSlowInInterpolator())
+            .start()
     }
 
     override fun onResume() {

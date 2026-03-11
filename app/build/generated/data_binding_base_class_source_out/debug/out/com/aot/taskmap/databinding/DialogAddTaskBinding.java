@@ -4,6 +4,7 @@ package com.aot.taskmap.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -12,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.aot.taskmap.R;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.switchmaterial.SwitchMaterial;
@@ -23,6 +25,12 @@ import java.lang.String;
 public final class DialogAddTaskBinding implements ViewBinding {
   @NonNull
   private final ScrollView rootView;
+
+  @NonNull
+  public final MaterialButton buttonToggleColorPicker;
+
+  @NonNull
+  public final MaterialButton buttonToggleIconPicker;
 
   @NonNull
   public final MaterialRadioButton colorBlue;
@@ -64,6 +72,12 @@ public final class DialogAddTaskBinding implements ViewBinding {
   public final MaterialRadioButton iconTarget;
 
   @NonNull
+  public final LinearLayout panelColorPicker;
+
+  @NonNull
+  public final LinearLayout panelIconPicker;
+
+  @NonNull
   public final RadioGroup radioMarkerColor;
 
   @NonNull
@@ -81,17 +95,22 @@ public final class DialogAddTaskBinding implements ViewBinding {
   @NonNull
   public final TextView textRadiusValue;
 
-  private DialogAddTaskBinding(@NonNull ScrollView rootView, @NonNull MaterialRadioButton colorBlue,
+  private DialogAddTaskBinding(@NonNull ScrollView rootView,
+      @NonNull MaterialButton buttonToggleColorPicker,
+      @NonNull MaterialButton buttonToggleIconPicker, @NonNull MaterialRadioButton colorBlue,
       @NonNull MaterialRadioButton colorGreen, @NonNull MaterialRadioButton colorOrange,
       @NonNull MaterialRadioButton colorRed, @NonNull TextInputEditText editDescription,
       @NonNull TextInputEditText editLatitude, @NonNull TextInputEditText editLongitude,
       @NonNull TextInputEditText editTitle, @NonNull MaterialRadioButton iconBriefcase,
       @NonNull MaterialRadioButton iconFlag, @NonNull MaterialRadioButton iconPin,
       @NonNull MaterialRadioButton iconStar, @NonNull MaterialRadioButton iconTarget,
+      @NonNull LinearLayout panelColorPicker, @NonNull LinearLayout panelIconPicker,
       @NonNull RadioGroup radioMarkerColor, @NonNull RadioGroup radioMarkerIcon,
       @NonNull Slider sliderRadius, @NonNull SwitchMaterial switchAutoRemove,
       @NonNull SwitchMaterial switchNotification, @NonNull TextView textRadiusValue) {
     this.rootView = rootView;
+    this.buttonToggleColorPicker = buttonToggleColorPicker;
+    this.buttonToggleIconPicker = buttonToggleIconPicker;
     this.colorBlue = colorBlue;
     this.colorGreen = colorGreen;
     this.colorOrange = colorOrange;
@@ -105,6 +124,8 @@ public final class DialogAddTaskBinding implements ViewBinding {
     this.iconPin = iconPin;
     this.iconStar = iconStar;
     this.iconTarget = iconTarget;
+    this.panelColorPicker = panelColorPicker;
+    this.panelIconPicker = panelIconPicker;
     this.radioMarkerColor = radioMarkerColor;
     this.radioMarkerIcon = radioMarkerIcon;
     this.sliderRadius = sliderRadius;
@@ -140,6 +161,18 @@ public final class DialogAddTaskBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.button_toggle_color_picker;
+      MaterialButton buttonToggleColorPicker = ViewBindings.findChildViewById(rootView, id);
+      if (buttonToggleColorPicker == null) {
+        break missingId;
+      }
+
+      id = R.id.button_toggle_icon_picker;
+      MaterialButton buttonToggleIconPicker = ViewBindings.findChildViewById(rootView, id);
+      if (buttonToggleIconPicker == null) {
+        break missingId;
+      }
+
       id = R.id.color_blue;
       MaterialRadioButton colorBlue = ViewBindings.findChildViewById(rootView, id);
       if (colorBlue == null) {
@@ -218,6 +251,18 @@ public final class DialogAddTaskBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.panel_color_picker;
+      LinearLayout panelColorPicker = ViewBindings.findChildViewById(rootView, id);
+      if (panelColorPicker == null) {
+        break missingId;
+      }
+
+      id = R.id.panel_icon_picker;
+      LinearLayout panelIconPicker = ViewBindings.findChildViewById(rootView, id);
+      if (panelIconPicker == null) {
+        break missingId;
+      }
+
       id = R.id.radio_marker_color;
       RadioGroup radioMarkerColor = ViewBindings.findChildViewById(rootView, id);
       if (radioMarkerColor == null) {
@@ -254,10 +299,11 @@ public final class DialogAddTaskBinding implements ViewBinding {
         break missingId;
       }
 
-      return new DialogAddTaskBinding((ScrollView) rootView, colorBlue, colorGreen, colorOrange,
-          colorRed, editDescription, editLatitude, editLongitude, editTitle, iconBriefcase,
-          iconFlag, iconPin, iconStar, iconTarget, radioMarkerColor, radioMarkerIcon, sliderRadius,
-          switchAutoRemove, switchNotification, textRadiusValue);
+      return new DialogAddTaskBinding((ScrollView) rootView, buttonToggleColorPicker,
+          buttonToggleIconPicker, colorBlue, colorGreen, colorOrange, colorRed, editDescription,
+          editLatitude, editLongitude, editTitle, iconBriefcase, iconFlag, iconPin, iconStar,
+          iconTarget, panelColorPicker, panelIconPicker, radioMarkerColor, radioMarkerIcon,
+          sliderRadius, switchAutoRemove, switchNotification, textRadiusValue);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
