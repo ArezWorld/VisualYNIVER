@@ -40,8 +40,16 @@
         "source": "com.aot.taskmap.app-main-57:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
+        "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_flag.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/drawable/ic_marker_flag.xml"
+    },
+    {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_add.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_add.xml"
+    },
+    {
+        "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_pin.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/drawable/ic_marker_pin.xml"
     },
     {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_active.xml.flat",
@@ -62,6 +70,10 @@
     {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_map.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_map.xml"
+    },
+    {
+        "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_star.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/drawable/ic_marker_star.xml"
     },
     {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_search.xml.flat",

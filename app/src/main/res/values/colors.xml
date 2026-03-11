@@ -14,6 +14,10 @@
     <color name="white">#FFFFFFFF</color>
     <color name="marker_active">#00A389</color>
     <color name="marker_completed">#FF9E9E9E</color>
+    <color name="marker_blue">#2196F3</color>
+    <color name="marker_green">#4CAF50</color>
+    <color name="marker_orange">#FF9800</color>
+    <color name="marker_red">#F44336</color>
     <color name="ic_launcher_background">#1B5E7A</color>
     <color name="hint_on_surface">#7A121417</color>
 </resources>

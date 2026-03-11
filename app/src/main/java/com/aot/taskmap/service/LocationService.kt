@@ -33,6 +33,7 @@ class LocationService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private lateinit var taskDao: com.aot.taskmap.data.local.TaskDao
 
     private var tasksJob: Job? = null
     private var trackedTasks: List<Task> = emptyList()
@@ -47,6 +48,7 @@ class LocationService : Service() {
         super.onCreate()
         createNotificationChannel()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        taskDao = TaskDatabase.getDatabase(applicationContext).taskDao()
         setupLocationCallback()
     }
 
@@ -91,9 +93,8 @@ class LocationService : Service() {
 
     private fun startTrackingTasks() {
         tasksJob?.cancel()
-        val dao = TaskDatabase.getDatabase(applicationContext).taskDao()
         tasksJob = serviceScope.launch {
-            dao.getTasksWithNotificationsFlow().collect { tasks ->
+            taskDao.getTasksWithNotificationsFlow().collect { tasks ->
                 trackedTasks = tasks
                 val activeIds = tasks.map { it.id }.toSet()
                 lastInsideState.keys.retainAll(activeIds)
@@ -119,6 +120,11 @@ class LocationService : Service() {
 
             if (!wasInside && isInside) {
                 showTaskNotification(task)
+                if (task.autoRemoveAfterTrigger) {
+                    serviceScope.launch {
+                        taskDao.deleteTaskById(task.id)
+                    }
+                }
             }
 
             lastInsideState[task.id] = isInside

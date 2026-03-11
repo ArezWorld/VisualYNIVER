@@ -13,6 +13,9 @@ data class Task(
     val longitude: Double,
     val address: String = "",
     val radius: Int = 100, // Radius in meters for geofence
+    val markerColor: Int = 0xFF2196F3.toInt(),
+    val markerIcon: String = "pin",
+    val autoRemoveAfterTrigger: Boolean = false,
     val isCompleted: Boolean = false,
     val isNotificationEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),

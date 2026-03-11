@@ -61,7 +61,19 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             if (!BuildConfig.DEBUG) {
                 val result = remoteRepository.fetchTasks()
                 result.onSuccess { tasks ->
-                    localRepository.insertTasks(tasks)
+                    val mergedTasks = tasks.map { remoteTask ->
+                        val localTask = localRepository.getTaskById(remoteTask.id)
+                        if (localTask != null) {
+                            remoteTask.copy(
+                                markerColor = localTask.markerColor,
+                                markerIcon = localTask.markerIcon,
+                                autoRemoveAfterTrigger = localTask.autoRemoveAfterTrigger
+                            )
+                        } else {
+                            remoteTask
+                        }
+                    }
+                    localRepository.insertTasks(mergedTasks)
                 }.onFailure { e ->
                     _error.value = e.message
                 }
@@ -77,7 +89,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         longitude: Double,
         address: String,
         radius: Int = 100,
-        enableNotification: Boolean = true
+        enableNotification: Boolean = true,
+        markerColor: Int = 0xFF2196F3.toInt(),
+        markerIcon: String = "pin",
+        autoRemoveAfterTrigger: Boolean = false
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -90,6 +105,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 longitude = longitude,
                 address = address,
                 radius = radius,
+                markerColor = markerColor,
+                markerIcon = markerIcon,
+                autoRemoveAfterTrigger = autoRemoveAfterTrigger,
                 isNotificationEnabled = enableNotification
             )
             localRepository.insertTask(localTask)

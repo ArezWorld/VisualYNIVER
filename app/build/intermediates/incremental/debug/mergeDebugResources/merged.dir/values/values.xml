@@ -889,7 +889,11 @@
     <color name="m3_sys_color_tertiary_fixed">@color/m3_ref_palette_tertiary90</color>
     <color name="m3_sys_color_tertiary_fixed_dim">@color/m3_ref_palette_tertiary80</color>
     <color name="marker_active">#00A389</color>
+    <color name="marker_blue">#2196F3</color>
     <color name="marker_completed">#FF9E9E9E</color>
+    <color name="marker_green">#4CAF50</color>
+    <color name="marker_orange">#FF9800</color>
+    <color name="marker_red">#F44336</color>
     <color name="material_blue_grey_800">#ff37474f</color>
     <color name="material_blue_grey_900">#ff263238</color>
     <color name="material_blue_grey_950">#ff21272b</color>
@@ -2127,6 +2131,7 @@
     <string name="map_action_close">Закрыть</string>
     <string name="map_action_complete">Отметить выполненной</string>
     <string name="map_action_delete">Удалить</string>
+    <string name="map_action_edit">Редактировать</string>
     <string name="map_action_restore">Вернуть в работу</string>
     <string name="map_add_task_negative">Отмена</string>
     <string name="map_add_task_positive">Добавить</string>
@@ -2137,12 +2142,17 @@
     <string name="map_confirm_no">Отмена</string>
     <string name="map_confirm_title">Подтверждение</string>
     <string name="map_confirm_yes">Да</string>
+    <string name="map_edit_task_title">Редактировать метку</string>
     <string name="map_mode">Map Source</string>
     <string name="map_result_default">Результат</string>
+    <string name="map_save_task">Сохранить</string>
     <string name="map_status_done">Выполнено</string>
     <string name="map_status_in_progress">В процессе</string>
     <string name="map_task_added">Задача добавлена</string>
+    <string name="map_task_auto_remove">Удалять после срабатывания</string>
+    <string name="map_task_color">Цвет метки</string>
     <string name="map_task_coords">Координаты</string>
+    <string name="map_task_icon">Значок</string>
     <string name="map_task_radius">Радиус уведомления</string>
     <string name="map_task_status">Статус</string>
     <string name="map_task_title_required">Введите название задачи</string>
@@ -2152,6 +2162,26 @@
     <string name="mapnik" translatable="false">Mapnik</string>
     <string name="mapquest_aerial">Mapquest Aerial</string>
     <string name="mapquest_osm">Mapquest</string>
+    <string name="marker_auto_remove">Скрывать метку после срабатывания</string>
+    <string name="marker_color_blue">Синий</string>
+    <string name="marker_color_green">Зелёный</string>
+    <string name="marker_color_orange">Оранжевый</string>
+    <string name="marker_color_red">Красный</string>
+    <string name="marker_description">Описание</string>
+    <string name="marker_icon">Значок метки</string>
+    <string name="marker_icon_flag">Флаг</string>
+    <string name="marker_icon_pin">Классика</string>
+    <string name="marker_icon_star">Звезда</string>
+    <string name="marker_latitude">Широта</string>
+    <string name="marker_longitude">Долгота</string>
+    <string name="marker_notify">Уведомлять при приближении</string>
+    <string name="marker_radius_value">Радиус: 100 м</string>
+    <string name="marker_radius_value_format">Радиус: %1$d м</string>
+    <string name="marker_section_location">Координаты</string>
+    <string name="marker_section_main">Данные метки</string>
+    <string name="marker_section_radius">Радиус срабатывания</string>
+    <string name="marker_section_style">Стиль метки</string>
+    <string name="marker_title">Название</string>
     <string name="material_clock_display_divider" translatable="false">:</string>
     <string description="Description for the toggle to choose between AM and PM [CHAR_LIMIT=NONE]" name="material_clock_toggle_content_description">Select AM or PM</string>
     <string description="Spoken suffix for an hour in the 24-hour clock [CHAR_LIMIT=10]" name="material_hour_24h_suffix"><ns2:g id="number">%1$s</ns2:g> hours</string>
