@@ -6780,21 +6780,23 @@
     <item name="windowNoTitle">true</item>
   </style>
     <style name="Theme.TaskMap" parent="Theme.TaskMap.Purple"/>
-    <style name="Theme.TaskMap.Base" parent="Theme.MaterialComponents.Light.DarkActionBar">
+    <style name="Theme.TaskMap.Base" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <item name="android:navigationBarColor">?android:colorBackground</item>
+        <item name="android:textColorPrimary">?attr/colorOnSurface</item>
+        <item name="android:textColorSecondary">?attr/colorOnSurface</item>
     </style>
     <style name="Theme.TaskMap.Black" parent="Theme.TaskMap.Base">
-        <item name="colorPrimary">#121212</item>
-        <item name="colorPrimaryVariant">#000000</item>
+        <item name="colorPrimary">#313131</item>
+        <item name="colorPrimaryVariant">#1D1D1D</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSecondary">#2A2A2A</item>
-        <item name="colorSecondaryVariant">#1F1F1F</item>
+        <item name="colorSecondary">#464646</item>
+        <item name="colorSecondaryVariant">#333333</item>
         <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSurface">#0F0F0F</item>
-        <item name="colorOnSurface">#EFEFEF</item>
-        <item name="android:colorBackground">#000000</item>
-        <item name="android:windowBackground">#000000</item>
-        <item name="android:statusBarColor">#000000</item>
+        <item name="colorSurface">#1A1A1A</item>
+        <item name="colorOnSurface">#F5F5F5</item>
+        <item name="android:colorBackground">#0B0B0B</item>
+        <item name="android:windowBackground">#0B0B0B</item>
+        <item name="android:statusBarColor">#050505</item>
     </style>
     <style name="Theme.TaskMap.Blue" parent="Theme.TaskMap.Base">
         <item name="colorPrimary">#1D4ED8</item>
@@ -6836,30 +6838,30 @@
         <item name="android:statusBarColor">#4A0003</item>
     </style>
     <style name="Theme.TaskMap.Steel" parent="Theme.TaskMap.Base">
-        <item name="colorPrimary">#2F3A45</item>
-        <item name="colorPrimaryVariant">#1F2933</item>
-        <item name="colorOnPrimary">#E6EEF5</item>
-        <item name="colorSecondary">#4C5B67</item>
-        <item name="colorSecondaryVariant">#394853</item>
-        <item name="colorOnSecondary">#E6EEF5</item>
-        <item name="colorSurface">#202831</item>
-        <item name="colorOnSurface">#DCE4EC</item>
-        <item name="android:colorBackground">#151B22</item>
-        <item name="android:windowBackground">#151B22</item>
-        <item name="android:statusBarColor">#11161C</item>
+        <item name="colorPrimary">#495664</item>
+        <item name="colorPrimaryVariant">#36414C</item>
+        <item name="colorOnPrimary">#F2F6FA</item>
+        <item name="colorSecondary">#5F6D7A</item>
+        <item name="colorSecondaryVariant">#4B5864</item>
+        <item name="colorOnSecondary">#F2F6FA</item>
+        <item name="colorSurface">#25303A</item>
+        <item name="colorOnSurface">#E6EDF4</item>
+        <item name="android:colorBackground">#151C23</item>
+        <item name="android:windowBackground">#151C23</item>
+        <item name="android:statusBarColor">#12181E</item>
     </style>
     <style name="Theme.TaskMap.White" parent="Theme.TaskMap.Base">
-        <item name="colorPrimary">#ECECEC</item>
-        <item name="colorPrimaryVariant">#DADADA</item>
-        <item name="colorOnPrimary">#111111</item>
-        <item name="colorSecondary">#CFCFCF</item>
-        <item name="colorSecondaryVariant">#BEBEBE</item>
-        <item name="colorOnSecondary">#111111</item>
+        <item name="colorPrimary">#4F4F4F</item>
+        <item name="colorPrimaryVariant">#3E3E3E</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#6A6A6A</item>
+        <item name="colorSecondaryVariant">#575757</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
         <item name="colorSurface">#FFFFFF</item>
         <item name="colorOnSurface">#141414</item>
         <item name="android:colorBackground">#F7F7F7</item>
         <item name="android:windowBackground">#F7F7F7</item>
-        <item name="android:statusBarColor">#DADADA</item>
+        <item name="android:statusBarColor">#3E3E3E</item>
     </style>
     <style name="ThemeOverlay.AppCompat" parent="Base.ThemeOverlay.AppCompat"/>
     <style name="ThemeOverlay.AppCompat.ActionBar" parent="Base.ThemeOverlay.AppCompat.ActionBar"/>

@@ -37,7 +37,7 @@
                 android:layout_height="wrap_content"
                 app:hintEnabled="false"
                 app:placeholderText="@string/search_hint"
-                app:placeholderTextColor="?android:textColorSecondary"
+                app:placeholderTextColor="?attr/colorOnSurface"
                 app:endIconMode="clear_text"
                 app:layout_constraintEnd_toStartOf="@id/button_search"
                 app:layout_constraintStart_toStartOf="parent"
@@ -52,7 +52,7 @@
                     android:inputType="text"
                     android:maxLines="1"
                     android:textColor="?attr/colorOnSurface"
-                    android:textColorHint="?android:textColorSecondary" />
+                    android:textColorHint="?attr/colorOnSurface" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <ImageButton
@@ -114,7 +114,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="18dp"
+        android:layout_marginBottom="86dp"
         android:contentDescription="@string/cd_zoom_out"
         android:src="@drawable/ic_zoom_out"
         app:backgroundTint="?attr/colorPrimaryVariant"
@@ -127,7 +127,8 @@
         android:id="@+id/fab_add_task"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="84dp"
         android:contentDescription="@string/cd_add_task"
         android:src="@drawable/ic_add"
         app:backgroundTint="?attr/colorSecondary"

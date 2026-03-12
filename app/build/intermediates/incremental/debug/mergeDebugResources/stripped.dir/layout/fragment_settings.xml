@@ -28,7 +28,7 @@
             android:text="@string/settings_section_appearance"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="?android:textColorSecondary" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -55,7 +55,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_dark_theme"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -127,7 +127,7 @@
                     android:layout_marginTop="4dp"
                     android:text="@string/settings_desc_color_theme"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_search_expand"
@@ -141,7 +141,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_search_expand"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_animations"
@@ -155,7 +155,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_animations"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -167,7 +167,7 @@
             android:text="@string/settings_section_map"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="?android:textColorSecondary" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -194,7 +194,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_follow_location"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_show_radius"
@@ -208,7 +208,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_show_radius"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_offline_map"
@@ -222,7 +222,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_offline_map"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <RadioGroup
                     android:id="@+id/radio_map_style"
@@ -249,7 +249,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_map_style"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -261,7 +261,7 @@
             android:text="@string/settings_section_notifications"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="?android:textColorSecondary" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -288,7 +288,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_notifications"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_confirm_complete"
@@ -302,7 +302,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_desc_confirm_complete"
                     android:textSize="12sp"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?attr/colorOnSurface" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -314,7 +314,7 @@
             android:text="@string/settings_section_about"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="?android:textColorSecondary" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"

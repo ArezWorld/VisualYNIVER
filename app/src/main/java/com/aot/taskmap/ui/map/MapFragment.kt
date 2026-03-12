@@ -20,11 +20,13 @@ import android.text.TextWatcher
 import android.text.style.ForegroundColorSpan
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.annotation.ColorRes
@@ -728,6 +730,7 @@ class MapFragment : Fragment() {
 
         dialogBinding.switchNotification.isChecked = true
         dialogBinding.switchAutoRemove.isChecked = false
+        enableDialogKeyboardDismiss(dialogBinding)
 
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.map_add_task_title))
@@ -820,6 +823,7 @@ class MapFragment : Fragment() {
 
         dialogBinding.switchNotification.isChecked = task.isNotificationEnabled
         dialogBinding.switchAutoRemove.isChecked = task.autoRemoveAfterTrigger
+        enableDialogKeyboardDismiss(dialogBinding)
 
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.map_edit_task_title))
@@ -1083,6 +1087,39 @@ class MapFragment : Fragment() {
         })
     }
 
+    private fun enableDialogKeyboardDismiss(dialogBinding: DialogAddTaskBinding) {
+        val editableFields = setOf<View>(
+            dialogBinding.editTitle,
+            dialogBinding.editDescription,
+            dialogBinding.editLatitude,
+            dialogBinding.editLongitude
+        )
+        installDialogTouchDismiss(dialogBinding.root, editableFields)
+    }
+
+    private fun installDialogTouchDismiss(view: View, editableFields: Set<View>) {
+        if (view !is EditText) {
+            view.setOnTouchListener { touchedView, event ->
+                if (event.action == MotionEvent.ACTION_DOWN) {
+                    editableFields.forEach { it.clearFocus() }
+                    hideDialogKeyboard(touchedView)
+                }
+                false
+            }
+        }
+
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                installDialogTouchDismiss(view.getChildAt(index), editableFields)
+            }
+        }
+    }
+
+    private fun hideDialogKeyboard(anchor: View) {
+        val imm = ContextCompat.getSystemService(requireContext(), InputMethodManager::class.java)
+        imm?.hideSoftInputFromWindow(anchor.windowToken, 0)
+    }
+
     private fun hideBottomNavigationForMapMotion() {
         val bottomNavigation = activity?.findViewById<View>(R.id.bottom_navigation) ?: return
         restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
@@ -1095,17 +1132,21 @@ class MapFragment : Fragment() {
             if (animationsEnabled()) {
                 bottomNavigation.clearAnimation()
                 bottomNavigation.visibility = View.VISIBLE
+                bottomNavigation.alpha = 1f
                 bottomNavigation.animate()
                     .translationY(hideDistance)
-                    .alpha(0f)
                     .setDuration(bottomNavHideDurationMs)
                     .setInterpolator(FastOutSlowInInterpolator())
-                    .withEndAction { bottomNavigation.visibility = View.INVISIBLE }
+                    .withEndAction {
+                        bottomNavigation.visibility = View.INVISIBLE
+                        bottomNavigation.translationY = hideDistance
+                        bottomNavigation.alpha = 1f
+                    }
                     .start()
             } else {
                 bottomNavigation.visibility = View.INVISIBLE
                 bottomNavigation.translationY = hideDistance
-                bottomNavigation.alpha = 0f
+                bottomNavigation.alpha = 1f
             }
         }
 
@@ -1125,12 +1166,15 @@ class MapFragment : Fragment() {
         if (animationsEnabled()) {
             bottomNavigation.visibility = View.VISIBLE
             bottomNavigation.translationY = resolveBottomNavigationHideDistance(bottomNavigation)
-            bottomNavigation.alpha = 0f
+            bottomNavigation.alpha = 1f
             bottomNavigation.animate()
                 .translationY(0f)
-                .alpha(1f)
                 .setDuration(bottomNavShowDurationMs)
                 .setInterpolator(FastOutSlowInInterpolator())
+                .withEndAction {
+                    bottomNavigation.translationY = 0f
+                    bottomNavigation.alpha = 1f
+                }
                 .start()
         } else {
             bottomNavigation.visibility = View.VISIBLE

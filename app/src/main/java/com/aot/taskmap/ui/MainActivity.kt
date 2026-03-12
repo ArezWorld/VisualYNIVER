@@ -22,6 +22,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var lastNavClickTime = 0L
 
+    private val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        // После выдачи геолокации сразу продолжаем штатный сценарий по уведомлениям/сервису
+        if (hasLocationPermission()) {
+            requestNotificationPermission()
+        }
+    }
+
     private val notificationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -37,8 +46,21 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupNavigation()
-        requestNotificationPermission()
+        requestLocationPermissionIfNeeded()
         handleIntent(intent)
+    }
+
+    private fun requestLocationPermissionIfNeeded() {
+        if (hasLocationPermission()) {
+            requestNotificationPermission()
+            return
+        }
+        locationPermissionRequest.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
     }
 
     private fun setupNavigation() {
