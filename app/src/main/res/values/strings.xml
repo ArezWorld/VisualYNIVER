@@ -44,6 +44,7 @@
     <string name="settings_dark_theme">Тёмная тема</string>
     <string name="settings_follow_location">Следовать за геопозицией</string>
     <string name="settings_show_radius">Показывать радиус задач</string>
+    <string name="settings_show_completed_markers">Показывать выполненные метки</string>
     <string name="settings_offline_map">Оффлайн-карта</string>
     <string name="settings_map_style">Стиль карты</string>
     <string name="settings_map_style_standard">2GIS (Россия)</string>
@@ -61,6 +62,7 @@
     <string name="settings_desc_animations">Плавное открытие и скрытие меню по всему приложению</string>
     <string name="settings_desc_follow_location">Автоматически держать карту на вашей позиции</string>
     <string name="settings_desc_show_radius">Показывать окружности радиуса задач</string>
+    <string name="settings_desc_show_completed_markers">Показывать на карте метки задач со статусом «Выполнено»</string>
     <string name="settings_desc_offline_map">Показывать карту из локального кеша без интернет-запросов</string>
     <string name="settings_desc_map_style">Выбор источника тайлов карты</string>
     <string name="settings_offline_region">Область для оффлайн-скачивания</string>
@@ -87,6 +89,8 @@
     <string name="settings_update_action_later">Позже</string>
     <string name="settings_update_not_found">Установлена актуальная версия</string>
     <string name="settings_update_check_failed">Не удалось проверить обновления</string>
+    <string name="settings_update_check_failed_download">Не удалось проверить обновления. Открыть последнюю сборку?</string>
+    <string name="settings_update_open_releases">Открыть релизы</string>
     <string name="settings_update_no_apk">В релизе не найден APK-файл</string>
     <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
     <string name="map_toast_add_marker">Нажмите на карту, чтобы поставить метку</string>

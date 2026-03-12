@@ -188,6 +188,12 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.setShowRadiusEnabled(context, checked)
         }
 
+        binding.switchShowCompletedMarkers.isChecked =
+            SettingsPreferences.isShowCompletedMarkersEnabled(context)
+        binding.switchShowCompletedMarkers.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setShowCompletedMarkersEnabled(context, checked)
+        }
+
         val selectedStyle = SettingsPreferences.getMapStyle(context)
         binding.radioMapStyle.check(
             when (selectedStyle) {
@@ -359,29 +365,32 @@ class SettingsFragment : Fragment() {
                         .setTitle(R.string.settings_update_available_title)
                         .setMessage(message)
                         .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
-                            val url = release.apkUrl
-                            if (url.isNullOrBlank()) {
-                                Toast.makeText(
-                                    requireContext(),
-                                    getString(R.string.settings_update_no_apk),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                return@setPositiveButton
-                            }
+                            val url = release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL
                             openUpdateLink(url)
                         }
                         .setNegativeButton(R.string.settings_update_action_later, null)
                         .show()
                 },
                 onFailure = {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.settings_update_check_failed),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    showUpdateFallbackDialog()
                 }
             )
         }
+    }
+
+    private fun showUpdateFallbackDialog() {
+        if (!isAdded || _binding == null) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.settings_update_check_failed)
+            .setMessage(R.string.settings_update_check_failed_download)
+            .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
+                openUpdateLink(BuildConfig.UPDATE_LATEST_APK_URL)
+            }
+            .setNeutralButton(R.string.settings_update_open_releases) { _, _ ->
+                openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
+            }
+            .setNegativeButton(R.string.settings_update_action_later, null)
+            .show()
     }
 
     private fun setUpdateButtonLoading(isLoading: Boolean) {

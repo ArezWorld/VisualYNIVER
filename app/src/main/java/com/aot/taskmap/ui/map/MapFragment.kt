@@ -21,6 +21,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextWatcher
 import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -115,6 +116,8 @@ class MapFragment : Fragment() {
     private val searchHistoryPrefsName = "map_search_history"
     private val recentPlacesKey = "recent_places"
     private val recentPlacesLimit = 8
+    private var activeTasksCache = emptyList<Task>()
+    private var completedTasksCache = emptyList<Task>()
     private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
     private val searchHttpClient by lazy {
         OkHttpClient.Builder()
@@ -652,7 +655,14 @@ class MapFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.activeTasks.collect { tasks ->
-                        updateMapMarkers(tasks)
+                        activeTasksCache = tasks
+                        refreshDisplayedMarkers()
+                    }
+                }
+                launch {
+                    viewModel.completedTasks.collect { tasks ->
+                        completedTasksCache = tasks
+                        refreshDisplayedMarkers()
                     }
                 }
                 launch {
@@ -675,6 +685,20 @@ class MapFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun shouldShowCompletedMarkers(): Boolean {
+        return SettingsPreferences.isShowCompletedMarkersEnabled(requireContext())
+    }
+
+    private fun refreshDisplayedMarkers() {
+        if (!isAdded || _binding == null) return
+        val tasksToShow = if (shouldShowCompletedMarkers()) {
+            completedTasksCache + activeTasksCache
+        } else {
+            activeTasksCache
+        }
+        updateMapMarkers(tasksToShow)
     }
 
     private fun updateMapMarkers(tasks: List<Task>) {
@@ -753,24 +777,23 @@ class MapFragment : Fragment() {
         return (color and 0x00FFFFFF) or (safeAlpha shl 24)
     }
 
-    private fun resolveMarkerColorName(color: Int): String {
-        val match = markerColorOptions.firstOrNull {
-            ContextCompat.getColor(requireContext(), it.colorRes) == color
-        }
-        return match?.let { getString(it.labelRes) }
-            ?: getString(markerColorOptions.first().labelRes)
-    }
-
     private fun resolveMarkerIconName(key: String?): String {
         return getString(resolveMarkerIconOption(key).labelRes)
     }
 
-    private fun buildColoredLabel(label: String, value: String, valueColor: Int): SpannableString {
-        val fullText = "$label: $value"
+    private fun buildColorIndicatorLabel(label: String, color: Int): SpannableString {
+        val indicator = "●"
+        val fullText = "$label: $indicator"
         return SpannableString(fullText).apply {
             setSpan(
-                ForegroundColorSpan(valueColor),
-                label.length + 2,
+                ForegroundColorSpan(color),
+                fullText.length - indicator.length,
+                fullText.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                RelativeSizeSpan(1.35f),
+                fullText.length - indicator.length,
                 fullText.length,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
@@ -1180,9 +1203,8 @@ class MapFragment : Fragment() {
             getString(R.string.map_task_radius_trigger) + ": ${task.radius} м"
         dialogBinding.textStatus.text =
             getString(R.string.map_task_status) + ": $statusText"
-        dialogBinding.textColor.text = buildColoredLabel(
+        dialogBinding.textColor.text = buildColorIndicatorLabel(
             getString(R.string.map_task_color),
-            resolveMarkerColorName(task.markerColor),
             task.markerColor
         )
         dialogBinding.textIcon.text =
@@ -1818,7 +1840,7 @@ class MapFragment : Fragment() {
         shouldAutoCenter = selectedTask == null &&
             SettingsPreferences.isFollowLocationEnabled(requireContext())
         applyMapPresentation()
-        updateMapMarkers(viewModel.activeTasks.value)
+        refreshDisplayedMarkers()
         selectedTask?.let {
             binding.mapView.controller.animateTo(GeoPoint(it.latitude, it.longitude))
         }

@@ -69,7 +69,9 @@ jobs:
 
       - name: Prepare APK artifact
         shell: bash
-        run: cp app/build/outputs/apk/debug/app-debug.apk "${APK_NAME}"
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "${APK_NAME}"
+          cp app/build/outputs/apk/debug/app-debug.apk "AOT-latest.apk"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -79,4 +81,6 @@ jobs:
           body: |
             Automatic build for commit ${{ github.sha }}.
             App version: ${{ env.APP_VERSION_NAME }}
-          files: ${{ env.APK_NAME }}
+          files: |
+            ${{ env.APK_NAME }}
+            AOT-latest.apk

@@ -15,6 +15,7 @@ object SettingsPreferences {
     private const val KEY_OFFLINE_MAP_ENABLED = "offline_map_enabled"
     private const val KEY_MAP_STYLE = "map_style"
     private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
+    private const val KEY_SHOW_COMPLETED_MARKERS = "show_completed_markers"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -73,5 +74,12 @@ object SettingsPreferences {
 
     fun setAnimationsEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_ANIMATIONS_ENABLED, enabled).apply()
+    }
+
+    fun isShowCompletedMarkersEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SHOW_COMPLETED_MARKERS, false)
+
+    fun setShowCompletedMarkersEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_SHOW_COMPLETED_MARKERS, enabled).apply()
     }
 }
