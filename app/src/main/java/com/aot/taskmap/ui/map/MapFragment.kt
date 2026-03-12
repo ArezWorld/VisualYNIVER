@@ -226,7 +226,7 @@ class MapFragment : Fragment() {
             // Однократное центрирование и обновление позиции
             viewModel.selectTask(null)
             shouldAutoCenter = true
-            getCurrentLocation()
+            getCurrentLocation(forceCenter = true)
         }
 
         binding.fabZoomIn.setOnClickListener {
@@ -242,7 +242,9 @@ class MapFragment : Fragment() {
     private fun applyMapPresentation() {
         val tileSource = MapTileSources.resolveByStyle(SettingsPreferences.getMapStyle(requireContext()))
         binding.mapView.setTileSource(tileSource)
-        binding.mapView.setUseDataConnection(!SettingsPreferences.isOfflineMapEnabled(requireContext()))
+        // Включаем сеть, но кеш osmdroid используется всегда: скачанные оффлайн-тайлы
+        // останутся доступными даже без интернета.
+        binding.mapView.setUseDataConnection(true)
         binding.mapView.invalidate()
     }
 
@@ -750,6 +752,11 @@ class MapFragment : Fragment() {
         val hexColor = String.format("#%06X", 0xFFFFFF and color)
         button.contentDescription = "${getString(R.string.marker_pick_custom_color)} $hexColor"
         button.iconTint = ColorStateList.valueOf(color)
+        button.tag = color
+    }
+
+    private fun extractSelectedColorFromButton(button: MaterialButton, fallbackColor: Int): Int {
+        return (button.tag as? Int) ?: fallbackColor
     }
 
     private fun showRgbColorPickerDialog(
@@ -897,6 +904,10 @@ class MapFragment : Fragment() {
                 val radiusValue = dialogBinding.sliderRadius.value.toInt()
                 val enableNotification = dialogBinding.switchNotification.isChecked
                 val autoRemove = dialogBinding.switchAutoRemove.isChecked
+                val color = extractSelectedColorFromButton(
+                    dialogBinding.buttonCustomColor,
+                    selectedMarkerColor
+                )
                 val iconKey = getSelectedMarkerIcon(dialogBinding.radioMarkerIcon).key
 
                 if (title.isBlank()) {
@@ -914,7 +925,7 @@ class MapFragment : Fragment() {
                     address = "",
                     radius = radiusValue,
                     enableNotification = enableNotification,
-                    markerColor = selectedMarkerColor,
+                    markerColor = color,
                     markerIcon = iconKey,
                     category = iconKey,
                     autoRemoveAfterTrigger = autoRemove
@@ -1007,6 +1018,10 @@ class MapFragment : Fragment() {
                 val radiusValue = dialogBinding.sliderRadius.value.toInt()
                 val enableNotification = dialogBinding.switchNotification.isChecked
                 val autoRemove = dialogBinding.switchAutoRemove.isChecked
+                val color = extractSelectedColorFromButton(
+                    dialogBinding.buttonCustomColor,
+                    selectedMarkerColor
+                )
                 val iconKey = getSelectedMarkerIcon(dialogBinding.radioMarkerIcon).key
 
                 if (title.isBlank()) {
@@ -1025,7 +1040,7 @@ class MapFragment : Fragment() {
                         radius = radiusValue,
                         isNotificationEnabled = enableNotification,
                         autoRemoveAfterTrigger = autoRemove,
-                        markerColor = selectedMarkerColor,
+                        markerColor = color,
                         markerIcon = iconKey,
                         category = iconKey
                     )
@@ -1184,7 +1199,7 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun getCurrentLocation() {
+    private fun getCurrentLocation(forceCenter: Boolean = false) {
         if (!isAdded || _binding == null) return
         val hasFine = ActivityCompat.checkSelfPermission(
             requireContext(),
@@ -1194,14 +1209,29 @@ class MapFragment : Fragment() {
             requireContext(),
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
+        if (!hasFine && !hasCoarse) {
+            requestLocationPermissions()
+            return
+        }
         if (hasFine || hasCoarse) {
             val cancellationToken = CancellationTokenSource()
             fusedLocationClient.getCurrentLocation(
                 if (hasFine) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY,
                 cancellationToken.token
             ).addOnSuccessListener { location ->
-                location?.let {
-                    viewModel.updateCurrentLocation(it.latitude, it.longitude)
+                val fallbackStateLocation = viewModel.currentLocation.value?.let {
+                    GeoPoint(it.first, it.second)
+                }
+                val candidatePoint: GeoPoint? = when {
+                    location != null -> GeoPoint(location.latitude, location.longitude)
+                    myLocationOverlay?.myLocation != null -> myLocationOverlay?.myLocation
+                    else -> fallbackStateLocation
+                }
+                candidatePoint?.let { geoPoint ->
+                    if (forceCenter) {
+                        binding.mapView.controller.animateTo(geoPoint)
+                    }
+                    viewModel.updateCurrentLocation(geoPoint.latitude, geoPoint.longitude)
                 }
             }
         }

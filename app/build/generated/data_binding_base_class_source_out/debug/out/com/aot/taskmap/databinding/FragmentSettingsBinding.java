@@ -25,6 +25,9 @@ public final class FragmentSettingsBinding implements ViewBinding {
   private final ScrollView rootView;
 
   @NonNull
+  public final MaterialButton buttonCheckUpdates;
+
+  @NonNull
   public final MaterialButton buttonDownloadRegion;
 
   @NonNull
@@ -73,9 +76,6 @@ public final class FragmentSettingsBinding implements ViewBinding {
   public final SwitchMaterial switchNotifications;
 
   @NonNull
-  public final SwitchMaterial switchOfflineMap;
-
-  @NonNull
   public final SwitchMaterial switchSearchExpand;
 
   @NonNull
@@ -88,18 +88,19 @@ public final class FragmentSettingsBinding implements ViewBinding {
   public final TextView textVersion;
 
   private FragmentSettingsBinding(@NonNull ScrollView rootView,
-      @NonNull MaterialButton buttonDownloadRegion, @NonNull RadioGroup radioAppTheme,
-      @NonNull MaterialRadioButton radioMapStandard, @NonNull RadioGroup radioMapStyle,
-      @NonNull MaterialRadioButton radioMapTerrain, @NonNull MaterialRadioButton radioThemeBlue,
-      @NonNull MaterialRadioButton radioThemePurple,
+      @NonNull MaterialButton buttonCheckUpdates, @NonNull MaterialButton buttonDownloadRegion,
+      @NonNull RadioGroup radioAppTheme, @NonNull MaterialRadioButton radioMapStandard,
+      @NonNull RadioGroup radioMapStyle, @NonNull MaterialRadioButton radioMapTerrain,
+      @NonNull MaterialRadioButton radioThemeBlue, @NonNull MaterialRadioButton radioThemePurple,
       @NonNull MaterialRadioButton radioThemeRedBlack, @NonNull MaterialRadioButton radioThemeSteel,
       @NonNull MaterialRadioButton radioThemeWhite, @NonNull Spinner spinnerOfflineRegion,
       @NonNull SwitchMaterial switchAnimations, @NonNull SwitchMaterial switchConfirmComplete,
       @NonNull SwitchMaterial switchDarkTheme, @NonNull SwitchMaterial switchFollowLocation,
-      @NonNull SwitchMaterial switchNotifications, @NonNull SwitchMaterial switchOfflineMap,
-      @NonNull SwitchMaterial switchSearchExpand, @NonNull SwitchMaterial switchShowRadius,
-      @NonNull TextView textDeveloper, @NonNull TextView textVersion) {
+      @NonNull SwitchMaterial switchNotifications, @NonNull SwitchMaterial switchSearchExpand,
+      @NonNull SwitchMaterial switchShowRadius, @NonNull TextView textDeveloper,
+      @NonNull TextView textVersion) {
     this.rootView = rootView;
+    this.buttonCheckUpdates = buttonCheckUpdates;
     this.buttonDownloadRegion = buttonDownloadRegion;
     this.radioAppTheme = radioAppTheme;
     this.radioMapStandard = radioMapStandard;
@@ -116,7 +117,6 @@ public final class FragmentSettingsBinding implements ViewBinding {
     this.switchDarkTheme = switchDarkTheme;
     this.switchFollowLocation = switchFollowLocation;
     this.switchNotifications = switchNotifications;
-    this.switchOfflineMap = switchOfflineMap;
     this.switchSearchExpand = switchSearchExpand;
     this.switchShowRadius = switchShowRadius;
     this.textDeveloper = textDeveloper;
@@ -150,6 +150,12 @@ public final class FragmentSettingsBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.button_check_updates;
+      MaterialButton buttonCheckUpdates = ViewBindings.findChildViewById(rootView, id);
+      if (buttonCheckUpdates == null) {
+        break missingId;
+      }
+
       id = R.id.button_download_region;
       MaterialButton buttonDownloadRegion = ViewBindings.findChildViewById(rootView, id);
       if (buttonDownloadRegion == null) {
@@ -246,12 +252,6 @@ public final class FragmentSettingsBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.switch_offline_map;
-      SwitchMaterial switchOfflineMap = ViewBindings.findChildViewById(rootView, id);
-      if (switchOfflineMap == null) {
-        break missingId;
-      }
-
       id = R.id.switch_search_expand;
       SwitchMaterial switchSearchExpand = ViewBindings.findChildViewById(rootView, id);
       if (switchSearchExpand == null) {
@@ -276,11 +276,11 @@ public final class FragmentSettingsBinding implements ViewBinding {
         break missingId;
       }
 
-      return new FragmentSettingsBinding((ScrollView) rootView, buttonDownloadRegion, radioAppTheme,
-          radioMapStandard, radioMapStyle, radioMapTerrain, radioThemeBlue, radioThemePurple,
-          radioThemeRedBlack, radioThemeSteel, radioThemeWhite, spinnerOfflineRegion,
-          switchAnimations, switchConfirmComplete, switchDarkTheme, switchFollowLocation,
-          switchNotifications, switchOfflineMap, switchSearchExpand, switchShowRadius,
+      return new FragmentSettingsBinding((ScrollView) rootView, buttonCheckUpdates,
+          buttonDownloadRegion, radioAppTheme, radioMapStandard, radioMapStyle, radioMapTerrain,
+          radioThemeBlue, radioThemePurple, radioThemeRedBlack, radioThemeSteel, radioThemeWhite,
+          spinnerOfflineRegion, switchAnimations, switchConfirmComplete, switchDarkTheme,
+          switchFollowLocation, switchNotifications, switchSearchExpand, switchShowRadius,
           textDeveloper, textVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);

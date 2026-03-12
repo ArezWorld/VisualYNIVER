@@ -3118,7 +3118,7 @@ drawable ic_delete
 drawable ic_expand_less
 drawable ic_expand_more
 drawable ic_keyboard_black_24dp
-drawable ic_launcher_foreground
+drawable ic_launcher_foreground_image
 drawable ic_m3_chip_check
 drawable ic_m3_chip_checked_circle
 drawable ic_m3_chip_close
@@ -3353,6 +3353,7 @@ id bubble_moreinfo
 id bubble_subdescription
 id bubble_title
 id buttonPanel
+id button_check_updates
 id button_custom_color
 id button_delete
 id button_download_region
@@ -3767,7 +3768,6 @@ id switch_dark_theme
 id switch_follow_location
 id switch_notification
 id switch_notifications
-id switch_offline_map
 id switch_search_expand
 id switch_show_radius
 id tabMode
@@ -4407,6 +4407,8 @@ string set_mode_online
 string set_mode_show_me
 string settings_about_text
 string settings_animations
+string settings_check_updates
+string settings_check_updates_loading
 string settings_color_theme
 string settings_confirm_complete
 string settings_dark_theme
@@ -4424,6 +4426,7 @@ string settings_desc_show_radius
 string settings_developers
 string settings_download_failed
 string settings_download_finished
+string settings_download_finished_region
 string settings_download_region
 string settings_download_started
 string settings_download_unavailable
@@ -4436,6 +4439,7 @@ string settings_offline_map
 string settings_offline_region
 string settings_region_moscow
 string settings_region_novosibirsk
+string settings_region_orenburg
 string settings_region_spb
 string settings_region_sverdlovsk
 string settings_region_tatarstan
@@ -4450,7 +4454,15 @@ string settings_theme_purple
 string settings_theme_red_black
 string settings_theme_steel
 string settings_theme_white
+string settings_update_action_download
+string settings_update_action_later
+string settings_update_available_message
+string settings_update_available_title
+string settings_update_check_failed
+string settings_update_no_apk
+string settings_update_not_found
 string settings_version
+string settings_version_format
 string side_sheet_accessibility_pane_title
 string side_sheet_behavior
 string snapshot

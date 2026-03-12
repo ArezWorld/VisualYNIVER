@@ -205,20 +205,6 @@
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurface" />
 
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/switch_offline_map"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/settings_offline_map" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_desc_offline_map"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurface" />
-
                 <RadioGroup
                     android:id="@+id/radio_map_style"
                     android:layout_width="match_parent"
@@ -361,6 +347,14 @@
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_check_updates"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/settings_check_updates" />
 
                 <TextView
                     android:layout_width="wrap_content"

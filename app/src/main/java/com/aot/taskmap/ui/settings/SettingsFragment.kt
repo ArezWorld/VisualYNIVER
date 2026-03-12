@@ -3,6 +3,7 @@ package com.aot.taskmap.ui.settings
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -14,12 +15,18 @@ import androidx.annotation.StringRes
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.databinding.FragmentSettingsBinding
 import com.aot.taskmap.service.LocationService
 import com.aot.taskmap.ui.map.MapTileSources
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.views.MapView
@@ -30,6 +37,7 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var pendingEnableNotifications = false
+    private var updateCheckInProgress = false
     private val offlineRegions = listOf(
         OfflineRegion(
             R.string.settings_region_moscow,
@@ -58,6 +66,12 @@ class SettingsFragment : Fragment() {
         OfflineRegion(
             R.string.settings_region_novosibirsk,
             BoundingBox(57.90, 86.00, 53.20, 74.80),
+            7,
+            13
+        ),
+        OfflineRegion(
+            R.string.settings_region_orenburg,
+            BoundingBox(54.90, 61.90, 50.50, 50.60),
             7,
             13
         )
@@ -98,8 +112,11 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.textVersion.text = getString(R.string.settings_version)
+        binding.textVersion.text = getString(R.string.settings_version_format, BuildConfig.VERSION_NAME)
         binding.textDeveloper.text = getString(R.string.settings_developers)
+        binding.buttonCheckUpdates.setOnClickListener {
+            checkForUpdates()
+        }
 
         val context = requireContext()
 
@@ -169,12 +186,6 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.isShowRadiusEnabled(context)
         binding.switchShowRadius.setOnCheckedChangeListener { _, checked ->
             SettingsPreferences.setShowRadiusEnabled(context, checked)
-        }
-
-        binding.switchOfflineMap.isChecked =
-            SettingsPreferences.isOfflineMapEnabled(context)
-        binding.switchOfflineMap.setOnCheckedChangeListener { _, checked ->
-            SettingsPreferences.setOfflineMapEnabled(context, checked)
         }
 
         val selectedStyle = SettingsPreferences.getMapStyle(context)
@@ -270,19 +281,16 @@ class SettingsFragment : Fragment() {
         Toast.makeText(context, getString(R.string.settings_download_started), Toast.LENGTH_SHORT).show()
 
         var finished = false
-        fun finishOnce(message: String, enableOfflineMode: Boolean = false) {
+        fun finishOnce(message: String) {
             if (finished) return
             finished = true
             activity?.runOnUiThread {
-                if (enableOfflineMode) {
-                    SettingsPreferences.setOfflineMapEnabled(context, true)
-                    _binding?.switchOfflineMap?.isChecked = true
-                }
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
             tempMapView.onDetach()
         }
 
+        val regionName = getString(region.titleRes)
         cacheManager.downloadAreaAsyncNoUI(
             context,
             region.box,
@@ -290,7 +298,7 @@ class SettingsFragment : Fragment() {
             region.zoomMax,
             object : CacheManager.CacheManagerCallback {
                 override fun onTaskComplete() {
-                    finishOnce(getString(R.string.settings_download_finished), enableOfflineMode = true)
+                    finishOnce(getString(R.string.settings_download_finished_region, regionName))
                 }
 
                 override fun updateProgress(
@@ -309,6 +317,118 @@ class SettingsFragment : Fragment() {
                 }
             }
         )
+    }
+
+    private fun checkForUpdates() {
+        if (updateCheckInProgress) return
+        updateCheckInProgress = true
+        setUpdateButtonLoading(true)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { GitHubUpdateChecker.fetchLatestRelease() }
+            }
+
+            if (!isAdded || _binding == null) {
+                updateCheckInProgress = false
+                return@launch
+            }
+
+            setUpdateButtonLoading(false)
+            updateCheckInProgress = false
+
+            result.fold(
+                onSuccess = { release ->
+                    val remoteVersion = release.versionTag.ifBlank { release.releaseName ?: "" }
+                    if (!isRemoteVersionNewer(remoteVersion, BuildConfig.VERSION_NAME)) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.settings_update_not_found),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@fold
+                    }
+
+                    val message = getString(
+                        R.string.settings_update_available_message,
+                        remoteVersion,
+                        BuildConfig.VERSION_NAME
+                    )
+
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.settings_update_available_title)
+                        .setMessage(message)
+                        .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
+                            val url = release.apkUrl
+                            if (url.isNullOrBlank()) {
+                                Toast.makeText(
+                                    requireContext(),
+                                    getString(R.string.settings_update_no_apk),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@setPositiveButton
+                            }
+                            openUpdateLink(url)
+                        }
+                        .setNegativeButton(R.string.settings_update_action_later, null)
+                        .show()
+                },
+                onFailure = {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.settings_update_check_failed),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            )
+        }
+    }
+
+    private fun setUpdateButtonLoading(isLoading: Boolean) {
+        if (_binding == null) return
+        binding.buttonCheckUpdates.isEnabled = !isLoading
+        binding.buttonCheckUpdates.text = getString(
+            if (isLoading) R.string.settings_check_updates_loading
+            else R.string.settings_check_updates
+        )
+    }
+
+    private fun openUpdateLink(url: String) {
+        val context = context ?: return
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        }.onFailure {
+            Toast.makeText(
+                context,
+                getString(R.string.settings_update_check_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun isRemoteVersionNewer(remoteVersion: String, localVersion: String): Boolean {
+        val remoteParts = extractVersionParts(remoteVersion)
+        val localParts = extractVersionParts(localVersion)
+
+        if (remoteParts.isEmpty() || localParts.isEmpty()) {
+            return remoteVersion.trim() != localVersion.trim()
+        }
+
+        val maxSize = maxOf(remoteParts.size, localParts.size)
+        for (index in 0 until maxSize) {
+            val remote = remoteParts.getOrElse(index) { 0 }
+            val local = localParts.getOrElse(index) { 0 }
+            if (remote != local) return remote > local
+        }
+        return false
+    }
+
+    private fun extractVersionParts(version: String): List<Int> {
+        val normalized = version.trim().lowercase()
+        val match = Regex("""\d+(?:\.\d+)*""").find(normalized) ?: return emptyList()
+        return match.value
+            .split('.')
+            .mapNotNull { part -> part.toIntOrNull() }
     }
 
     private fun hasLocationPermission(context: android.content.Context): Boolean {

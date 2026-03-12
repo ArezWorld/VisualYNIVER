@@ -1,0 +1,76 @@
+name: Android Auto Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare release metadata
+        shell: bash
+        run: |
+          BASE_SERIES="1.4"
+          git fetch --tags --force
+          LAST_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | head -n1)
+          if [ -z "$LAST_TAG" ]; then
+            NEXT_PATCH=1
+          else
+            LAST_PATCH=${LAST_TAG##*.}
+            if [[ "$LAST_PATCH" =~ ^[0-9]+$ ]]; then
+              NEXT_PATCH=$((LAST_PATCH + 1))
+            else
+              NEXT_PATCH=1
+            fi
+          fi
+
+          APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
+          APP_VERSION_CODE=$((14000 + NEXT_PATCH))
+          TAG_NAME="v${APP_VERSION_NAME}"
+
+          echo "APP_VERSION_NAME=${APP_VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "APP_VERSION_CODE=${APP_VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "APK_NAME=AOT-${TAG_NAME}.apk" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon clean assembleDebug
+        env:
+          APP_VERSION_NAME: ${{ env.APP_VERSION_NAME }}
+          APP_VERSION_CODE: ${{ env.APP_VERSION_CODE }}
+
+      - name: Prepare APK artifact
+        shell: bash
+        run: cp app/build/outputs/apk/debug/app-debug.apk "${APK_NAME}"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: AOT ${{ env.TAG_NAME }}
+          body: |
+            Automatic build for commit ${{ github.sha }}.
+            App version: ${{ env.APP_VERSION_NAME }}
+          files: ${{ env.APK_NAME }}

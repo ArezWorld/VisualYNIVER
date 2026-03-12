@@ -52,7 +52,8 @@
     <string name="settings_animations">Плавные анимации интерфейса</string>
     <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
     <string name="settings_notifications_enabled">Уведомления о приближении</string>
-    <string name="settings_version">Версия приложения: 1.3</string>
+    <string name="settings_version">Версия приложения</string>
+    <string name="settings_version_format">Версия приложения: %1$s</string>
     <string name="settings_developers">Разработано: студенты БПИ-23\nАстафьев Д.А., Осадчук И.Д.</string>
     <string name="settings_about_text">AOT (Absolutely Optimize Task) — мобильное приложение-органайзер с геопривязкой задач. Оно помогает планировать задачи и получать уведомления при приближении к месту выполнения.</string>
     <string name="settings_desc_dark_theme">Переключение светлой и тёмной темы</string>
@@ -67,6 +68,7 @@
     <string name="settings_desc_download_region">Загружает тайлы выбранной области в кеш для работы без интернета</string>
     <string name="settings_download_started">Скачивание области запущено</string>
     <string name="settings_download_finished">Скачивание области завершено</string>
+    <string name="settings_download_finished_region">Область «%1$s» установлена</string>
     <string name="settings_download_failed">Не удалось скачать область: ошибок %1$d</string>
     <string name="settings_download_unavailable">Не удалось инициализировать загрузку карты</string>
     <string name="settings_region_moscow">Москва и область</string>
@@ -74,8 +76,18 @@
     <string name="settings_region_sverdlovsk">Свердловская область</string>
     <string name="settings_region_tatarstan">Республика Татарстан</string>
     <string name="settings_region_novosibirsk">Новосибирская область</string>
+    <string name="settings_region_orenburg">Оренбургская область</string>
     <string name="settings_desc_notifications">Уведомлять при приближении к месту задачи</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
+    <string name="settings_check_updates">Проверить обновления</string>
+    <string name="settings_check_updates_loading">Проверка…</string>
+    <string name="settings_update_available_title">Доступно обновление</string>
+    <string name="settings_update_available_message">Найдена версия %1$s. Текущая версия: %2$s.</string>
+    <string name="settings_update_action_download">Скачать</string>
+    <string name="settings_update_action_later">Позже</string>
+    <string name="settings_update_not_found">Установлена актуальная версия</string>
+    <string name="settings_update_check_failed">Не удалось проверить обновления</string>
+    <string name="settings_update_no_apk">В релизе не найден APK-файл</string>
     <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
     <string name="map_toast_add_marker">Нажмите на карту, чтобы поставить метку</string>
     <string name="map_result_default">Результат</string>
@@ -170,4 +182,3 @@
     <string name="tasks_confirm_message_complete">Вы уверены, что хотите отметить задачу выполненной?</string>
     <string name="tasks_confirm_message_restore">Вы уверены, что хотите вернуть задачу в работу?</string>
 </resources>
-
