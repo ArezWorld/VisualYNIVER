@@ -63,6 +63,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
@@ -78,6 +81,7 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class MapFragment : Fragment() {
 
@@ -111,6 +115,21 @@ class MapFragment : Fragment() {
     private val searchHistoryPrefsName = "map_search_history"
     private val recentPlacesKey = "recent_places"
     private val recentPlacesLimit = 8
+    private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
+    private val searchHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(6, TimeUnit.SECONDS)
+            .readTimeout(6, TimeUnit.SECONDS)
+            .callTimeout(8, TimeUnit.SECONDS)
+            .build()
+    }
+
+    private data class SearchViewport(
+        val west: Double,
+        val north: Double,
+        val east: Double,
+        val south: Double
+    )
 
     private data class MarkerIconOption(
         val key: String,
@@ -396,60 +415,171 @@ class MapFragment : Fragment() {
 
     private fun loadSearchSuggestions(query: String) {
         searchSuggestionJob?.cancel()
+        val viewport = captureSearchViewport()
         searchSuggestionJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 260L else 120L)
             val suggestions = withContext(Dispatchers.IO) {
-                if (!Geocoder.isPresent()) {
-                    emptyList()
-                } else {
-                    try {
-                        Geocoder(requireContext(), Locale.getDefault())
-                            .getFromLocationName(query, 10)
-                            .orEmpty()
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                }
+                fetchSearchCandidates(query, 10, viewport)
             }
 
             if (!isAdded || _binding == null) return@launch
             val currentQuery = binding.searchQuery.text?.toString()?.trim().orEmpty()
             if (currentQuery != query) return@launch
 
-            val unique = linkedMapOf<String, GeoPoint>()
-            suggestions.forEach { address ->
-                val label = buildSuggestionLabel(address)
-                if (label.isNotBlank() && !unique.containsKey(label)) {
-                    unique[label] = GeoPoint(address.latitude, address.longitude)
-                }
-            }
-
             searchResults.clear()
             searchAdapter.clear()
-            unique.forEach { (label, point) ->
+            suggestions.forEach { (label, point) ->
                 searchResults.add(label to point)
                 searchAdapter.add(label)
             }
             searchAdapter.notifyDataSetChanged()
-            if (unique.isNotEmpty() && isSearchExpanded) {
+            if (suggestions.isNotEmpty() && isSearchExpanded) {
                 binding.searchQuery.showDropDown()
+            } else if (binding.searchQuery.isPopupShowing) {
+                binding.searchQuery.dismissDropDown()
             }
         }
     }
 
-    private fun buildSuggestionLabel(address: android.location.Address): String {
-        val city = listOfNotNull(
+    private fun captureSearchViewport(): SearchViewport? {
+        val box = binding.mapView.boundingBox ?: return null
+        return SearchViewport(
+            west = box.lonWest,
+            north = box.latNorth,
+            east = box.lonEast,
+            south = box.latSouth
+        )
+    }
+
+    private fun fetchSearchCandidates(
+        query: String,
+        limit: Int,
+        viewport: SearchViewport?
+    ): List<Pair<String, GeoPoint>> {
+        val unique = linkedMapOf<String, GeoPoint>()
+
+        fetchNominatimCandidates(query, limit, viewport).forEach { (label, point) ->
+            val normalized = normalizeSearchLabel(label)
+            if (normalized.isNotBlank() && !unique.containsKey(normalized)) {
+                unique[normalized] = point
+            }
+        }
+
+        fetchGeocoderCandidates(query, limit).forEach { (label, point) ->
+            val normalized = normalizeSearchLabel(label)
+            if (normalized.isNotBlank() && !unique.containsKey(normalized)) {
+                unique[normalized] = point
+            }
+        }
+
+        return unique.entries
+            .map { it.key to it.value }
+            .take(limit)
+    }
+
+    private fun fetchNominatimCandidates(
+        query: String,
+        limit: Int,
+        viewport: SearchViewport?
+    ): List<Pair<String, GeoPoint>> {
+        val endpoint = nominatimSearchUrl.toHttpUrlOrNull() ?: return emptyList()
+        val urlBuilder = endpoint.newBuilder()
+            .addQueryParameter("q", query)
+            .addQueryParameter("format", "jsonv2")
+            .addQueryParameter("addressdetails", "1")
+            .addQueryParameter("limit", limit.toString())
+            .addQueryParameter("accept-language", Locale.getDefault().toLanguageTag())
+
+        viewport?.let { box ->
+            urlBuilder
+                .addQueryParameter(
+                    "viewbox",
+                    "${box.west},${box.north},${box.east},${box.south}"
+                )
+                .addQueryParameter("bounded", "0")
+        }
+
+        val request = Request.Builder()
+            .url(urlBuilder.build())
+            .header("Accept", "application/json")
+            .header("User-Agent", "${requireContext().packageName}/map-search")
+            .build()
+
+        return try {
+            searchHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return emptyList()
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) return emptyList()
+
+                val jsonArray = JSONArray(body)
+                val items = mutableListOf<Pair<String, GeoPoint>>()
+                for (index in 0 until jsonArray.length()) {
+                    val item = jsonArray.optJSONObject(index) ?: continue
+                    val lat = item.optString("lat").toDoubleOrNull() ?: continue
+                    val lon = item.optString("lon").toDoubleOrNull() ?: continue
+                    val label = buildNominatimLabel(item)
+                    if (label.isBlank()) continue
+                    items.add(label to GeoPoint(lat, lon))
+                }
+                items
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun fetchGeocoderCandidates(query: String, limit: Int): List<Pair<String, GeoPoint>> {
+        if (!Geocoder.isPresent()) return emptyList()
+        return try {
+            Geocoder(requireContext(), Locale.getDefault())
+                .getFromLocationName(query, limit)
+                .orEmpty()
+                .mapNotNull { address ->
+                    val label = buildAddressLabel(address)
+                    if (label.isBlank()) {
+                        null
+                    } else {
+                        label to GeoPoint(address.latitude, address.longitude)
+                    }
+                }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun buildAddressLabel(address: android.location.Address): String {
+        val feature = address.featureName?.takeIf { it.isNotBlank() }
+        val street = listOfNotNull(address.thoroughfare, address.subThoroughfare)
+            .joinToString(" ")
+            .trim()
+            .takeIf { it.isNotBlank() }
+        val locality = listOfNotNull(
             address.locality,
             address.subAdminArea,
             address.adminArea
         ).firstOrNull { it.isNotBlank() }
         val country = address.countryName?.takeIf { it.isNotBlank() }
+
+        return listOfNotNull(feature, street, locality, country)
+            .distinct()
+            .joinToString(", ")
+            .ifBlank { address.getAddressLine(0).orEmpty() }
+    }
+
+    private fun buildNominatimLabel(item: JSONObject): String {
+        val displayName = item.optString("display_name").trim()
+        val name = item.optString("name").trim()
         return when {
-            city != null && country != null -> "$city, $country"
-            city != null -> city
-            !address.featureName.isNullOrBlank() -> address.featureName
-            else -> address.getAddressLine(0).orEmpty()
+            name.isNotBlank() && displayName.isNotBlank() &&
+                !displayName.startsWith(name, ignoreCase = true) -> "$name, $displayName"
+            displayName.isNotBlank() -> displayName
+            name.isNotBlank() -> name
+            else -> item.optString("type").trim()
         }
+    }
+
+    private fun normalizeSearchLabel(label: String): String {
+        return label.replace("\\s+".toRegex(), " ").trim()
     }
 
     private fun performSearch(query: String) {
@@ -463,18 +593,9 @@ class MapFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
+            val viewport = captureSearchViewport()
             val results = withContext(Dispatchers.IO) {
-                if (!Geocoder.isPresent()) {
-                    emptyList()
-                } else {
-                    try {
-                        Geocoder(requireContext(), Locale.getDefault())
-                            .getFromLocationName(query, 10)
-                            .orEmpty()
-                    } catch (e: Exception) {
-                        emptyList()
-                    }
-                }
+                fetchSearchCandidates(query, 10, viewport)
             }
 
             searchResults.clear()
@@ -489,17 +610,7 @@ class MapFragment : Fragment() {
                 return@launch
             }
 
-            results.forEach { address ->
-                val title = listOfNotNull(
-                    address.featureName,
-                    address.thoroughfare,
-                    address.subThoroughfare,
-                    address.locality
-                ).distinct().joinToString(", ").ifBlank {
-                    address.getAddressLine(0) ?: getString(R.string.map_result_default)
-                }
-
-                val point = GeoPoint(address.latitude, address.longitude)
+            results.forEach { (title, point) ->
                 searchResults.add(title to point)
                 searchAdapter.add(title)
             }

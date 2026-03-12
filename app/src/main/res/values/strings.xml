@@ -31,7 +31,7 @@
     <string name="debug_skip_auth">Debug: вход без сервера</string>
     <string name="debug_register_disabled">Debug: регистрация отключена</string>
 
-    <string name="search_hint">Поиск места, адреса, кафе</string>
+    <string name="search_hint">Поиск адреса, кафе, организации</string>
     <string name="search_choose_title">Выберите место</string>
     <string name="search_choose_cancel">Отмена</string>
     <string name="search_empty">Введите запрос для поиска</string>
