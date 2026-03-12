@@ -59,13 +59,21 @@ class SettingsFragment : Fragment() {
 
         binding.switchDarkTheme.isChecked = ThemePreferences.isDarkMode(context)
         binding.switchDarkTheme.setOnCheckedChangeListener { _, checked ->
+            val theme = ThemePreferences.getTheme(context)
+            if (
+                !checked &&
+                (theme == ThemePreferences.THEME_RED_BLACK ||
+                    theme == ThemePreferences.THEME_STEEL)
+            ) {
+                binding.switchDarkTheme.isChecked = true
+                return@setOnCheckedChangeListener
+            }
             ThemePreferences.setDarkMode(context, checked)
         }
 
         binding.radioAppTheme.check(
             when (ThemePreferences.getTheme(context)) {
                 ThemePreferences.THEME_WHITE -> binding.radioThemeWhite.id
-                ThemePreferences.THEME_BLACK -> binding.radioThemeBlack.id
                 ThemePreferences.THEME_BLUE -> binding.radioThemeBlue.id
                 ThemePreferences.THEME_STEEL -> binding.radioThemeSteel.id
                 ThemePreferences.THEME_RED_BLACK -> binding.radioThemeRedBlack.id
@@ -75,7 +83,6 @@ class SettingsFragment : Fragment() {
         binding.radioAppTheme.setOnCheckedChangeListener { _, checkedId ->
             val selectedTheme = when (checkedId) {
                 binding.radioThemeWhite.id -> ThemePreferences.THEME_WHITE
-                binding.radioThemeBlack.id -> ThemePreferences.THEME_BLACK
                 binding.radioThemeBlue.id -> ThemePreferences.THEME_BLUE
                 binding.radioThemeSteel.id -> ThemePreferences.THEME_STEEL
                 binding.radioThemeRedBlack.id -> ThemePreferences.THEME_RED_BLACK
@@ -83,6 +90,13 @@ class SettingsFragment : Fragment() {
             }
             if (selectedTheme != ThemePreferences.getTheme(context)) {
                 ThemePreferences.setTheme(context, selectedTheme)
+                if (
+                    (selectedTheme == ThemePreferences.THEME_RED_BLACK ||
+                        selectedTheme == ThemePreferences.THEME_STEEL) &&
+                    !binding.switchDarkTheme.isChecked
+                ) {
+                    binding.switchDarkTheme.isChecked = true
+                }
                 activity?.recreate()
             }
         }
@@ -165,6 +179,7 @@ class SettingsFragment : Fragment() {
     private fun startLocationService() {
         val context = context ?: return
         if (!hasLocationPermission(context)) return
+        if (LocationService.isRunning()) return
         val serviceIntent = Intent(context, LocationService::class.java)
         ContextCompat.startForegroundService(context, serviceIntent)
     }

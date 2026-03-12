@@ -4,6 +4,7 @@ anim item_slide_fade_in
 anim list_slide_fade_in
 color background
 color black
+color bottom_nav_item_tint
 color hint_on_surface
 color ic_launcher_background
 color marker_active
@@ -30,6 +31,8 @@ color secondary
 color secondary_variant
 color surface
 color surface_elevated
+color text_primary
+color text_secondary
 color white
 drawable bg_theme_red_black
 drawable ic_add
@@ -110,7 +113,6 @@ id radio_map_style
 id radio_map_terrain
 id radio_marker_color
 id radio_marker_icon
-id radio_theme_black
 id radio_theme_blue
 id radio_theme_purple
 id radio_theme_red_black
@@ -289,7 +291,6 @@ string settings_section_appearance
 string settings_section_map
 string settings_section_notifications
 string settings_show_radius
-string settings_theme_black
 string settings_theme_blue
 string settings_theme_purple
 string settings_theme_red_black
@@ -312,7 +313,6 @@ string title_settings
 string title_tasks
 style Theme.TaskMap
 style Theme.TaskMap.Base
-style Theme.TaskMap.Black
 style Theme.TaskMap.Blue
 style Theme.TaskMap.Purple
 style Theme.TaskMap.RedBlack

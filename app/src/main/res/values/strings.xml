@@ -123,7 +123,6 @@
     <string name="settings_desc_color_theme">Горизонтальный список палитр приложения</string>
     <string name="settings_theme_white">Белая</string>
     <string name="settings_theme_purple">Фиолетовая</string>
-    <string name="settings_theme_black">Чёрная</string>
     <string name="settings_theme_blue">Синяя</string>
     <string name="settings_theme_steel">Чёрная (сталь)</string>
     <string name="settings_theme_red_black">Градиент красный+чёрный</string>

@@ -2355,7 +2355,6 @@
     <string name="settings_section_map">Карта</string>
     <string name="settings_section_notifications">Уведомления</string>
     <string name="settings_show_radius">Показывать радиус задач</string>
-    <string name="settings_theme_black">Чёрная</string>
     <string name="settings_theme_blue">Синяя</string>
     <string name="settings_theme_purple">Фиолетовая</string>
     <string name="settings_theme_red_black">Градиент красный+чёрный</string>
@@ -6782,21 +6781,8 @@
     <style name="Theme.TaskMap" parent="Theme.TaskMap.Purple"/>
     <style name="Theme.TaskMap.Base" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <item name="android:navigationBarColor">?android:colorBackground</item>
-        <item name="android:textColorPrimary">?attr/colorOnSurface</item>
-        <item name="android:textColorSecondary">?attr/colorOnSurface</item>
-    </style>
-    <style name="Theme.TaskMap.Black" parent="Theme.TaskMap.Base">
-        <item name="colorPrimary">#313131</item>
-        <item name="colorPrimaryVariant">#1D1D1D</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSecondary">#464646</item>
-        <item name="colorSecondaryVariant">#333333</item>
-        <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSurface">#1A1A1A</item>
-        <item name="colorOnSurface">#F5F5F5</item>
-        <item name="android:colorBackground">#0B0B0B</item>
-        <item name="android:windowBackground">#0B0B0B</item>
-        <item name="android:statusBarColor">#050505</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
     <style name="Theme.TaskMap.Blue" parent="Theme.TaskMap.Base">
         <item name="colorPrimary">#1D4ED8</item>

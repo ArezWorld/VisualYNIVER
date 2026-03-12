@@ -40,6 +40,10 @@
         "source": "com.aot.taskmap.app-main-57:/anim/list_slide_fade_in.xml"
     },
     {
+        "merged": "com.aot.taskmap.app-debug-55:/color_text_secondary.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/color/text_secondary.xml"
+    },
+    {
         "merged": "com.aot.taskmap.app-debug-55:/mipmap-anydpi-v26_ic_launcher.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/mipmap-anydpi-v26/ic_launcher.xml"
     },
@@ -48,12 +52,12 @@
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_marker_flag.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_add.xml.flat",
-        "source": "com.aot.taskmap.app-main-57:/drawable/ic_add.xml"
-    },
-    {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_pin.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_marker_pin.xml"
+    },
+    {
+        "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_add.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/drawable/ic_add.xml"
     },
     {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_active.xml.flat",
@@ -120,6 +124,10 @@
         "source": "com.aot.taskmap.app-main-57:/mipmap-hdpi/ic_launcher_round.xml"
     },
     {
+        "merged": "com.aot.taskmap.app-debug-55:/color_text_primary.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/color/text_primary.xml"
+    },
+    {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_marker_briefcase.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_marker_briefcase.xml"
     },
@@ -150,6 +158,10 @@
     {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_zoom_in.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_zoom_in.xml"
+    },
+    {
+        "merged": "com.aot.taskmap.app-debug-55:/color_bottom_nav_item_tint.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/color/bottom_nav_item_tint.xml"
     },
     {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_my_location.xml.flat",

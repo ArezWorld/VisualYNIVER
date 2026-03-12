@@ -83,6 +83,19 @@ class MainActivity : AppCompatActivity() {
             lastNavClickTime = now
             NavigationUI.onNavDestinationSelected(item, navController)
         }
+
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id == R.id.mapFragment) {
+                supportActionBar?.hide()
+            } else {
+                supportActionBar?.show()
+            }
+        }
+        if (navController.currentDestination?.id == R.id.mapFragment) {
+            supportActionBar?.hide()
+        } else {
+            supportActionBar?.show()
+        }
     }
 
     private fun requestNotificationPermission() {
@@ -114,6 +127,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startLocationService() {
         if (!hasLocationPermission()) return
+        if (LocationService.isRunning()) return
         val serviceIntent = Intent(this, LocationService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
     }

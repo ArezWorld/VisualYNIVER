@@ -1409,6 +1409,7 @@ color background_floating_material_light
 color background_material_dark
 color background_material_light
 color black
+color bottom_nav_item_tint
 color bright_foreground_disabled_material_dark
 color bright_foreground_disabled_material_light
 color bright_foreground_inverse_material_dark
@@ -2181,6 +2182,8 @@ color switch_thumb_material_dark
 color switch_thumb_material_light
 color switch_thumb_normal_material_dark
 color switch_thumb_normal_material_light
+color text_primary
+color text_secondary
 color tooltip_background_dark
 color tooltip_background_light
 color white
@@ -3664,7 +3667,6 @@ id radio_map_style
 id radio_map_terrain
 id radio_marker_color
 id radio_marker_icon
-id radio_theme_black
 id radio_theme_blue
 id radio_theme_purple
 id radio_theme_red_black
@@ -4413,7 +4415,6 @@ string settings_section_appearance
 string settings_section_map
 string settings_section_notifications
 string settings_show_radius
-string settings_theme_black
 string settings_theme_blue
 string settings_theme_purple
 string settings_theme_red_black
@@ -5068,7 +5069,6 @@ style Theme_MaterialComponents_NoActionBar
 style Theme_MaterialComponents_NoActionBar_Bridge
 style Theme_TaskMap
 style Theme_TaskMap_Base
-style Theme_TaskMap_Black
 style Theme_TaskMap_Blue
 style Theme_TaskMap_Purple
 style Theme_TaskMap_RedBlack

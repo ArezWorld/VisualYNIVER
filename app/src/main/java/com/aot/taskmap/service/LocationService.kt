@@ -45,14 +45,20 @@ class LocationService : Service() {
     private var currentTrackingMode = TrackingMode.BALANCED
     private var lastKnownLatitude: Double? = null
     private var lastKnownLongitude: Double? = null
+    private var isForegroundStarted = false
 
     companion object {
         const val CHANNEL_ID = "task_reminders"
         const val NOTIFICATION_ID = 1001
+        @Volatile
+        private var running = false
+
+        fun isRunning(): Boolean = running
     }
 
     override fun onCreate() {
         super.onCreate()
+        running = true
         createNotificationChannel()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         taskDao = TaskDatabase.getDatabase(applicationContext).taskDao()
@@ -64,8 +70,16 @@ class LocationService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startForeground(NOTIFICATION_ID, createNotification(getString(R.string.service_tracking_text)))
-        startTrackingTasks()
+        if (!isForegroundStarted) {
+            startForeground(
+                NOTIFICATION_ID,
+                createNotification(getString(R.string.service_tracking_text))
+            )
+            isForegroundStarted = true
+        }
+        if (tasksJob?.isActive != true) {
+            startTrackingTasks()
+        }
         return START_STICKY
     }
 
@@ -277,6 +291,8 @@ class LocationService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        running = false
+        isForegroundStarted = false
         stopLocationUpdates()
         tasksJob?.cancel()
         serviceScope.cancel()

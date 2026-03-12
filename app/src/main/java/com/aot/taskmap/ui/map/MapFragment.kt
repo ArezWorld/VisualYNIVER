@@ -115,10 +115,15 @@ class MapFragment : Fragment() {
     private var searchSuggestionJob: Job? = null
     private val uiHandler = Handler(Looper.getMainLooper())
     private var restoreBottomNavRunnable: Runnable? = null
+    private var restoreMapHudRunnable: Runnable? = null
     private var isBottomNavigationHidden = false
+    private var isMapHudHidden = false
     private val bottomNavRestoreDelayMs = 260L
     private val bottomNavHideDurationMs = 190L
     private val bottomNavShowDurationMs = 170L
+    private val mapHudRestoreDelayMs = 260L
+    private val mapHudHideDurationMs = 170L
+    private val mapHudShowDurationMs = 150L
 
     private data class MarkerIconOption(
         val key: String,
@@ -197,6 +202,9 @@ class MapFragment : Fragment() {
         binding.mapView.setBuiltInZoomControls(false)
         binding.mapView.zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
         binding.mapView.setTilesScaledToDpi(true)
+        // Отключаем повтор мира при сильном отдалении, чтобы не было двух карт на экране.
+        binding.mapView.setHorizontalMapRepetitionEnabled(false)
+        binding.mapView.setVerticalMapRepetitionEnabled(false)
         binding.mapView.controller.setZoom(15.0)
         applyMapPresentation()
 
@@ -1075,16 +1083,98 @@ class MapFragment : Fragment() {
                 shouldAutoCenter = false
                 collapseSearchUi()
                 hideBottomNavigationForMapMotion()
+                hideMapHudForMotion()
                 return false
             }
 
             override fun onZoom(event: ZoomEvent?): Boolean {
                 // Зум тоже отключает автослежение, чтобы карта не прыгала
                 shouldAutoCenter = false
+                collapseSearchUi()
                 hideBottomNavigationForMapMotion()
+                hideMapHudForMotion()
                 return false
             }
         })
+    }
+
+    private fun mapHudViews(): List<View> {
+        return listOf(
+            binding.fabAddTask,
+            binding.fabMyLocation,
+            binding.fabZoomIn,
+            binding.fabZoomOut
+        )
+    }
+
+    private fun hideMapHudForMotion() {
+        restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
+
+        if (!isMapHudHidden) {
+            isMapHudHidden = true
+            val offset = 18f * resources.displayMetrics.density
+            mapHudViews().forEach { hudView ->
+                hudView.isEnabled = false
+                hudView.isClickable = false
+                if (animationsEnabled()) {
+                    hudView.clearAnimation()
+                    hudView.visibility = View.VISIBLE
+                    hudView.animate()
+                        .alpha(0f)
+                        .translationY(offset)
+                        .setDuration(mapHudHideDurationMs)
+                        .setInterpolator(FastOutSlowInInterpolator())
+                        .withEndAction {
+                            hudView.visibility = View.INVISIBLE
+                            hudView.alpha = 1f
+                            hudView.translationY = 0f
+                        }
+                        .start()
+                } else {
+                    hudView.visibility = View.INVISIBLE
+                    hudView.alpha = 1f
+                    hudView.translationY = 0f
+                }
+            }
+        }
+
+        val restore = Runnable { showMapHudAfterMotion() }
+        restoreMapHudRunnable = restore
+        uiHandler.postDelayed(restore, mapHudRestoreDelayMs)
+    }
+
+    private fun showMapHudAfterMotion() {
+        restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
+        restoreMapHudRunnable = null
+
+        if (!isMapHudHidden) return
+        isMapHudHidden = false
+
+        val offset = 18f * resources.displayMetrics.density
+        mapHudViews().forEach { hudView ->
+            hudView.isEnabled = true
+            hudView.isClickable = true
+            if (animationsEnabled()) {
+                hudView.clearAnimation()
+                hudView.visibility = View.VISIBLE
+                hudView.alpha = 0f
+                hudView.translationY = offset
+                hudView.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(mapHudShowDurationMs)
+                    .setInterpolator(FastOutSlowInInterpolator())
+                    .withEndAction {
+                        hudView.alpha = 1f
+                        hudView.translationY = 0f
+                    }
+                    .start()
+            } else {
+                hudView.visibility = View.VISIBLE
+                hudView.alpha = 1f
+                hudView.translationY = 0f
+            }
+        }
     }
 
     private fun enableDialogKeyboardDismiss(dialogBinding: DialogAddTaskBinding) {
@@ -1420,6 +1510,7 @@ class MapFragment : Fragment() {
         // Перезапускаем слой геопозиции корректно через provider
         enableMyLocation()
         showBottomNavigationAfterMotion()
+        showMapHudAfterMotion()
 
         // Обновляем поведение после изменения настроек
         val selectedTask = viewModel.selectedTask.value
@@ -1442,12 +1533,15 @@ class MapFragment : Fragment() {
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
         showBottomNavigationAfterMotion()
+        showMapHudAfterMotion()
     }
 
     override fun onDestroyView() {
         searchSuggestionJob?.cancel()
         restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreBottomNavRunnable = null
+        restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
+        restoreMapHudRunnable = null
         super.onDestroyView()
         _binding = null
     }

@@ -35,9 +35,6 @@ public final class FragmentSettingsBinding implements ViewBinding {
   public final MaterialRadioButton radioMapTerrain;
 
   @NonNull
-  public final MaterialRadioButton radioThemeBlack;
-
-  @NonNull
   public final MaterialRadioButton radioThemeBlue;
 
   @NonNull
@@ -84,8 +81,8 @@ public final class FragmentSettingsBinding implements ViewBinding {
 
   private FragmentSettingsBinding(@NonNull ScrollView rootView, @NonNull RadioGroup radioAppTheme,
       @NonNull MaterialRadioButton radioMapStandard, @NonNull RadioGroup radioMapStyle,
-      @NonNull MaterialRadioButton radioMapTerrain, @NonNull MaterialRadioButton radioThemeBlack,
-      @NonNull MaterialRadioButton radioThemeBlue, @NonNull MaterialRadioButton radioThemePurple,
+      @NonNull MaterialRadioButton radioMapTerrain, @NonNull MaterialRadioButton radioThemeBlue,
+      @NonNull MaterialRadioButton radioThemePurple,
       @NonNull MaterialRadioButton radioThemeRedBlack, @NonNull MaterialRadioButton radioThemeSteel,
       @NonNull MaterialRadioButton radioThemeWhite, @NonNull SwitchMaterial switchAnimations,
       @NonNull SwitchMaterial switchConfirmComplete, @NonNull SwitchMaterial switchDarkTheme,
@@ -98,7 +95,6 @@ public final class FragmentSettingsBinding implements ViewBinding {
     this.radioMapStandard = radioMapStandard;
     this.radioMapStyle = radioMapStyle;
     this.radioMapTerrain = radioMapTerrain;
-    this.radioThemeBlack = radioThemeBlack;
     this.radioThemeBlue = radioThemeBlue;
     this.radioThemePurple = radioThemePurple;
     this.radioThemeRedBlack = radioThemeRedBlack;
@@ -164,12 +160,6 @@ public final class FragmentSettingsBinding implements ViewBinding {
       id = R.id.radio_map_terrain;
       MaterialRadioButton radioMapTerrain = ViewBindings.findChildViewById(rootView, id);
       if (radioMapTerrain == null) {
-        break missingId;
-      }
-
-      id = R.id.radio_theme_black;
-      MaterialRadioButton radioThemeBlack = ViewBindings.findChildViewById(rootView, id);
-      if (radioThemeBlack == null) {
         break missingId;
       }
 
@@ -264,10 +254,10 @@ public final class FragmentSettingsBinding implements ViewBinding {
       }
 
       return new FragmentSettingsBinding((ScrollView) rootView, radioAppTheme, radioMapStandard,
-          radioMapStyle, radioMapTerrain, radioThemeBlack, radioThemeBlue, radioThemePurple,
-          radioThemeRedBlack, radioThemeSteel, radioThemeWhite, switchAnimations,
-          switchConfirmComplete, switchDarkTheme, switchFollowLocation, switchNotifications,
-          switchOfflineMap, switchSearchExpand, switchShowRadius, textDeveloper, textVersion);
+          radioMapStyle, radioMapTerrain, radioThemeBlue, radioThemePurple, radioThemeRedBlack,
+          radioThemeSteel, radioThemeWhite, switchAnimations, switchConfirmComplete,
+          switchDarkTheme, switchFollowLocation, switchNotifications, switchOfflineMap,
+          switchSearchExpand, switchShowRadius, textDeveloper, textVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
