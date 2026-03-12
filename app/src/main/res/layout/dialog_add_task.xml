@@ -118,15 +118,35 @@
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
             android:textColor="?attr/colorOnSurface" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_toggle_color_picker"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="@string/marker_pick_color"
-            app:icon="@drawable/ic_expand_more"
-            app:iconGravity="textEnd" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_toggle_color_picker"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/marker_pick_color"
+                app:icon="@drawable/ic_expand_more"
+                app:iconGravity="textEnd" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_custom_color"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/marker_pick_custom_color"
+                app:icon="@drawable/ic_palette"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="?attr/colorPrimary" />
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/panel_color_picker"

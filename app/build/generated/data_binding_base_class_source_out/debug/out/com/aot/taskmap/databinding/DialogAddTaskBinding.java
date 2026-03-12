@@ -27,6 +27,9 @@ public final class DialogAddTaskBinding implements ViewBinding {
   private final ScrollView rootView;
 
   @NonNull
+  public final MaterialButton buttonCustomColor;
+
+  @NonNull
   public final MaterialButton buttonToggleColorPicker;
 
   @NonNull
@@ -114,7 +117,7 @@ public final class DialogAddTaskBinding implements ViewBinding {
   public final TextView textRadiusValue;
 
   private DialogAddTaskBinding(@NonNull ScrollView rootView,
-      @NonNull MaterialButton buttonToggleColorPicker,
+      @NonNull MaterialButton buttonCustomColor, @NonNull MaterialButton buttonToggleColorPicker,
       @NonNull MaterialButton buttonToggleIconPicker, @NonNull MaterialRadioButton colorBlack,
       @NonNull MaterialRadioButton colorBlue, @NonNull MaterialRadioButton colorCyan,
       @NonNull MaterialRadioButton colorGreen, @NonNull MaterialRadioButton colorLime,
@@ -130,6 +133,7 @@ public final class DialogAddTaskBinding implements ViewBinding {
       @NonNull Slider sliderRadius, @NonNull SwitchMaterial switchAutoRemove,
       @NonNull SwitchMaterial switchNotification, @NonNull TextView textRadiusValue) {
     this.rootView = rootView;
+    this.buttonCustomColor = buttonCustomColor;
     this.buttonToggleColorPicker = buttonToggleColorPicker;
     this.buttonToggleIconPicker = buttonToggleIconPicker;
     this.colorBlack = colorBlack;
@@ -188,6 +192,12 @@ public final class DialogAddTaskBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.button_custom_color;
+      MaterialButton buttonCustomColor = ViewBindings.findChildViewById(rootView, id);
+      if (buttonCustomColor == null) {
+        break missingId;
+      }
+
       id = R.id.button_toggle_color_picker;
       MaterialButton buttonToggleColorPicker = ViewBindings.findChildViewById(rootView, id);
       if (buttonToggleColorPicker == null) {
@@ -362,12 +372,12 @@ public final class DialogAddTaskBinding implements ViewBinding {
         break missingId;
       }
 
-      return new DialogAddTaskBinding((ScrollView) rootView, buttonToggleColorPicker,
-          buttonToggleIconPicker, colorBlack, colorBlue, colorCyan, colorGreen, colorLime,
-          colorOrange, colorPink, colorPurple, colorRed, colorYellow, editDescription, editLatitude,
-          editLongitude, editTitle, iconBriefcase, iconFlag, iconPin, iconStar, iconTarget,
-          panelColorPicker, panelIconPicker, radioMarkerColor, radioMarkerIcon, sliderRadius,
-          switchAutoRemove, switchNotification, textRadiusValue);
+      return new DialogAddTaskBinding((ScrollView) rootView, buttonCustomColor,
+          buttonToggleColorPicker, buttonToggleIconPicker, colorBlack, colorBlue, colorCyan,
+          colorGreen, colorLime, colorOrange, colorPink, colorPurple, colorRed, colorYellow,
+          editDescription, editLatitude, editLongitude, editTitle, iconBriefcase, iconFlag, iconPin,
+          iconStar, iconTarget, panelColorPicker, panelIconPicker, radioMarkerColor,
+          radioMarkerIcon, sliderRadius, switchAutoRemove, switchNotification, textRadiusValue);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

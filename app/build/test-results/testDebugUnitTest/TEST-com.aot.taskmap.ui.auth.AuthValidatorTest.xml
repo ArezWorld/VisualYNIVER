@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.aot.taskmap.ui.auth.AuthValidatorTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-12T08:52:22.008Z" hostname="AREZPC" time="0.012">
+<testsuite name="com.aot.taskmap.ui.auth.AuthValidatorTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-12T09:43:09.716Z" hostname="AREZPC" time="0.01">
   <properties/>
-  <testcase name="register_validFields_returnsValid" classname="com.aot.taskmap.ui.auth.AuthValidatorTest" time="0.012"/>
-  <testcase name="register_invalidFields_returnsErrors" classname="com.aot.taskmap.ui.auth.AuthValidatorTest" time="0.0"/>
+  <testcase name="register_validFields_returnsValid" classname="com.aot.taskmap.ui.auth.AuthValidatorTest" time="0.009"/>
+  <testcase name="register_invalidFields_returnsErrors" classname="com.aot.taskmap.ui.auth.AuthValidatorTest" time="0.001"/>
   <testcase name="login_validFields_returnsValid" classname="com.aot.taskmap.ui.auth.AuthValidatorTest" time="0.0"/>
   <testcase name="login_emptyFields_returnsErrors" classname="com.aot.taskmap.ui.auth.AuthValidatorTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>

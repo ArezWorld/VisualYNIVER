@@ -8,6 +8,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -16,6 +19,10 @@ import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.databinding.FragmentSettingsBinding
 import com.aot.taskmap.service.LocationService
+import com.aot.taskmap.ui.map.MapTileSources
+import org.osmdroid.tileprovider.cachemanager.CacheManager
+import org.osmdroid.util.BoundingBox
+import org.osmdroid.views.MapView
 
 class SettingsFragment : Fragment() {
 
@@ -23,6 +30,45 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var pendingEnableNotifications = false
+    private val offlineRegions = listOf(
+        OfflineRegion(
+            R.string.settings_region_moscow,
+            BoundingBox(56.05, 38.10, 54.90, 36.20),
+            8,
+            14
+        ),
+        OfflineRegion(
+            R.string.settings_region_spb,
+            BoundingBox(60.35, 31.40, 59.35, 29.25),
+            8,
+            14
+        ),
+        OfflineRegion(
+            R.string.settings_region_sverdlovsk,
+            BoundingBox(61.20, 64.80, 56.00, 56.00),
+            7,
+            13
+        ),
+        OfflineRegion(
+            R.string.settings_region_tatarstan,
+            BoundingBox(56.70, 54.00, 53.90, 47.20),
+            7,
+            13
+        ),
+        OfflineRegion(
+            R.string.settings_region_novosibirsk,
+            BoundingBox(57.90, 86.00, 53.20, 74.80),
+            7,
+            13
+        )
+    )
+
+    private data class OfflineRegion(
+        @StringRes val titleRes: Int,
+        val box: BoundingBox,
+        val zoomMin: Int,
+        val zoomMax: Int
+    )
 
     private val notificationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -146,6 +192,19 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.setMapStyle(context, style)
         }
 
+        val regionAdapter = ArrayAdapter(
+            context,
+            android.R.layout.simple_spinner_item,
+            offlineRegions.map { getString(it.titleRes) }
+        )
+        regionAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerOfflineRegion.adapter = regionAdapter
+        binding.buttonDownloadRegion.setOnClickListener {
+            val index = binding.spinnerOfflineRegion.selectedItemPosition
+            if (index !in offlineRegions.indices) return@setOnClickListener
+            startRegionDownload(offlineRegions[index])
+        }
+
         binding.switchConfirmComplete.isChecked =
             SettingsPreferences.isConfirmCompleteEnabled(context)
         binding.switchConfirmComplete.setOnCheckedChangeListener { _, checked ->
@@ -188,6 +247,68 @@ class SettingsFragment : Fragment() {
         val context = context ?: return
         val serviceIntent = Intent(context, LocationService::class.java)
         context.stopService(serviceIntent)
+    }
+
+    private fun startRegionDownload(region: OfflineRegion) {
+        val context = context ?: return
+        val tempMapView = MapView(context)
+        tempMapView.setTileSource(MapTileSources.resolveByStyle(SettingsPreferences.getMapStyle(context)))
+        tempMapView.setUseDataConnection(true)
+
+        val cacheManager = try {
+            CacheManager(tempMapView)
+        } catch (_: Exception) {
+            tempMapView.onDetach()
+            Toast.makeText(
+                context,
+                getString(R.string.settings_download_unavailable),
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        Toast.makeText(context, getString(R.string.settings_download_started), Toast.LENGTH_SHORT).show()
+
+        var finished = false
+        fun finishOnce(message: String, enableOfflineMode: Boolean = false) {
+            if (finished) return
+            finished = true
+            activity?.runOnUiThread {
+                if (enableOfflineMode) {
+                    SettingsPreferences.setOfflineMapEnabled(context, true)
+                    _binding?.switchOfflineMap?.isChecked = true
+                }
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+            tempMapView.onDetach()
+        }
+
+        cacheManager.downloadAreaAsyncNoUI(
+            context,
+            region.box,
+            region.zoomMin,
+            region.zoomMax,
+            object : CacheManager.CacheManagerCallback {
+                override fun onTaskComplete() {
+                    finishOnce(getString(R.string.settings_download_finished), enableOfflineMode = true)
+                }
+
+                override fun updateProgress(
+                    progress: Int,
+                    currentZoomLevel: Int,
+                    zoomMin: Int,
+                    zoomMax: Int
+                ) = Unit
+
+                override fun downloadStarted() = Unit
+
+                override fun setPossibleTilesInArea(total: Int) = Unit
+
+                override fun onTaskFailed(errors: Int) {
+                    finishOnce(getString(R.string.settings_download_failed, errors))
+                }
+            }
+        )
     }
 
     private fun hasLocationPermission(context: android.content.Context): Boolean {

@@ -1,38 +1,46 @@
 [
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/dialog_add_task.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/dialog_add_task.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\dialog_add_task.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\dialog_add_task.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/activity_register.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/activity_register.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\dialog_rgb_color_picker.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\dialog_rgb_color_picker.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/dialog_task_details.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/dialog_task_details.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\activity_register.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\activity_register.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/activity_login.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/activity_login.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\dialog_task_details.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\dialog_task_details.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/fragment_tasks.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/fragment_tasks.xml"
+        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/dialog_rgb_color_picker.xml",
+        "source": "com.aot.taskmap.app-main-57:/layout/dialog_rgb_color_picker.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/fragment_map.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/fragment_map.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\activity_login.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\activity_login.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/item_task.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/item_task.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\fragment_tasks.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\fragment_tasks.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/fragment_settings.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/fragment_settings.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\fragment_map.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\fragment_map.xml"
     },
     {
-        "merged": "com.aot.taskmap.app-mergeDebugResources-54:/layout/activity_main.xml",
-        "source": "com.aot.taskmap.app-main-57:/layout/activity_main.xml"
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\item_task.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\item_task.xml"
+    },
+    {
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\activity_main.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\activity_main.xml"
+    },
+    {
+        "merged": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-mergeDebugResources-54:\\layout\\fragment_settings.xml",
+        "source": "C:\\Users\\danil\\.gradle\\daemon\\8.13\\com.aot.taskmap.app-main-57:\\layout\\fragment_settings.xml"
     }
 ]

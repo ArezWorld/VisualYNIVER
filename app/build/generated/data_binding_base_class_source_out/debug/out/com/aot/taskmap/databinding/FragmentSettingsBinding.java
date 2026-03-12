@@ -6,12 +6,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.aot.taskmap.R;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import java.lang.NullPointerException;
@@ -21,6 +23,9 @@ import java.lang.String;
 public final class FragmentSettingsBinding implements ViewBinding {
   @NonNull
   private final ScrollView rootView;
+
+  @NonNull
+  public final MaterialButton buttonDownloadRegion;
 
   @NonNull
   public final RadioGroup radioAppTheme;
@@ -48,6 +53,9 @@ public final class FragmentSettingsBinding implements ViewBinding {
 
   @NonNull
   public final MaterialRadioButton radioThemeWhite;
+
+  @NonNull
+  public final Spinner spinnerOfflineRegion;
 
   @NonNull
   public final SwitchMaterial switchAnimations;
@@ -79,18 +87,20 @@ public final class FragmentSettingsBinding implements ViewBinding {
   @NonNull
   public final TextView textVersion;
 
-  private FragmentSettingsBinding(@NonNull ScrollView rootView, @NonNull RadioGroup radioAppTheme,
+  private FragmentSettingsBinding(@NonNull ScrollView rootView,
+      @NonNull MaterialButton buttonDownloadRegion, @NonNull RadioGroup radioAppTheme,
       @NonNull MaterialRadioButton radioMapStandard, @NonNull RadioGroup radioMapStyle,
       @NonNull MaterialRadioButton radioMapTerrain, @NonNull MaterialRadioButton radioThemeBlue,
       @NonNull MaterialRadioButton radioThemePurple,
       @NonNull MaterialRadioButton radioThemeRedBlack, @NonNull MaterialRadioButton radioThemeSteel,
-      @NonNull MaterialRadioButton radioThemeWhite, @NonNull SwitchMaterial switchAnimations,
-      @NonNull SwitchMaterial switchConfirmComplete, @NonNull SwitchMaterial switchDarkTheme,
-      @NonNull SwitchMaterial switchFollowLocation, @NonNull SwitchMaterial switchNotifications,
-      @NonNull SwitchMaterial switchOfflineMap, @NonNull SwitchMaterial switchSearchExpand,
-      @NonNull SwitchMaterial switchShowRadius, @NonNull TextView textDeveloper,
-      @NonNull TextView textVersion) {
+      @NonNull MaterialRadioButton radioThemeWhite, @NonNull Spinner spinnerOfflineRegion,
+      @NonNull SwitchMaterial switchAnimations, @NonNull SwitchMaterial switchConfirmComplete,
+      @NonNull SwitchMaterial switchDarkTheme, @NonNull SwitchMaterial switchFollowLocation,
+      @NonNull SwitchMaterial switchNotifications, @NonNull SwitchMaterial switchOfflineMap,
+      @NonNull SwitchMaterial switchSearchExpand, @NonNull SwitchMaterial switchShowRadius,
+      @NonNull TextView textDeveloper, @NonNull TextView textVersion) {
     this.rootView = rootView;
+    this.buttonDownloadRegion = buttonDownloadRegion;
     this.radioAppTheme = radioAppTheme;
     this.radioMapStandard = radioMapStandard;
     this.radioMapStyle = radioMapStyle;
@@ -100,6 +110,7 @@ public final class FragmentSettingsBinding implements ViewBinding {
     this.radioThemeRedBlack = radioThemeRedBlack;
     this.radioThemeSteel = radioThemeSteel;
     this.radioThemeWhite = radioThemeWhite;
+    this.spinnerOfflineRegion = spinnerOfflineRegion;
     this.switchAnimations = switchAnimations;
     this.switchConfirmComplete = switchConfirmComplete;
     this.switchDarkTheme = switchDarkTheme;
@@ -139,6 +150,12 @@ public final class FragmentSettingsBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.button_download_region;
+      MaterialButton buttonDownloadRegion = ViewBindings.findChildViewById(rootView, id);
+      if (buttonDownloadRegion == null) {
+        break missingId;
+      }
+
       id = R.id.radio_app_theme;
       RadioGroup radioAppTheme = ViewBindings.findChildViewById(rootView, id);
       if (radioAppTheme == null) {
@@ -190,6 +207,12 @@ public final class FragmentSettingsBinding implements ViewBinding {
       id = R.id.radio_theme_white;
       MaterialRadioButton radioThemeWhite = ViewBindings.findChildViewById(rootView, id);
       if (radioThemeWhite == null) {
+        break missingId;
+      }
+
+      id = R.id.spinner_offline_region;
+      Spinner spinnerOfflineRegion = ViewBindings.findChildViewById(rootView, id);
+      if (spinnerOfflineRegion == null) {
         break missingId;
       }
 
@@ -253,11 +276,12 @@ public final class FragmentSettingsBinding implements ViewBinding {
         break missingId;
       }
 
-      return new FragmentSettingsBinding((ScrollView) rootView, radioAppTheme, radioMapStandard,
-          radioMapStyle, radioMapTerrain, radioThemeBlue, radioThemePurple, radioThemeRedBlack,
-          radioThemeSteel, radioThemeWhite, switchAnimations, switchConfirmComplete,
-          switchDarkTheme, switchFollowLocation, switchNotifications, switchOfflineMap,
-          switchSearchExpand, switchShowRadius, textDeveloper, textVersion);
+      return new FragmentSettingsBinding((ScrollView) rootView, buttonDownloadRegion, radioAppTheme,
+          radioMapStandard, radioMapStyle, radioMapTerrain, radioThemeBlue, radioThemePurple,
+          radioThemeRedBlack, radioThemeSteel, radioThemeWhite, spinnerOfflineRegion,
+          switchAnimations, switchConfirmComplete, switchDarkTheme, switchFollowLocation,
+          switchNotifications, switchOfflineMap, switchSearchExpand, switchShowRadius,
+          textDeveloper, textVersion);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
