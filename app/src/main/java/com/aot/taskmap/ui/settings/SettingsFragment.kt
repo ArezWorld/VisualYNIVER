@@ -62,6 +62,31 @@ class SettingsFragment : Fragment() {
             ThemePreferences.setDarkMode(context, checked)
         }
 
+        binding.radioAppTheme.check(
+            when (ThemePreferences.getTheme(context)) {
+                ThemePreferences.THEME_WHITE -> binding.radioThemeWhite.id
+                ThemePreferences.THEME_BLACK -> binding.radioThemeBlack.id
+                ThemePreferences.THEME_BLUE -> binding.radioThemeBlue.id
+                ThemePreferences.THEME_STEEL -> binding.radioThemeSteel.id
+                ThemePreferences.THEME_RED_BLACK -> binding.radioThemeRedBlack.id
+                else -> binding.radioThemePurple.id
+            }
+        )
+        binding.radioAppTheme.setOnCheckedChangeListener { _, checkedId ->
+            val selectedTheme = when (checkedId) {
+                binding.radioThemeWhite.id -> ThemePreferences.THEME_WHITE
+                binding.radioThemeBlack.id -> ThemePreferences.THEME_BLACK
+                binding.radioThemeBlue.id -> ThemePreferences.THEME_BLUE
+                binding.radioThemeSteel.id -> ThemePreferences.THEME_STEEL
+                binding.radioThemeRedBlack.id -> ThemePreferences.THEME_RED_BLACK
+                else -> ThemePreferences.THEME_PURPLE
+            }
+            if (selectedTheme != ThemePreferences.getTheme(context)) {
+                ThemePreferences.setTheme(context, selectedTheme)
+                activity?.recreate()
+            }
+        }
+
         binding.switchSearchExpand.isChecked =
             SettingsPreferences.isSearchAutoExpandEnabled(context)
         binding.switchSearchExpand.setOnCheckedChangeListener { _, checked ->

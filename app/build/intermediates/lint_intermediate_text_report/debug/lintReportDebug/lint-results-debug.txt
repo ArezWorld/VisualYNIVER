@@ -1,0 +1,517 @@
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:14: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk 34
+        ~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application or sdk runs on a version of Android that is more
+   recent than your targetSdkVersion specifies that it has been tested with,
+   various compatibility modes kick in. This ensures that your application
+   continues to work, but it may look out of place. For example, if the
+   targetSdkVersion is less than 14, your app may get an option button in the
+   UI.
+
+   To fix this issue, set the targetSdkVersion to the highest available value.
+   Then test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:9: Warning: A newer version of compileSdkVersion than 34 is available: 36 [GradleDependency]
+    compileSdk 34
+    ~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:45: Warning: A newer version of androidx.core:core-ktx than 1.12.0 is available: 1.18.0 [GradleDependency]
+    implementation 'androidx.core:core-ktx:1.12.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:46: Warning: A newer version of androidx.appcompat:appcompat than 1.6.1 is available: 1.7.1 [GradleDependency]
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:47: Warning: A newer version of com.google.android.material:material than 1.11.0 is available: 1.13.0 [GradleDependency]
+    implementation 'com.google.android.material:material:1.11.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:48: Warning: A newer version of androidx.constraintlayout:constraintlayout than 2.1.4 is available: 2.2.1 [GradleDependency]
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:51: Warning: A newer version of androidx.activity:activity-ktx than 1.8.2 is available: 1.13.0 [GradleDependency]
+    implementation 'androidx.activity:activity-ktx:1.8.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:52: Warning: A newer version of androidx.fragment:fragment-ktx than 1.6.2 is available: 1.8.9 [GradleDependency]
+    implementation 'androidx.fragment:fragment-ktx:1.6.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:55: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-ktx than 2.7.0 is available: 2.10.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:56: Warning: A newer version of androidx.lifecycle:lifecycle-livedata-ktx than 2.7.0 is available: 2.10.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:57: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.7.0 is available: 2.10.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:60: Warning: A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.4 [GradleDependency]
+    implementation 'androidx.room:room-runtime:2.6.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:61: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.4 [GradleDependency]
+    implementation 'androidx.room:room-ktx:2.6.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:62: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.4 [GradleDependency]
+    ksp 'androidx.room:room-compiler:2.6.1'
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:72: Warning: A newer version of com.google.android.gms:play-services-location than 21.1.0 is available: 21.3.0 [GradleDependency]
+    implementation 'com.google.android.gms:play-services-location:21.1.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:75: Warning: A newer version of androidx.navigation:navigation-fragment-ktx than 2.7.6 is available: 2.9.7 [GradleDependency]
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.6'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:76: Warning: A newer version of androidx.navigation:navigation-ui-ktx than 2.7.6 is available: 2.9.7 [GradleDependency]
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.6'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:83: Warning: A newer version of androidx.test.ext:junit than 1.1.5 is available: 1.3.0 [GradleDependency]
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:84: Warning: A newer version of androidx.test.espresso:espresso-core than 3.5.1 is available: 3.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:65: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.7.3 is available: 1.10.2 [NewerVersionAvailable]
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:66: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-core than 1.7.3 is available: 1.10.2 [NewerVersionAvailable]
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:69: Warning: A newer version of org.osmdroid:osmdroid-android than 6.1.18 is available: 6.1.20 [NewerVersionAvailable]
+    implementation 'org.osmdroid:osmdroid-android:6.1.18'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\build.gradle:79: Warning: A newer version of com.squareup.okhttp3:okhttp than 4.9.3 is available: 5.3.2 [NewerVersionAvailable]
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\xml\network_security_config.xml:3: Warning: Insecure Base Configuration [InsecureBaseConfiguration]
+    <base-config cleartextTrafficPermitted="true">
+                                            ~~~~
+
+   Explanation for issues of type "InsecureBaseConfiguration":
+   Permitting cleartext traffic could allow eavesdroppers to intercept data
+   sent by your app, which impacts the privacy of your users. Consider only
+   allowing encrypted traffic by setting the cleartextTrafficPermitted tag to
+   false.
+
+   https://goo.gle/InsecureBaseConfiguration
+   https://developer.android.com/preview/features/security-config.html
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\service\LocationService.kt:238: Warning: Unnecessary; SDK_INT is always >= 26 [ObsoleteSdkInt]
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1039: Warning: Unnecessary; SDK_INT is always >= 26 [ObsoleteSdkInt]
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\mipmap-anydpi-v26: Warning: This folder configuration (v26) is unnecessary; minSdkVersion is 26. Merge all the resources in this folder into mipmap-anydpi. [ObsoleteSdkInt]
+
+   Explanation for issues of type "ObsoleteSdkInt":
+   This check flags version checks that are not necessary, because the
+   minSdkVersion (or surrounding known API level) is already at least as high
+   as the version checked for.
+
+   Similarly, it also looks for resources in -vNN folders, such as values-v14
+   where the version qualifier is less than or equal to the minSdkVersion,
+   where the contents should be merged into the best folder.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\activity_login.xml:9: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/Theme.TaskMap) [Overdraw]
+    android:background="?attr/colorSurface">
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\fragment_settings.xml:7: Warning: Possible overdraw: Root element paints background ?android:windowBackground with a theme that also paints a background (inferred theme is @style/Theme.TaskMap) [Overdraw]
+    android:background="?android:windowBackground"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\fragment_tasks.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/Theme.TaskMap) [Overdraw]
+    android:background="?attr/colorSurface">
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "Overdraw":
+   If you set a background drawable on a root view, then you should use a
+   custom theme where the theme background is null. Otherwise, the theme
+   background will be painted first, only to have your custom background
+   completely cover it; this is called "overdraw".
+
+   NOTE: This detector relies on figuring out which layouts are associated
+   with which activities based on scanning the Java code, and it's currently
+   doing that using an inexact pattern matching algorithm. Therefore, it can
+   incorrectly conclude which activity the layout is associated with and then
+   wrongly complain that a background-theme is hidden.
+
+   If you want your custom background on multiple pages, then you should
+   consider making a custom theme with your custom background and just using
+   that theme instead of a root element background.
+
+   Of course it's possible that your custom drawable is translucent and you
+   want it to be mixed with the background. However, you will get better
+   performance if you pre-mix the background with your drawable and use that
+   resulting image or color as a custom theme background instead.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:3: Warning: The resource R.color.primary appears to be unused [UnusedResources]
+    <color name="primary">#6B4FD3</color>
+           ~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:4: Warning: The resource R.color.primary_variant appears to be unused [UnusedResources]
+    <color name="primary_variant">#573DB8</color>
+           ~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:5: Warning: The resource R.color.secondary appears to be unused [UnusedResources]
+    <color name="secondary">#8D77E8</color>
+           ~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:6: Warning: The resource R.color.secondary_variant appears to be unused [UnusedResources]
+    <color name="secondary_variant">#735ED0</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:7: Warning: The resource R.color.surface appears to be unused [UnusedResources]
+    <color name="surface">#F7F4FF</color>
+           ~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:8: Warning: The resource R.color.surface_elevated appears to be unused [UnusedResources]
+    <color name="surface_elevated">#FDFBFF</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:9: Warning: The resource R.color.background appears to be unused [UnusedResources]
+    <color name="background">#F1ECFF</color>
+           ~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:10: Warning: The resource R.color.on_primary appears to be unused [UnusedResources]
+    <color name="on_primary">#FFFFFF</color>
+           ~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:11: Warning: The resource R.color.on_secondary appears to be unused [UnusedResources]
+    <color name="on_secondary">#FFFFFF</color>
+           ~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:12: Warning: The resource R.color.on_surface appears to be unused [UnusedResources]
+    <color name="on_surface">#1A1330</color>
+           ~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:13: Warning: The resource R.color.black appears to be unused [UnusedResources]
+    <color name="black">#FF000000</color>
+           ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:14: Warning: The resource R.color.white appears to be unused [UnusedResources]
+    <color name="white">#FFFFFFFF</color>
+           ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:15: Warning: The resource R.color.marker_active appears to be unused [UnusedResources]
+    <color name="marker_active">#8D77E8</color>
+           ~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:16: Warning: The resource R.color.marker_completed appears to be unused [UnusedResources]
+    <color name="marker_completed">#FF9E9E9E</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\colors.xml:28: Warning: The resource R.color.hint_on_surface appears to be unused [UnusedResources]
+    <color name="hint_on_surface">#7A1A1330</color>
+           ~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\drawable\ic_marker_active.xml:1: Warning: The resource R.drawable.ic_marker_active appears to be unused [UnusedResources]
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+^
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\drawable\ic_marker_completed.xml:1: Warning: The resource R.drawable.ic_marker_completed appears to be unused [UnusedResources]
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+^
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\strings.xml:48: Warning: The resource R.string.settings_map_style appears to be unused [UnusedResources]
+    <string name="settings_map_style">Стиль карты</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\strings.xml:80: Warning: The resource R.string.map_task_coords appears to be unused [UnusedResources]
+    <string name="map_task_coords">Координаты</string>
+            ~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\strings.xml:81: Warning: The resource R.string.map_task_radius appears to be unused [UnusedResources]
+    <string name="map_task_radius">Радиус уведомления</string>
+            ~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\strings.xml:92: Warning: The resource R.string.map_action_close appears to be unused [UnusedResources]
+    <string name="map_action_close">Закрыть</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\values\strings.xml:130: Warning: The resource R.string.marker_icon appears to be unused [UnusedResources]
+    <string name="marker_icon">Значок метки</string>
+            ~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests =true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests =true.
+   ,
+
+   Available options:
+
+   **skip-libraries** (default is true):
+   Whether the unused resource check should skip reporting unused resources in libraries.
+
+   Many libraries will declare resources that are part of the library surface; other modules depending on the library will also reference the resources. To avoid reporting all these resources as unused (in the context of a library), the unused resource check normally skips reporting unused resources in libraries. Instead, run the unused resource check on the consuming app module (along with `checkDependencies=true`).
+
+   However, there are cases where you want to check that all the resources declared in a library are used; in that case, you can disable the skip option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UnusedResources">
+           <option name="skip-libraries" value="true" />
+       </issue>
+   </lint>
+   ```
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\dialog_add_task.xml:138: Warning: This HorizontalScrollView layout or its LinearLayout parent is unnecessary [UselessParent]
+            <HorizontalScrollView
+             ~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\dialog_add_task.xml:250: Warning: This HorizontalScrollView layout or its LinearLayout parent is unnecessary [UselessParent]
+            <HorizontalScrollView
+             ~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UselessParent":
+   A layout with children that has no siblings, is not a scrollview or a root
+   layout, and does not have a background, can be removed and have its
+   children moved directly into the parent for a flatter and more efficient
+   layout hierarchy.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\mipmap-anydpi-v26\ic_launcher.xml:2: Warning: The application adaptive icon is missing a monochrome tag [MonochromeLauncherIcon]
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+^
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\mipmap-anydpi-v26\ic_launcher_round.xml:2: Warning: The application adaptive roundIcon is missing a monochrome tag [MonochromeLauncherIcon]
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+^
+
+   Explanation for issues of type "MonochromeLauncherIcon":
+   If android:roundIcon and android:icon are both in your manifest, you must
+   either remove the reference to android:roundIcon if it is not needed; or,
+   supply the monochrome icon in the drawable defined by the android:roundIcon
+   and android:icon attribute.
+
+   For example, if android:roundIcon and android:icon are both in the
+   manifest, a launcher might choose to use android:roundIcon over
+   android:icon to display the adaptive app icon. Therefore, your themed
+   application iconwill not show if your monochrome attribute is not also
+   specified in android:roundIcon.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1060: Warning: Use the KTX function createBitmap instead? [UseKtx]
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1156: Warning: Use the KTX extension property View.isVisible instead? [UseKtx]
+            binding.searchCard.alpha = if (binding.searchCard.visibility == View.VISIBLE) 1f else 0f
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1156: Warning: Use the KTX extension property View.isVisible instead? [UseKtx]
+            binding.searchCard.alpha = if (binding.searchCard.visibility == View.VISIBLE) 1f else 0f
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1169: Warning: Use the KTX extension property View.isVisible instead? [UseKtx]
+            binding.searchFab.alpha = if (binding.searchFab.visibility == View.VISIBLE) 1f else 0f
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1169: Warning: Use the KTX extension property View.isVisible instead? [UseKtx]
+            binding.searchFab.alpha = if (binding.searchFab.visibility == View.VISIBLE) 1f else 0f
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:1183: Warning: Use the KTX extension property View.isVisible instead? [UseKtx]
+        if (binding.searchCard.visibility == View.VISIBLE) {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SessionManager.kt:20: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putString(KEY_TOKEN, value).apply()
+                     ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SessionManager.kt:24: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putLong(KEY_USER_ID, value).apply()
+                     ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SessionManager.kt:28: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putString(KEY_USERNAME, value).apply()
+                     ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SessionManager.kt:32: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putBoolean(KEY_IS_LOGGED_IN, value).apply()
+                     ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SessionManager.kt:42: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs.edit().clear().apply()
+        ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:26: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_FOLLOW_LOCATION, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:33: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_SHOW_RADIUS, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:40: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_CONFIRM_COMPLETE, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:47: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_SEARCH_AUTO_EXPAND, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:54: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:61: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_OFFLINE_MAP_ENABLED, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:68: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putString(KEY_MAP_STYLE, style).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\SettingsPreferences.kt:75: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs(context).edit().putBoolean(KEY_ANIMATIONS_ENABLED, enabled).apply()
+        ~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\ThemePreferences.kt:26: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs.edit().putString(KEY_APP_THEME, themeKey).apply()
+        ~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\data\local\ThemePreferences.kt:36: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        prefs.edit().putBoolean(KEY_DARK_MODE, enabled).apply()
+        ~~~~~~~~~~~~
+
+   Explanation for issues of type "UseKtx":
+   The Android KTX libraries decorates the Android platform SDK as well as
+   various libraries with more convenient extension functions available from
+   Kotlin, allowing you to use default parameters, named parameters, and
+   more.
+
+   Available options:
+
+   **remove-defaults** (default is true):
+   Whether to skip arguments that match the defaults provided by the extension.
+
+   Extensions often provide default values for some of the parameters. For example:
+   ```kotlin
+   fun Path.readLines(charset: Charset = Charsets.UTF_8): List<String> { return Files.readAllLines(this, charset) }
+   ```
+   This lint check will by default automatically omit parameters that match the default, so if your code was calling
+
+   ```kotlin
+   Files.readAllLines(file, Charset.UTF_8)
+   ```
+   lint would replace this with
+   ```kotlin
+   file.readLines()
+   ```
+   rather than
+
+   ```kotlin
+   file.readLines(Charset.UTF_8
+   ```
+   You can turn this behavior off using this option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="remove-defaults" value="true" />
+       </issue>
+   </lint>
+   ```
+
+   **require-present** (default is true):
+   Whether to only offer extensions already available.
+
+   This option lets you only have lint suggest extension replacements if those extensions are already available on the class path (in other words, you're already depending on the library containing the extension method.)
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="require-present" value="true" />
+       </issue>
+   </lint>
+   ```
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\activity_login.xml:11: Warning: Missing contentDescription attribute on image [ContentDescription]
+    <ImageView
+     ~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\activity_register.xml:16: Warning: Missing contentDescription attribute on image [ContentDescription]
+        <ImageView
+         ~~~~~~~~~
+
+   Explanation for issues of type "ContentDescription":
+   Non-textual widgets like ImageViews and ImageButtons should use the
+   contentDescription attribute to specify a textual description of the widget
+   such that screen readers and other accessibility tools can adequately
+   describe the user interface.
+
+   Note that elements in application screens that are purely decorative and do
+   not provide any content or enable a user action should not have
+   accessibility content descriptions. In this case, set their descriptions to
+   @null. If your app's minSdkVersion is 16 or higher, you can instead set
+   these graphical elements' android:importantForAccessibility attributes to
+   no.
+
+   Note that for text fields, you should not set both the hint and the
+   contentDescription attributes since the hint will never be shown. Just set
+   the hint.
+
+   https://developer.android.com/guide/topics/ui/accessibility/apps#special-cases
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\res\layout\fragment_map.xml:50: Warning: Empty android:hint attribute [LabelFor]
+                    android:hint=""
+                    ~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "LabelFor":
+   Editable text fields should provide an android:hint or, provided your
+   minSdkVersion is at least 17, they may be referenced by a view with a
+   android:labelFor attribute.
+
+   When using android:labelFor, be sure to provide an android:text or an
+   android:contentDescription.
+
+   If your view is labeled but by a label in a different layout which includes
+   this one, just suppress this warning from lint.
+
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:693: Warning: Number formatting does not take into account locale settings. Consider using String.format instead. [SetTextI18n]
+        dialogBinding.editLatitude.setText(latitude.toString())
+                                           ~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:694: Warning: Number formatting does not take into account locale settings. Consider using String.format instead. [SetTextI18n]
+        dialogBinding.editLongitude.setText(longitude.toString())
+                                            ~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:785: Warning: Number formatting does not take into account locale settings. Consider using String.format instead. [SetTextI18n]
+        dialogBinding.editLatitude.setText(task.latitude.toString())
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:786: Warning: Number formatting does not take into account locale settings. Consider using String.format instead. [SetTextI18n]
+        dialogBinding.editLongitude.setText(task.longitude.toString())
+                                            ~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:882: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_radius_trigger) + ": ${task.radius} м"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:882: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_radius_trigger) + ": ${task.radius} м"
+                                                          ~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:884: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_status) + ": $statusText"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:884: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_status) + ": $statusText"
+                                                  ~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:891: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_icon) + ": ${resolveMarkerIconName(task.markerIcon)}"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:891: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_icon) + ": ${resolveMarkerIconName(task.markerIcon)}"
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:893: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_auto_remove) + ": " +
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:893: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            getString(R.string.map_task_auto_remove) + ": " +
+            ^
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\map\MapFragment.kt:897: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            "${task.latitude}, ${task.longitude}"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:\Users\danil\OneDrive\Desktop\VisualYNIVER\app\src\main\java\com\aot\taskmap\ui\tasks\TasksAdapter.kt:45: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                textLocation.text = "${task.latitude}, ${task.longitude}"
+                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetTextI18n":
+   When calling TextView#setText
+   * Never call Number#toString() to format numbers; it will not handle
+   fraction separators and locale-specific digits properly. Consider using
+   String#format with proper format specifications (%d or %f) instead.
+   * Do not pass a string literal (e.g. "Hello") to display text. Hardcoded
+   text can not be properly translated to other languages. Consider using
+   Android resource strings instead.
+   * Do not build messages by concatenating text chunks. Such messages can not
+   be properly translated.
+
+   https://developer.android.com/guide/topics/resources/localization.html
+
+0 errors, 94 warnings

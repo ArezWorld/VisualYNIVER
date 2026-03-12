@@ -11,8 +11,12 @@ import android.graphics.drawable.Drawable
 import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.TextWatcher
 import android.text.style.ForegroundColorSpan
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -49,6 +53,8 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
@@ -104,6 +110,13 @@ class MapFragment : Fragment() {
 
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
     private lateinit var searchAdapter: ArrayAdapter<String>
+    private var searchSuggestionJob: Job? = null
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var restoreBottomNavRunnable: Runnable? = null
+    private var isBottomNavigationHidden = false
+    private val bottomNavRestoreDelayMs = 260L
+    private val bottomNavHideDurationMs = 190L
+    private val bottomNavShowDurationMs = 170L
 
     private data class MarkerIconOption(
         val key: String,
@@ -130,7 +143,13 @@ class MapFragment : Fragment() {
         MarkerColorOption(R.id.color_blue, R.color.marker_blue, R.string.marker_color_blue),
         MarkerColorOption(R.id.color_green, R.color.marker_green, R.string.marker_color_green),
         MarkerColorOption(R.id.color_orange, R.color.marker_orange, R.string.marker_color_orange),
-        MarkerColorOption(R.id.color_red, R.color.marker_red, R.string.marker_color_red)
+        MarkerColorOption(R.id.color_red, R.color.marker_red, R.string.marker_color_red),
+        MarkerColorOption(R.id.color_purple, R.color.marker_purple, R.string.marker_color_purple),
+        MarkerColorOption(R.id.color_cyan, R.color.marker_cyan, R.string.marker_color_cyan),
+        MarkerColorOption(R.id.color_pink, R.color.marker_pink, R.string.marker_color_pink),
+        MarkerColorOption(R.id.color_yellow, R.color.marker_yellow, R.string.marker_color_yellow),
+        MarkerColorOption(R.id.color_lime, R.color.marker_lime, R.string.marker_color_lime),
+        MarkerColorOption(R.id.color_black, R.color.marker_black, R.string.marker_color_black)
     )
 
     private val locationPermissionRequest = registerForActivityResult(
@@ -173,6 +192,7 @@ class MapFragment : Fragment() {
         // Инициализация карты
         Configuration.getInstance().userAgentValue = requireContext().packageName
         binding.mapView.setMultiTouchControls(true)
+        binding.mapView.setBuiltInZoomControls(false)
         binding.mapView.zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
         binding.mapView.setTilesScaledToDpi(true)
         binding.mapView.controller.setZoom(15.0)
@@ -207,7 +227,8 @@ class MapFragment : Fragment() {
 
         binding.fabMyLocation.setOnClickListener {
             // Однократное центрирование и обновление позиции
-            shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
+            viewModel.selectTask(null)
+            shouldAutoCenter = true
             getCurrentLocation()
         }
 
@@ -271,6 +292,82 @@ class MapFragment : Fragment() {
 
         binding.searchFab.setOnClickListener {
             expandSearchUi()
+        }
+
+        binding.searchQuery.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+
+            override fun afterTextChanged(s: Editable?) {
+                val query = s?.toString()?.trim().orEmpty()
+                if (query.length < 2) {
+                    searchSuggestionJob?.cancel()
+                    if (binding.searchQuery.isPopupShowing) {
+                        binding.searchQuery.dismissDropDown()
+                    }
+                    return
+                }
+                loadSearchSuggestions(query)
+            }
+        })
+    }
+
+    private fun loadSearchSuggestions(query: String) {
+        searchSuggestionJob?.cancel()
+        searchSuggestionJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(if (animationsEnabled()) 260L else 120L)
+            val suggestions = withContext(Dispatchers.IO) {
+                if (!Geocoder.isPresent()) {
+                    emptyList()
+                } else {
+                    try {
+                        Geocoder(requireContext(), Locale.getDefault())
+                            .getFromLocationName(query, 10)
+                            .orEmpty()
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                }
+            }
+
+            if (!isAdded || _binding == null) return@launch
+            val currentQuery = binding.searchQuery.text?.toString()?.trim().orEmpty()
+            if (currentQuery != query) return@launch
+
+            val unique = linkedMapOf<String, GeoPoint>()
+            suggestions.forEach { address ->
+                val label = buildSuggestionLabel(address)
+                if (label.isNotBlank() && !unique.containsKey(label)) {
+                    unique[label] = GeoPoint(address.latitude, address.longitude)
+                }
+            }
+
+            searchResults.clear()
+            searchAdapter.clear()
+            unique.forEach { (label, point) ->
+                searchResults.add(label to point)
+                searchAdapter.add(label)
+            }
+            searchAdapter.notifyDataSetChanged()
+            if (unique.isNotEmpty() && isSearchExpanded) {
+                binding.searchQuery.showDropDown()
+            }
+        }
+    }
+
+    private fun buildSuggestionLabel(address: android.location.Address): String {
+        val city = listOfNotNull(
+            address.locality,
+            address.subAdminArea,
+            address.adminArea
+        ).firstOrNull { it.isNotBlank() }
+        val country = address.countryName?.takeIf { it.isNotBlank() }
+        return when {
+            city != null && country != null -> "$city, $country"
+            city != null -> city
+            !address.featureName.isNullOrBlank() -> address.featureName
+            else -> address.getAddressLine(0).orEmpty()
         }
     }
 
@@ -369,7 +466,7 @@ class MapFragment : Fragment() {
                     viewModel.currentLocation.collect { location ->
                         location?.let {
                             val geoPoint = GeoPoint(it.first, it.second)
-                            if (shouldAutoCenter && SettingsPreferences.isFollowLocationEnabled(requireContext())) {
+                            if (shouldAutoCenter && viewModel.selectedTask.value == null) {
                                 binding.mapView.controller.animateTo(geoPoint)
                             }
                         }
@@ -378,6 +475,7 @@ class MapFragment : Fragment() {
                 launch {
                     viewModel.selectedTask.collect { task ->
                         task ?: return@collect
+                        shouldAutoCenter = false
                         val point = GeoPoint(task.latitude, task.longitude)
                         binding.mapView.controller.animateTo(point)
                     }
@@ -901,6 +999,7 @@ class MapFragment : Fragment() {
                 if (iconDrawable != null) {
                     val bmp = drawableToBitmap(iconDrawable)
                     setPersonIcon(bmp)
+                    setDirectionIcon(bmp)
                 }
                 runOnFirstFix {
                     myLocation?.let { location ->
@@ -931,8 +1030,6 @@ class MapFragment : Fragment() {
             ).addOnSuccessListener { location ->
                 location?.let {
                     viewModel.updateCurrentLocation(it.latitude, it.longitude)
-                    val geoPoint = GeoPoint(it.latitude, it.longitude)
-                    binding.mapView.controller.animateTo(geoPoint)
                 }
             }
         }
@@ -973,15 +1070,85 @@ class MapFragment : Fragment() {
                 // Пользователь двигает карту — отключаем автослежение
                 shouldAutoCenter = false
                 collapseSearchUi()
+                hideBottomNavigationForMapMotion()
                 return false
             }
 
             override fun onZoom(event: ZoomEvent?): Boolean {
                 // Зум тоже отключает автослежение, чтобы карта не прыгала
                 shouldAutoCenter = false
+                hideBottomNavigationForMapMotion()
                 return false
             }
         })
+    }
+
+    private fun hideBottomNavigationForMapMotion() {
+        val bottomNavigation = activity?.findViewById<View>(R.id.bottom_navigation) ?: return
+        restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
+
+        if (!isBottomNavigationHidden) {
+            isBottomNavigationHidden = true
+            val hideDistance = resolveBottomNavigationHideDistance(bottomNavigation)
+            bottomNavigation.isEnabled = false
+            bottomNavigation.isClickable = false
+            if (animationsEnabled()) {
+                bottomNavigation.clearAnimation()
+                bottomNavigation.visibility = View.VISIBLE
+                bottomNavigation.animate()
+                    .translationY(hideDistance)
+                    .alpha(0f)
+                    .setDuration(bottomNavHideDurationMs)
+                    .setInterpolator(FastOutSlowInInterpolator())
+                    .withEndAction { bottomNavigation.visibility = View.INVISIBLE }
+                    .start()
+            } else {
+                bottomNavigation.visibility = View.INVISIBLE
+                bottomNavigation.translationY = hideDistance
+                bottomNavigation.alpha = 0f
+            }
+        }
+
+        val restore = Runnable { showBottomNavigationAfterMotion() }
+        restoreBottomNavRunnable = restore
+        uiHandler.postDelayed(restore, bottomNavRestoreDelayMs)
+    }
+
+    private fun showBottomNavigationAfterMotion() {
+        val bottomNavigation = activity?.findViewById<View>(R.id.bottom_navigation) ?: return
+        restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
+        restoreBottomNavRunnable = null
+
+        if (!isBottomNavigationHidden) return
+        isBottomNavigationHidden = false
+
+        if (animationsEnabled()) {
+            bottomNavigation.visibility = View.VISIBLE
+            bottomNavigation.translationY = resolveBottomNavigationHideDistance(bottomNavigation)
+            bottomNavigation.alpha = 0f
+            bottomNavigation.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(bottomNavShowDurationMs)
+                .setInterpolator(FastOutSlowInInterpolator())
+                .start()
+        } else {
+            bottomNavigation.visibility = View.VISIBLE
+            bottomNavigation.translationY = 0f
+            bottomNavigation.alpha = 1f
+        }
+        bottomNavigation.isEnabled = true
+        bottomNavigation.isClickable = true
+    }
+
+    private fun resolveBottomNavigationHideDistance(bottomNavigation: View): Float {
+        val density = resources.displayMetrics.density
+        val fallbackHeight = 56f * density
+        val height = bottomNavigation.height
+            .takeIf { it > 0 }
+            ?: bottomNavigation.measuredHeight.takeIf { it > 0 }
+            ?: fallbackHeight.toInt()
+        return height + (18f * density)
     }
 
     private fun animateChrome() {
@@ -1208,11 +1375,17 @@ class MapFragment : Fragment() {
         binding.mapView.onResume()
         // Перезапускаем слой геопозиции корректно через provider
         enableMyLocation()
+        showBottomNavigationAfterMotion()
 
         // Обновляем поведение после изменения настроек
-        shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
+        val selectedTask = viewModel.selectedTask.value
+        shouldAutoCenter = selectedTask == null &&
+            SettingsPreferences.isFollowLocationEnabled(requireContext())
         applyMapPresentation()
         updateMapMarkers(viewModel.activeTasks.value)
+        selectedTask?.let {
+            binding.mapView.controller.animateTo(GeoPoint(it.latitude, it.longitude))
+        }
 
         if (!isSearchExpanded) {
             binding.searchFab.visibility = View.VISIBLE
@@ -1224,9 +1397,13 @@ class MapFragment : Fragment() {
         binding.mapView.onPause()
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
+        showBottomNavigationAfterMotion()
     }
 
     override fun onDestroyView() {
+        searchSuggestionJob?.cancel()
+        restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
+        restoreBottomNavRunnable = null
         super.onDestroyView()
         _binding = null
     }

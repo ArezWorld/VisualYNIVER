@@ -76,6 +76,10 @@
         "source": "com.aot.taskmap.app-main-57:/layout/activity_main.xml"
     },
     {
+        "merged": "com.aot.taskmap.app-debug-55:/drawable_bg_theme_red_black.xml.flat",
+        "source": "com.aot.taskmap.app-main-57:/drawable/bg_theme_red_black.xml"
+    },
+    {
         "merged": "com.aot.taskmap.app-debug-55:/drawable_ic_more_vert.xml.flat",
         "source": "com.aot.taskmap.app-main-57:/drawable/ic_more_vert.xml"
     },

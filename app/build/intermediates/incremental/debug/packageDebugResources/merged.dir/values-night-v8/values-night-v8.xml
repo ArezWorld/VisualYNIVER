@@ -3,7 +3,17 @@
     <color name="background">#100C20</color>
     <color name="hint_on_surface">#99EFE9FF</color>
     <color name="marker_active">#C4B7FF</color>
+    <color name="marker_black">#212121</color>
+    <color name="marker_blue">#2196F3</color>
     <color name="marker_completed">#FF9E9E9E</color>
+    <color name="marker_cyan">#00BCD4</color>
+    <color name="marker_green">#4CAF50</color>
+    <color name="marker_lime">#8BC34A</color>
+    <color name="marker_orange">#FF9800</color>
+    <color name="marker_pink">#E91E63</color>
+    <color name="marker_purple">#9C27B0</color>
+    <color name="marker_red">#F44336</color>
+    <color name="marker_yellow">#FBC02D</color>
     <color name="menu_border_muted">#406755A8</color>
     <color name="menu_border_primary">#4DA891FF</color>
     <color name="menu_border_secondary">#4DC4B7FF</color>
@@ -16,16 +26,86 @@
     <color name="secondary_variant">#AFA0EF</color>
     <color name="surface">#17122B</color>
     <color name="surface_elevated">#20193A</color>
-    <style name="Theme.TaskMap" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_variant</item>
-        <item name="colorOnPrimary">@color/on_primary</item>
-        <item name="colorSecondary">@color/secondary</item>
-        <item name="colorSecondaryVariant">@color/secondary_variant</item>
-        <item name="colorOnSecondary">@color/on_secondary</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/on_surface</item>
-        <item name="android:colorBackground">@color/background</item>
-        <item name="android:statusBarColor">@color/primary_variant</item>
+    <style name="Theme.TaskMap" parent="Theme.TaskMap.Purple"/>
+    <style name="Theme.TaskMap.Base" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <item name="android:navigationBarColor">?android:colorBackground</item>
+    </style>
+    <style name="Theme.TaskMap.Black" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#2A2A2A</item>
+        <item name="colorPrimaryVariant">#121212</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#3A3A3A</item>
+        <item name="colorSecondaryVariant">#2D2D2D</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSurface">#080808</item>
+        <item name="colorOnSurface">#EEEEEE</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+    </style>
+    <style name="Theme.TaskMap.Blue" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#7CA3FF</item>
+        <item name="colorPrimaryVariant">#4566C5</item>
+        <item name="colorOnPrimary">#08132F</item>
+        <item name="colorSecondary">#A9C3FF</item>
+        <item name="colorSecondaryVariant">#7F9EF5</item>
+        <item name="colorOnSecondary">#0B1737</item>
+        <item name="colorSurface">#111D3D</item>
+        <item name="colorOnSurface">#E7EEFF</item>
+        <item name="android:colorBackground">#091127</item>
+        <item name="android:windowBackground">#091127</item>
+        <item name="android:statusBarColor">#08102A</item>
+    </style>
+    <style name="Theme.TaskMap.Purple" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#A891FF</item>
+        <item name="colorPrimaryVariant">#8D77E8</item>
+        <item name="colorOnPrimary">#140E27</item>
+        <item name="colorSecondary">#C4B7FF</item>
+        <item name="colorSecondaryVariant">#AFA0EF</item>
+        <item name="colorOnSecondary">#140E27</item>
+        <item name="colorSurface">#17122B</item>
+        <item name="colorOnSurface">#EFE9FF</item>
+        <item name="android:colorBackground">#100C20</item>
+        <item name="android:windowBackground">#100C20</item>
+        <item name="android:statusBarColor">#0F0A1E</item>
+    </style>
+    <style name="Theme.TaskMap.RedBlack" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#FF6A70</item>
+        <item name="colorPrimaryVariant">#8A2024</item>
+        <item name="colorOnPrimary">#2B0406</item>
+        <item name="colorSecondary">#FF8C92</item>
+        <item name="colorSecondaryVariant">#C8474E</item>
+        <item name="colorOnSecondary">#2B0406</item>
+        <item name="colorSurface">#1B0A0B</item>
+        <item name="colorOnSurface">#FFECEE</item>
+        <item name="android:colorBackground">#120708</item>
+        <item name="android:windowBackground">@drawable/bg_theme_red_black</item>
+        <item name="android:statusBarColor">#4A0003</item>
+    </style>
+    <style name="Theme.TaskMap.Steel" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#5B6C7B</item>
+        <item name="colorPrimaryVariant">#3D4B57</item>
+        <item name="colorOnPrimary">#E9F0F7</item>
+        <item name="colorSecondary">#768897</item>
+        <item name="colorSecondaryVariant">#61727E</item>
+        <item name="colorOnSecondary">#E9F0F7</item>
+        <item name="colorSurface">#13191F</item>
+        <item name="colorOnSurface">#DCE4EC</item>
+        <item name="android:colorBackground">#0B1015</item>
+        <item name="android:windowBackground">#0B1015</item>
+        <item name="android:statusBarColor">#090D12</item>
+    </style>
+    <style name="Theme.TaskMap.White" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#5B5B5B</item>
+        <item name="colorPrimaryVariant">#444444</item>
+        <item name="colorOnPrimary">#F5F5F5</item>
+        <item name="colorSecondary">#707070</item>
+        <item name="colorSecondaryVariant">#5C5C5C</item>
+        <item name="colorOnSecondary">#F5F5F5</item>
+        <item name="colorSurface">#141414</item>
+        <item name="colorOnSurface">#F1F1F1</item>
+        <item name="android:colorBackground">#0B0B0B</item>
+        <item name="android:windowBackground">#0B0B0B</item>
+        <item name="android:statusBarColor">#000000</item>
     </style>
 </resources>

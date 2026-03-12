@@ -13,6 +13,16 @@
     <color name="hint_on_surface">#99EFE9FF</color>
     <color name="marker_active">#C4B7FF</color>
     <color name="marker_completed">#FF9E9E9E</color>
+    <color name="marker_blue">#2196F3</color>
+    <color name="marker_green">#4CAF50</color>
+    <color name="marker_orange">#FF9800</color>
+    <color name="marker_red">#F44336</color>
+    <color name="marker_purple">#9C27B0</color>
+    <color name="marker_cyan">#00BCD4</color>
+    <color name="marker_pink">#E91E63</color>
+    <color name="marker_yellow">#FBC02D</color>
+    <color name="marker_lime">#8BC34A</color>
+    <color name="marker_black">#212121</color>
     <color name="menu_border_primary">#4DA891FF</color>
     <color name="menu_border_secondary">#4DC4B7FF</color>
     <color name="menu_border_muted">#406755A8</color>

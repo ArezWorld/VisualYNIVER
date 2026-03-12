@@ -5,11 +5,17 @@
     <color name="hint_on_surface">#7A1A1330</color>
     <color name="ic_launcher_background">#6B4FD3</color>
     <color name="marker_active">#8D77E8</color>
+    <color name="marker_black">#212121</color>
     <color name="marker_blue">#2196F3</color>
     <color name="marker_completed">#FF9E9E9E</color>
+    <color name="marker_cyan">#00BCD4</color>
     <color name="marker_green">#4CAF50</color>
+    <color name="marker_lime">#8BC34A</color>
     <color name="marker_orange">#FF9800</color>
+    <color name="marker_pink">#E91E63</color>
+    <color name="marker_purple">#9C27B0</color>
     <color name="marker_red">#F44336</color>
+    <color name="marker_yellow">#FBC02D</color>
     <color name="menu_border_muted">#265A468F</color>
     <color name="menu_border_primary">#336B4FD3</color>
     <color name="menu_border_secondary">#338D77E8</color>
@@ -27,7 +33,7 @@
     <string name="action_login">Войти</string>
     <string name="action_register">Регистрация</string>
     <string name="action_register_submit">Зарегистрироваться</string>
-    <string name="app_name">AOT - Геозадачи</string>
+    <string name="app_name">AOT</string>
     <string name="cd_add_task">Добавить задачу</string>
     <string name="cd_my_location">Моё местоположение</string>
     <string name="cd_search">Поиск</string>
@@ -84,10 +90,16 @@
     <string name="map_toast_add_marker">Нажмите на карту, чтобы поставить метку</string>
     <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
     <string name="marker_auto_remove">Скрывать метку после срабатывания</string>
+    <string name="marker_color_black">Чёрный</string>
     <string name="marker_color_blue">Синий</string>
+    <string name="marker_color_cyan">Бирюзовый</string>
     <string name="marker_color_green">Зелёный</string>
+    <string name="marker_color_lime">Лайм</string>
     <string name="marker_color_orange">Оранжевый</string>
+    <string name="marker_color_pink">Розовый</string>
+    <string name="marker_color_purple">Фиолетовый</string>
     <string name="marker_color_red">Красный</string>
+    <string name="marker_color_yellow">Жёлтый</string>
     <string name="marker_description">Описание</string>
     <string name="marker_icon">Значок метки</string>
     <string name="marker_icon_briefcase">Портфель</string>
@@ -118,9 +130,11 @@
     <string name="service_tracking_title">AOT - отслеживание задач</string>
     <string name="settings_about_text">AOT (Absolutely Optimize Task) — мобильное приложение-органайзер с геопривязкой задач. Оно помогает планировать задачи и получать уведомления при приближении к месту выполнения.</string>
     <string name="settings_animations">Плавные анимации интерфейса</string>
+    <string name="settings_color_theme">Цветовая тема</string>
     <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
     <string name="settings_dark_theme">Тёмная тема</string>
     <string name="settings_desc_animations">Плавное открытие и скрытие меню по всему приложению</string>
+    <string name="settings_desc_color_theme">Горизонтальный список палитр приложения</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
     <string name="settings_desc_dark_theme">Переключение светлой и тёмной темы</string>
     <string name="settings_desc_follow_location">Автоматически держать карту на вашей позиции</string>
@@ -142,7 +156,13 @@
     <string name="settings_section_map">Карта</string>
     <string name="settings_section_notifications">Уведомления</string>
     <string name="settings_show_radius">Показывать радиус задач</string>
-    <string name="settings_version">Версия приложения: 1.2</string>
+    <string name="settings_theme_black">Чёрная</string>
+    <string name="settings_theme_blue">Синяя</string>
+    <string name="settings_theme_purple">Фиолетовая</string>
+    <string name="settings_theme_red_black">Градиент красный+чёрный</string>
+    <string name="settings_theme_steel">Чёрная (сталь)</string>
+    <string name="settings_theme_white">Белая</string>
+    <string name="settings_version">Версия приложения: 1.3</string>
     <string name="tasks_action_navigate">Перейти к метке</string>
     <string name="tasks_confirm_message_complete">Вы уверены, что хотите отметить задачу выполненной?</string>
     <string name="tasks_confirm_message_restore">Вы уверены, что хотите вернуть задачу в работу?</string>
@@ -157,16 +177,86 @@
     <string name="title_map">Карта</string>
     <string name="title_settings">Настройки</string>
     <string name="title_tasks">Задачи</string>
-    <style name="Theme.TaskMap" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_variant</item>
-        <item name="colorOnPrimary">@color/on_primary</item>
-        <item name="colorSecondary">@color/secondary</item>
-        <item name="colorSecondaryVariant">@color/secondary_variant</item>
-        <item name="colorOnSecondary">@color/on_secondary</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/on_surface</item>
-        <item name="android:colorBackground">@color/background</item>
-        <item name="android:statusBarColor">@color/primary_variant</item>
+    <style name="Theme.TaskMap" parent="Theme.TaskMap.Purple"/>
+    <style name="Theme.TaskMap.Base" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <item name="android:navigationBarColor">?android:colorBackground</item>
+    </style>
+    <style name="Theme.TaskMap.Black" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#121212</item>
+        <item name="colorPrimaryVariant">#000000</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#2A2A2A</item>
+        <item name="colorSecondaryVariant">#1F1F1F</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSurface">#0F0F0F</item>
+        <item name="colorOnSurface">#EFEFEF</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+    </style>
+    <style name="Theme.TaskMap.Blue" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#1D4ED8</item>
+        <item name="colorPrimaryVariant">#1E3A8A</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#3B82F6</item>
+        <item name="colorSecondaryVariant">#2563EB</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSurface">#EEF4FF</item>
+        <item name="colorOnSurface">#0B214A</item>
+        <item name="android:colorBackground">#E3ECFF</item>
+        <item name="android:windowBackground">#E3ECFF</item>
+        <item name="android:statusBarColor">#1E3A8A</item>
+    </style>
+    <style name="Theme.TaskMap.Purple" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#6B4FD3</item>
+        <item name="colorPrimaryVariant">#573DB8</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#8D77E8</item>
+        <item name="colorSecondaryVariant">#735ED0</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSurface">#F7F4FF</item>
+        <item name="colorOnSurface">#1A1330</item>
+        <item name="android:colorBackground">#F1ECFF</item>
+        <item name="android:windowBackground">#F1ECFF</item>
+        <item name="android:statusBarColor">#573DB8</item>
+    </style>
+    <style name="Theme.TaskMap.RedBlack" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#B31217</item>
+        <item name="colorPrimaryVariant">#4A0003</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#E53935</item>
+        <item name="colorSecondaryVariant">#9A1217</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSurface">#1A0C0D</item>
+        <item name="colorOnSurface">#FFECEC</item>
+        <item name="android:colorBackground">#120708</item>
+        <item name="android:windowBackground">@drawable/bg_theme_red_black</item>
+        <item name="android:statusBarColor">#4A0003</item>
+    </style>
+    <style name="Theme.TaskMap.Steel" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#2F3A45</item>
+        <item name="colorPrimaryVariant">#1F2933</item>
+        <item name="colorOnPrimary">#E6EEF5</item>
+        <item name="colorSecondary">#4C5B67</item>
+        <item name="colorSecondaryVariant">#394853</item>
+        <item name="colorOnSecondary">#E6EEF5</item>
+        <item name="colorSurface">#202831</item>
+        <item name="colorOnSurface">#DCE4EC</item>
+        <item name="android:colorBackground">#151B22</item>
+        <item name="android:windowBackground">#151B22</item>
+        <item name="android:statusBarColor">#11161C</item>
+    </style>
+    <style name="Theme.TaskMap.White" parent="Theme.TaskMap.Base">
+        <item name="colorPrimary">#ECECEC</item>
+        <item name="colorPrimaryVariant">#DADADA</item>
+        <item name="colorOnPrimary">#111111</item>
+        <item name="colorSecondary">#CFCFCF</item>
+        <item name="colorSecondaryVariant">#BEBEBE</item>
+        <item name="colorOnSecondary">#111111</item>
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorOnSurface">#141414</item>
+        <item name="android:colorBackground">#F7F7F7</item>
+        <item name="android:windowBackground">#F7F7F7</item>
+        <item name="android:statusBarColor">#DADADA</item>
     </style>
 </resources>

@@ -13,6 +13,7 @@ import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.setupWithNavController
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
+import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.databinding.ActivityMainBinding
 import com.aot.taskmap.service.LocationService
 
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(ThemePreferences.getThemeRes(this))
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

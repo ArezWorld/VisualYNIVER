@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SessionManager
+import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.databinding.ActivityRegisterBinding
 import com.aot.taskmap.ui.MainActivity
@@ -21,6 +22,7 @@ class RegisterActivity : AppCompatActivity() {
     private lateinit var apiClient: ApiClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(ThemePreferences.getThemeRes(this))
         super.onCreate(savedInstanceState)
         binding = ActivityRegisterBinding.inflate(layoutInflater)
         setContentView(binding.root)

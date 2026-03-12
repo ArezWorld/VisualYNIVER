@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.2" type="partial_results">
+    <map id="UnusedResources">
+        <entry
+            name="model"
+            string="string[error_username_required(R),error_password_required(R),error_username_short(R),error_email_invalid(R),error_password_short(R),error_password_mismatch(R)];;;;"/>
+    </map>
+
+</incidents>

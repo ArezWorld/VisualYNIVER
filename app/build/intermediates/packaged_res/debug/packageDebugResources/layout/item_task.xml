@@ -7,7 +7,7 @@
     android:layout_marginBottom="8dp"
     app:cardCornerRadius="8dp"
     app:cardElevation="2dp"
-    app:cardBackgroundColor="@color/surface_elevated">
+    app:cardBackgroundColor="?attr/colorSurface">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -48,7 +48,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="@color/hint_on_surface"
+            android:textColor="?android:textColorSecondary"
             android:textSize="12sp"
             app:layout_constraintEnd_toStartOf="@id/button_navigate"
             app:layout_constraintStart_toEndOf="@id/checkBox"

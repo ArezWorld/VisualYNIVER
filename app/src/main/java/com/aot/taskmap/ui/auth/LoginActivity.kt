@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SessionManager
+import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.databinding.ActivityLoginBinding
 import com.aot.taskmap.ui.MainActivity
@@ -26,6 +27,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(ThemePreferences.getThemeRes(this))
         super.onCreate(savedInstanceState)
 
         sessionManager = SessionManager(this)

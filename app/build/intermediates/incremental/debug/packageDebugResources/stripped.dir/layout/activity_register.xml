@@ -44,7 +44,7 @@
                 android:inputType="text"
                 android:maxLines="1"
                 android:textColor="?attr/colorOnSurface"
-                android:textColorHint="@color/hint_on_surface" />
+                android:textColorHint="?android:textColorSecondary" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -62,7 +62,7 @@
                 android:inputType="textEmailAddress"
                 android:maxLines="1"
                 android:textColor="?attr/colorOnSurface"
-                android:textColorHint="@color/hint_on_surface" />
+                android:textColorHint="?android:textColorSecondary" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -81,7 +81,7 @@
                 android:inputType="textPassword"
                 android:maxLines="1"
                 android:textColor="?attr/colorOnSurface"
-                android:textColorHint="@color/hint_on_surface" />
+                android:textColorHint="?android:textColorSecondary" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -100,7 +100,7 @@
                 android:inputType="textPassword"
                 android:maxLines="1"
                 android:textColor="?attr/colorOnSurface"
-                android:textColorHint="@color/hint_on_surface" />
+                android:textColorHint="?android:textColorSecondary" />
 
         </com.google.android.material.textfield.TextInputLayout>
 

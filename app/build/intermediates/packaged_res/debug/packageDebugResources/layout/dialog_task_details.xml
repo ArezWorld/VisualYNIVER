@@ -13,7 +13,7 @@
         android:gravity="center"
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-        android:textColor="@color/on_surface"
+        android:textColor="?attr/colorOnSurface"
         android:textStyle="bold" />
 
     <TextView
@@ -24,13 +24,13 @@
         android:gravity="center"
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-        android:textColor="@color/on_surface" />
+        android:textColor="?attr/colorOnSurface" />
 
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        app:cardBackgroundColor="@color/surface"
+        app:cardBackgroundColor="?attr/colorSurface"
         app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
         app:strokeColor="@color/menu_border_primary"
@@ -49,7 +49,7 @@
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="@color/on_surface" />
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:id="@+id/text_status"
@@ -59,7 +59,7 @@
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="@color/on_surface" />
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:id="@+id/text_color"
@@ -69,7 +69,7 @@
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="@color/on_surface" />
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:id="@+id/text_icon"
@@ -79,7 +79,7 @@
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="@color/on_surface" />
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:id="@+id/text_auto_remove"
@@ -89,7 +89,7 @@
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                android:textColor="@color/on_surface" />
+                android:textColor="?attr/colorOnSurface" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -110,7 +110,7 @@
         android:layout_marginTop="10dp"
         android:alpha="0"
         android:visibility="gone"
-        app:cardBackgroundColor="@color/surface_elevated"
+        app:cardBackgroundColor="?attr/colorSurface"
         app:cardCornerRadius="14dp"
         app:cardElevation="1dp"
         app:strokeColor="@color/menu_border_muted"
@@ -129,7 +129,7 @@
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-                android:textColor="@color/on_surface" />
+                android:textColor="?attr/colorOnSurface" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

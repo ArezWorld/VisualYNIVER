@@ -16,7 +16,7 @@
             android:layout_height="wrap_content"
             android:text="@string/marker_section_main"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-            android:textColor="@color/on_surface" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -53,7 +53,7 @@
             android:layout_marginTop="16dp"
             android:text="@string/marker_section_location"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
-            android:textColor="@color/on_surface" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -89,7 +89,7 @@
             android:layout_marginTop="16dp"
             android:text="@string/marker_section_radius"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
-            android:textColor="@color/on_surface" />
+            android:textColor="?attr/colorOnSurface" />
 
         <TextView
             android:id="@+id/text_radius_value"
@@ -98,7 +98,7 @@
             android:layout_marginTop="6dp"
             android:text="@string/marker_radius_value"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-            android:textColor="@color/on_surface" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/slider_radius"
@@ -116,7 +116,7 @@
             android:layout_marginTop="16dp"
             android:text="@string/marker_section_style"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
-            android:textColor="@color/on_surface" />
+            android:textColor="?attr/colorOnSurface" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_toggle_color_picker"
@@ -135,41 +135,98 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-        <RadioGroup
-            android:id="@+id/radio_marker_color"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="vertical">
-
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/color_blue"
+            <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:buttonTint="@color/marker_blue"
-                android:text="@string/marker_color_blue" />
+                android:layout_marginTop="8dp"
+                android:scrollbars="none">
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/color_green"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:buttonTint="@color/marker_green"
-                android:text="@string/marker_color_green" />
+                <RadioGroup
+                    android:id="@+id/radio_marker_color"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/color_orange"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:buttonTint="@color/marker_orange"
-                android:text="@string/marker_color_orange" />
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_blue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_blue"
+                        android:text="@string/marker_color_blue" />
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/color_red"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:buttonTint="@color/marker_red"
-                android:text="@string/marker_color_red" />
-        </RadioGroup>
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_green"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_green"
+                        android:text="@string/marker_color_green" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_orange"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_orange"
+                        android:text="@string/marker_color_orange" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_red"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_red"
+                        android:text="@string/marker_color_red" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_purple"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_purple"
+                        android:text="@string/marker_color_purple" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_cyan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_cyan"
+                        android:text="@string/marker_color_cyan" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_pink"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_pink"
+                        android:text="@string/marker_color_pink" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_yellow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_yellow"
+                        android:text="@string/marker_color_yellow" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_lime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:buttonTint="@color/marker_lime"
+                        android:text="@string/marker_color_lime" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/color_black"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:buttonTint="@color/marker_black"
+                        android:text="@string/marker_color_black" />
+                </RadioGroup>
+            </HorizontalScrollView>
 
         </LinearLayout>
 
@@ -190,43 +247,53 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-        <RadioGroup
-            android:id="@+id/radio_marker_icon"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="vertical">
-
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/icon_pin"
+            <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/marker_icon_pin" />
+                android:layout_marginTop="12dp"
+                android:scrollbars="none">
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/icon_flag"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/marker_icon_flag" />
+                <RadioGroup
+                    android:id="@+id/radio_marker_icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/icon_star"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/marker_icon_star" />
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/icon_pin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:text="@string/marker_icon_pin" />
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/icon_target"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/marker_icon_target" />
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/icon_flag"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:text="@string/marker_icon_flag" />
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/icon_briefcase"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/marker_icon_briefcase" />
-        </RadioGroup>
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/icon_star"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:text="@string/marker_icon_star" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/icon_target"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:text="@string/marker_icon_target" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/icon_briefcase"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/marker_icon_briefcase" />
+                </RadioGroup>
+            </HorizontalScrollView>
         </LinearLayout>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
