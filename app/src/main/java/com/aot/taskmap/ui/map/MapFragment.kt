@@ -62,8 +62,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
@@ -90,6 +92,8 @@ class MapFragment : Fragment() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var myLocationOverlay: MyLocationNewOverlay? = null
     private val taskOverlays = mutableListOf<org.osmdroid.views.overlay.Overlay>()
+    private val importantPlaceOverlays = mutableListOf<Marker>()
+    private var searchResultOverlay: Marker? = null
 
     private var shouldAutoCenter = true
     private var isAddMode = false
@@ -99,6 +103,7 @@ class MapFragment : Fragment() {
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
     private lateinit var searchAdapter: ArrayAdapter<String>
     private var searchSuggestionJob: Job? = null
+    private var importantPlacesRefreshJob: Job? = null
     private val uiHandler = Handler(Looper.getMainLooper())
     private var restoreBottomNavRunnable: Runnable? = null
     private var restoreMapHudRunnable: Runnable? = null
@@ -116,6 +121,7 @@ class MapFragment : Fragment() {
     private var activeTasksCache = emptyList<Task>()
     private var completedTasksCache = emptyList<Task>()
     private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
+    private val overpassApiUrl = "https://overpass-api.de/api/interpreter"
     private val searchHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(6, TimeUnit.SECONDS)
@@ -129,6 +135,12 @@ class MapFragment : Fragment() {
         val north: Double,
         val east: Double,
         val south: Double
+    )
+
+    private data class ImportantPlace(
+        val title: String,
+        val category: String,
+        val point: GeoPoint
     )
 
     private data class MarkerIconOption(
@@ -226,6 +238,7 @@ class MapFragment : Fragment() {
         setupMapTapToAdd()
         applySearchInitialState()
         animateChrome()
+        scheduleImportantPlacesRefresh()
     }
 
     private fun setupFab() {
@@ -358,6 +371,9 @@ class MapFragment : Fragment() {
                 val query = s?.toString()?.trim().orEmpty()
                 if (query.length < 2) {
                     searchSuggestionJob?.cancel()
+                    if (query.isBlank()) {
+                        clearSearchResultOverlay()
+                    }
                     showRecentPlaces(query)
                     return
                 }
@@ -472,6 +488,152 @@ class MapFragment : Fragment() {
             east = box.lonEast,
             south = box.latSouth
         )
+    }
+
+    private fun scheduleImportantPlacesRefresh() {
+        importantPlacesRefreshJob?.cancel()
+        if (!isAdded || _binding == null) return
+        if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
+            clearImportantPlaceOverlays()
+            return
+        }
+
+        val center = binding.mapView.mapCenter ?: return
+        val zoom = binding.mapView.zoomLevelDouble
+        if (zoom < 11.5) {
+            clearImportantPlaceOverlays()
+            return
+        }
+
+        val latitude = center.latitude
+        val longitude = center.longitude
+        val radiusMeters = when {
+            zoom >= 16.5 -> 1200
+            zoom >= 15.0 -> 2000
+            zoom >= 13.0 -> 3500
+            else -> 5000
+        }
+
+        importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(if (animationsEnabled()) 700L else 350L)
+            val places = withContext(Dispatchers.IO) {
+                fetchImportantPlaces(latitude, longitude, radiusMeters)
+            }
+            if (!isAdded || _binding == null) return@launch
+            updateImportantPlaceOverlays(places)
+        }
+    }
+
+    private fun fetchImportantPlaces(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Int
+    ): List<ImportantPlace> {
+        val query = """
+            [out:json][timeout:12];
+            (
+              node(around:$radiusMeters,$latitude,$longitude)["amenity"~"hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university"];
+              node(around:$radiusMeters,$latitude,$longitude)["shop"="supermarket"];
+            );
+            out body;
+        """.trimIndent()
+
+        val request = Request.Builder()
+            .url(overpassApiUrl)
+            .post(query.toRequestBody("text/plain; charset=utf-8".toMediaType()))
+            .header("User-Agent", "${requireContext().packageName}/important-places")
+            .build()
+
+        return runCatching {
+            searchHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return emptyList()
+                val body = response.body?.string().orEmpty()
+                val json = JSONObject(body)
+                val elements = json.optJSONArray("elements") ?: return emptyList()
+                val unique = linkedMapOf<String, ImportantPlace>()
+
+                for (index in 0 until elements.length()) {
+                    val item = elements.optJSONObject(index) ?: continue
+                    val lat = item.optDouble("lat", Double.NaN)
+                    val lon = item.optDouble("lon", Double.NaN)
+                    if (!lat.isFinite() || !lon.isFinite()) continue
+
+                    val tags = item.optJSONObject("tags") ?: JSONObject()
+                    val category = tags.optString("amenity")
+                        .ifBlank { tags.optString("shop") }
+                        .lowercase(Locale.ROOT)
+                    if (category.isBlank()) continue
+
+                    val title = tags.optString("name").trim().ifBlank {
+                        resolveImportantPlaceCategoryLabel(category)
+                    }
+                    val key = "${lat.format(5)}:${lon.format(5)}:$category"
+                    unique[key] = ImportantPlace(
+                        title = title,
+                        category = category,
+                        point = GeoPoint(lat, lon)
+                    )
+                    if (unique.size >= 35) break
+                }
+                unique.values.toList()
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun resolveImportantPlaceCategoryLabel(category: String): String {
+        return when (category) {
+            "hospital", "clinic" -> "Больница"
+            "pharmacy" -> "Аптека"
+            "police" -> "Полиция"
+            "fire_station" -> "Пожарная часть"
+            "fuel" -> "АЗС"
+            "bus_station" -> "Автовокзал"
+            "school" -> "Школа"
+            "university" -> "Университет"
+            "supermarket" -> "Супермаркет"
+            else -> "Важное место"
+        }
+    }
+
+    private fun updateImportantPlaceOverlays(places: List<ImportantPlace>) {
+        clearImportantPlaceOverlays()
+        places.forEach { place ->
+            val marker = Marker(binding.mapView).apply {
+                position = place.point
+                title = place.title
+                snippet = resolveImportantPlaceCategoryLabel(place.category)
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_marker_star)?.mutate()?.also {
+                    DrawableCompat.setTint(it, resolveImportantPlaceColor(place.category))
+                }
+            }
+            binding.mapView.overlays.add(marker)
+            importantPlaceOverlays.add(marker)
+        }
+        binding.mapView.invalidate()
+    }
+
+    private fun clearImportantPlaceOverlays() {
+        if (importantPlaceOverlays.isEmpty()) return
+        binding.mapView.overlays.removeAll(importantPlaceOverlays)
+        importantPlaceOverlays.clear()
+        binding.mapView.invalidate()
+    }
+
+    private fun resolveImportantPlaceColor(category: String): Int {
+        val colorRes = when (category) {
+            "hospital", "clinic" -> R.color.marker_red
+            "pharmacy" -> R.color.marker_green
+            "fuel" -> R.color.marker_orange
+            "police", "fire_station" -> R.color.marker_blue
+            "school", "university" -> R.color.marker_purple
+            else -> R.color.marker_yellow
+        }
+        return ContextCompat.getColor(requireContext(), colorRes)
+    }
+
+    private fun Double.format(fractionDigits: Int): String {
+        return "%.${fractionDigits}f".format(Locale.US, this)
     }
 
     private fun fetchSearchCandidates(
@@ -607,6 +769,7 @@ class MapFragment : Fragment() {
 
     private fun performSearch(query: String) {
         if (query.isBlank()) {
+            clearSearchResultOverlay()
             Toast.makeText(
                 requireContext(),
                 getString(R.string.search_empty),
@@ -652,8 +815,33 @@ class MapFragment : Fragment() {
 
     private fun moveToSearchResult(title: String, point: GeoPoint) {
         rememberRecentPlace(title, point)
-        // Перемещаем карту к выбранному адресу без постановки метки
+        showSearchResultOverlay(title, point)
         binding.mapView.controller.animateTo(point)
+    }
+
+    private fun showSearchResultOverlay(title: String, point: GeoPoint) {
+        clearSearchResultOverlay()
+        val icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_marker_target)?.mutate()
+        if (icon != null) {
+            DrawableCompat.setTint(icon, ContextCompat.getColor(requireContext(), R.color.marker_purple))
+        }
+        val marker = Marker(binding.mapView).apply {
+            position = point
+            this.title = title
+            snippet = getString(R.string.map_result_default)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            this.icon = icon
+        }
+        searchResultOverlay = marker
+        binding.mapView.overlays.add(marker)
+        binding.mapView.invalidate()
+    }
+
+    private fun clearSearchResultOverlay() {
+        val overlay = searchResultOverlay ?: return
+        binding.mapView.overlays.remove(overlay)
+        searchResultOverlay = null
+        binding.mapView.invalidate()
     }
 
     private fun showSearchResultsDialog(results: List<Pair<String, GeoPoint>>) {
@@ -1408,6 +1596,7 @@ class MapFragment : Fragment() {
                 collapseSearchUi()
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
+                scheduleImportantPlacesRefresh()
                 return false
             }
 
@@ -1417,6 +1606,7 @@ class MapFragment : Fragment() {
                 collapseSearchUi()
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
+                scheduleImportantPlacesRefresh()
                 return false
             }
         })
@@ -1844,6 +2034,7 @@ class MapFragment : Fragment() {
             !hasSavedViewport
         applyMapPresentation()
         refreshDisplayedMarkers()
+        scheduleImportantPlacesRefresh()
         selectedTask?.let {
             binding.mapView.controller.animateTo(GeoPoint(it.latitude, it.longitude))
         }
@@ -1857,6 +2048,7 @@ class MapFragment : Fragment() {
         super.onPause()
         binding.mapView.onPause()
         saveCurrentMapViewport()
+        importantPlacesRefreshJob?.cancel()
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
         showBottomNavigationAfterMotion()
@@ -1865,10 +2057,13 @@ class MapFragment : Fragment() {
 
     override fun onDestroyView() {
         searchSuggestionJob?.cancel()
+        importantPlacesRefreshJob?.cancel()
         restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreBottomNavRunnable = null
         restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreMapHudRunnable = null
+        clearImportantPlaceOverlays()
+        clearSearchResultOverlay()
         super.onDestroyView()
         _binding = null
     }

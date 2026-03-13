@@ -246,33 +246,18 @@
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurface" />
 
-                <TextView
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switch_highlight_important_places"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="@string/settings_offline_region"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textStyle="bold" />
-
-                <Spinner
-                    android:id="@+id/spinner_offline_region"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/button_download_region"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/settings_download_region" />
+                    android:text="@string/settings_highlight_important_places" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="@string/settings_desc_download_region"
+                    android:text="@string/settings_desc_highlight_important_places"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="12sp" />
 
@@ -329,6 +314,23 @@
                     android:text="@string/settings_desc_notification_sound"
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_pick_notification_sound"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/settings_pick_notification_sound" />
+
+                <TextView
+                    android:id="@+id/text_notification_sound_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/settings_notification_sound_default"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="12sp" />
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
                     android:id="@+id/switch_confirm_complete"

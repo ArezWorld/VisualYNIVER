@@ -12,11 +12,12 @@ object SettingsPreferences {
     private const val KEY_CONFIRM_COMPLETE = "confirm_complete"
     private const val KEY_SEARCH_AUTO_EXPAND = "search_auto_expand"
     private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
-    private const val KEY_OFFLINE_MAP_ENABLED = "offline_map_enabled"
     private const val KEY_MAP_STYLE = "map_style"
     private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
     private const val KEY_SHOW_COMPLETED_MARKERS = "show_completed_markers"
     private const val KEY_NOTIFICATION_SOUND_ENABLED = "notification_sound_enabled"
+    private const val KEY_NOTIFICATION_SOUND_URI = "notification_sound_uri"
+    private const val KEY_HIGHLIGHT_IMPORTANT_PLACES = "highlight_important_places"
     private const val KEY_LAST_MAP_STATE_SAVED = "last_map_state_saved"
     private const val KEY_LAST_MAP_LAT_BITS = "last_map_lat_bits"
     private const val KEY_LAST_MAP_LNG_BITS = "last_map_lng_bits"
@@ -66,13 +67,6 @@ object SettingsPreferences {
         prefs(context).edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, enabled).apply()
     }
 
-    fun isOfflineMapEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_OFFLINE_MAP_ENABLED, false)
-
-    fun setOfflineMapEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_OFFLINE_MAP_ENABLED, enabled).apply()
-    }
-
     fun getMapStyle(context: Context): String =
         prefs(context).getString(KEY_MAP_STYLE, MAP_STYLE_STANDARD) ?: MAP_STYLE_STANDARD
 
@@ -99,6 +93,26 @@ object SettingsPreferences {
 
     fun setNotificationSoundEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_NOTIFICATION_SOUND_ENABLED, enabled).apply()
+    }
+
+    fun getNotificationSoundUri(context: Context): String? =
+        prefs(context).getString(KEY_NOTIFICATION_SOUND_URI, null)
+
+    fun setNotificationSoundUri(context: Context, uri: String?) {
+        val editor = prefs(context).edit()
+        if (uri.isNullOrBlank()) {
+            editor.remove(KEY_NOTIFICATION_SOUND_URI)
+        } else {
+            editor.putString(KEY_NOTIFICATION_SOUND_URI, uri)
+        }
+        editor.apply()
+    }
+
+    fun isHighlightImportantPlacesEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_HIGHLIGHT_IMPORTANT_PLACES, true)
+
+    fun setHighlightImportantPlacesEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_HIGHLIGHT_IMPORTANT_PLACES, enabled).apply()
     }
 
     fun saveLastMapViewport(context: Context, latitude: Double, longitude: Double, zoom: Double) {

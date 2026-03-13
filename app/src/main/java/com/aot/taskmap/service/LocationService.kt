@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -53,8 +54,9 @@ class LocationService : Service() {
 
     companion object {
         private const val SERVICE_CHANNEL_ID = "task_tracking_service"
-        private const val ALERT_CHANNEL_ID_SOUND = "task_reminders_sound"
+        private const val ALERT_CHANNEL_ID_SOUND_DEFAULT = "task_reminders_sound_default"
         private const val ALERT_CHANNEL_ID_SILENT = "task_reminders_silent"
+        private const val ALERT_CHANNEL_ID_CUSTOM_PREFIX = "task_reminders_sound_custom_"
         const val NOTIFICATION_ID = 1001
         private const val NOTIFICATION_COOLDOWN_MS = 60_000L
         @Volatile
@@ -236,11 +238,7 @@ class LocationService : Service() {
         )
 
         val soundEnabled = SettingsPreferences.isNotificationSoundEnabled(this)
-        val channelId = if (soundEnabled) {
-            ALERT_CHANNEL_ID_SOUND
-        } else {
-            ALERT_CHANNEL_ID_SILENT
-        }
+        val channelId = resolveAlertChannelId(soundEnabled)
 
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
@@ -257,6 +255,9 @@ class LocationService : Service() {
 
         if (!soundEnabled) {
             notificationBuilder.setSilent(true)
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            val soundUri = resolveNotificationSoundUri()
+            notificationBuilder.setSound(soundUri)
         }
 
         val notification = notificationBuilder.build()
@@ -285,54 +286,85 @@ class LocationService : Service() {
     }
 
     private fun createNotificationChannels() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(
-                SERVICE_CHANNEL_ID,
-                getString(R.string.service_tracking_title),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = getString(R.string.service_tracking_text)
-                setSound(null, null)
-                enableVibration(false)
-                enableLights(false)
-                setShowBadge(false)
-            }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-
-            val soundChannel = NotificationChannel(
-                ALERT_CHANNEL_ID_SOUND,
-                getString(R.string.map_channel_name_sound),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = getString(R.string.map_channel_desc)
-                enableVibration(true)
-                enableLights(true)
-                setSound(
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                    audioAttributes
-                )
-            }
-
-            val silentChannel = NotificationChannel(
-                ALERT_CHANNEL_ID_SILENT,
-                getString(R.string.map_channel_name_silent),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = getString(R.string.map_channel_desc)
-                enableVibration(true)
-                enableLights(true)
-                setSound(null, null)
-            }
-
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(serviceChannel)
-            notificationManager.createNotificationChannel(soundChannel)
-            notificationManager.createNotificationChannel(silentChannel)
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        val serviceChannel = NotificationChannel(
+            SERVICE_CHANNEL_ID,
+            getString(R.string.service_tracking_title),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = getString(R.string.service_tracking_text)
+            setSound(null, null)
+            enableVibration(false)
+            enableLights(false)
+            setShowBadge(false)
         }
+        notificationManager.createNotificationChannel(serviceChannel)
+
+        // Базовые каналы: без звука и со стандартным системным звуком.
+        ensureAlertChannel(notificationManager, ALERT_CHANNEL_ID_SILENT, null)
+        ensureAlertChannel(
+            notificationManager,
+            ALERT_CHANNEL_ID_SOUND_DEFAULT,
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        )
+    }
+
+    private fun resolveAlertChannelId(soundEnabled: Boolean): String {
+        if (!soundEnabled) return ALERT_CHANNEL_ID_SILENT
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return ALERT_CHANNEL_ID_SOUND_DEFAULT
+
+        val manager = getSystemService(NotificationManager::class.java)
+        val soundUri = resolveNotificationSoundUri()
+        val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        return if (
+            soundUri == null ||
+            soundUri.toString() == defaultUri?.toString()
+        ) {
+            ALERT_CHANNEL_ID_SOUND_DEFAULT
+        } else {
+            val idSuffix = Integer.toUnsignedString(soundUri.toString().hashCode(), 16)
+            val channelId = "$ALERT_CHANNEL_ID_CUSTOM_PREFIX$idSuffix"
+            ensureAlertChannel(manager, channelId, soundUri)
+            channelId
+        }
+    }
+
+    private fun resolveNotificationSoundUri(): Uri? {
+        val rawUri = SettingsPreferences.getNotificationSoundUri(this)
+        val parsed = rawUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
+        return parsed ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    }
+
+    private fun ensureAlertChannel(
+        notificationManager: NotificationManager,
+        channelId: String,
+        soundUri: Uri?
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (notificationManager.getNotificationChannel(channelId) != null) return
+
+        val channelName = if (soundUri == null) {
+            getString(R.string.map_channel_name_silent)
+        } else {
+            getString(R.string.map_channel_name_sound)
+        }
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = getString(R.string.map_channel_desc)
+            enableVibration(true)
+            enableLights(true)
+            setSound(soundUri, if (soundUri == null) null else audioAttributes)
+        }
+        notificationManager.createNotificationChannel(channel)
     }
 
     private fun refreshTrackingMode() {

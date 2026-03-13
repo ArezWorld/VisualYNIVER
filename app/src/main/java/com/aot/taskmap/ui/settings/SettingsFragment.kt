@@ -1,17 +1,17 @@
 package com.aot.taskmap.ui.settings
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.Toast
-import androidx.annotation.StringRes
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -22,14 +22,10 @@ import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.databinding.FragmentSettingsBinding
 import com.aot.taskmap.service.LocationService
-import com.aot.taskmap.ui.map.MapTileSources
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.osmdroid.tileprovider.cachemanager.CacheManager
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.views.MapView
 
 class SettingsFragment : Fragment() {
 
@@ -38,51 +34,6 @@ class SettingsFragment : Fragment() {
 
     private var pendingEnableNotifications = false
     private var updateCheckInProgress = false
-    private val offlineRegions = listOf(
-        OfflineRegion(
-            R.string.settings_region_moscow,
-            BoundingBox(56.05, 38.10, 54.90, 36.20),
-            8,
-            14
-        ),
-        OfflineRegion(
-            R.string.settings_region_spb,
-            BoundingBox(60.35, 31.40, 59.35, 29.25),
-            8,
-            14
-        ),
-        OfflineRegion(
-            R.string.settings_region_sverdlovsk,
-            BoundingBox(61.20, 64.80, 56.00, 56.00),
-            7,
-            13
-        ),
-        OfflineRegion(
-            R.string.settings_region_tatarstan,
-            BoundingBox(56.70, 54.00, 53.90, 47.20),
-            7,
-            13
-        ),
-        OfflineRegion(
-            R.string.settings_region_novosibirsk,
-            BoundingBox(57.90, 86.00, 53.20, 74.80),
-            7,
-            13
-        ),
-        OfflineRegion(
-            R.string.settings_region_orenburg,
-            BoundingBox(54.90, 61.90, 50.50, 50.60),
-            7,
-            13
-        )
-    )
-
-    private data class OfflineRegion(
-        @StringRes val titleRes: Int,
-        val box: BoundingBox,
-        val zoomMin: Int,
-        val zoomMax: Int
-    )
 
     private val notificationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -100,6 +51,25 @@ class SettingsFragment : Fragment() {
                 updateNotificationSoundUi(false)
             }
         }
+    }
+
+    private val ringtonePickerRequest = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val context = context ?: return@registerForActivityResult
+        val pickedUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            result.data?.getParcelableExtra(
+                RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                Uri::class.java
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
+
+        SettingsPreferences.setNotificationSoundUri(context, pickedUri?.toString())
+        updateNotificationSoundLabel()
     }
 
     override fun onCreateView(
@@ -202,6 +172,12 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.setShowCompletedMarkersEnabled(context, checked)
         }
 
+        binding.switchHighlightImportantPlaces.isChecked =
+            SettingsPreferences.isHighlightImportantPlacesEnabled(context)
+        binding.switchHighlightImportantPlaces.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setHighlightImportantPlacesEnabled(context, checked)
+        }
+
         val selectedStyle = SettingsPreferences.getMapStyle(context)
         binding.radioMapStyle.check(
             when (selectedStyle) {
@@ -217,19 +193,6 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.setMapStyle(context, style)
         }
 
-        val regionAdapter = ArrayAdapter(
-            context,
-            android.R.layout.simple_spinner_item,
-            offlineRegions.map { getString(it.titleRes) }
-        )
-        regionAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerOfflineRegion.adapter = regionAdapter
-        binding.buttonDownloadRegion.setOnClickListener {
-            val index = binding.spinnerOfflineRegion.selectedItemPosition
-            if (index !in offlineRegions.indices) return@setOnClickListener
-            startRegionDownload(offlineRegions[index])
-        }
-
         binding.switchConfirmComplete.isChecked =
             SettingsPreferences.isConfirmCompleteEnabled(context)
         binding.switchConfirmComplete.setOnCheckedChangeListener { _, checked ->
@@ -243,7 +206,12 @@ class SettingsFragment : Fragment() {
         updateNotificationSoundUi(binding.switchNotifications.isChecked)
         binding.switchNotificationSound.setOnCheckedChangeListener { _, checked ->
             SettingsPreferences.setNotificationSoundEnabled(context, checked)
+            updateNotificationSoundUi(binding.switchNotifications.isChecked)
         }
+        binding.buttonPickNotificationSound.setOnClickListener {
+            openNotificationSoundPicker()
+        }
+        updateNotificationSoundLabel()
         binding.switchNotifications.setOnCheckedChangeListener { _, checked ->
             updateNotificationSoundUi(checked)
             if (checked) {
@@ -271,7 +239,46 @@ class SettingsFragment : Fragment() {
     private fun updateNotificationSoundUi(notificationsEnabled: Boolean) {
         if (_binding == null) return
         binding.switchNotificationSound.isEnabled = notificationsEnabled
+        binding.buttonPickNotificationSound.isEnabled =
+            notificationsEnabled && binding.switchNotificationSound.isChecked
         binding.textNotificationSoundDesc.alpha = if (notificationsEnabled) 1f else 0.5f
+        binding.textNotificationSoundValue.alpha =
+            if (notificationsEnabled && binding.switchNotificationSound.isChecked) 1f else 0.5f
+    }
+
+    private fun openNotificationSoundPicker() {
+        val context = context ?: return
+        val existingUri = SettingsPreferences.getNotificationSoundUri(context)
+            ?.let(Uri::parse)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        val pickerIntent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existingUri)
+            putExtra(
+                RingtoneManager.EXTRA_RINGTONE_TITLE,
+                getString(R.string.settings_notification_sound_picker_title)
+            )
+        }
+        ringtonePickerRequest.launch(pickerIntent)
+    }
+
+    private fun updateNotificationSoundLabel() {
+        if (_binding == null) return
+        val context = context ?: return
+        val selectedUri = SettingsPreferences.getNotificationSoundUri(context)
+            ?.let(Uri::parse)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        val title = runCatching {
+            RingtoneManager.getRingtone(context, selectedUri)?.getTitle(context)
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.settings_notification_sound_default)
+
+        binding.textNotificationSoundValue.text =
+            getString(R.string.settings_notification_sound_selected, title)
     }
 
     private fun startLocationService() {
@@ -286,65 +293,6 @@ class SettingsFragment : Fragment() {
         val context = context ?: return
         val serviceIntent = Intent(context, LocationService::class.java)
         context.stopService(serviceIntent)
-    }
-
-    private fun startRegionDownload(region: OfflineRegion) {
-        val context = context ?: return
-        val tempMapView = MapView(context)
-        tempMapView.setTileSource(MapTileSources.resolveByStyle(SettingsPreferences.getMapStyle(context)))
-        tempMapView.setUseDataConnection(true)
-
-        val cacheManager = try {
-            CacheManager(tempMapView)
-        } catch (_: Exception) {
-            tempMapView.onDetach()
-            Toast.makeText(
-                context,
-                getString(R.string.settings_download_unavailable),
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-
-        Toast.makeText(context, getString(R.string.settings_download_started), Toast.LENGTH_SHORT).show()
-
-        var finished = false
-        fun finishOnce(message: String) {
-            if (finished) return
-            finished = true
-            activity?.runOnUiThread {
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            }
-            tempMapView.onDetach()
-        }
-
-        val regionName = getString(region.titleRes)
-        cacheManager.downloadAreaAsyncNoUI(
-            context,
-            region.box,
-            region.zoomMin,
-            region.zoomMax,
-            object : CacheManager.CacheManagerCallback {
-                override fun onTaskComplete() {
-                    finishOnce(getString(R.string.settings_download_finished_region, regionName))
-                }
-
-                override fun updateProgress(
-                    progress: Int,
-                    currentZoomLevel: Int,
-                    zoomMin: Int,
-                    zoomMax: Int
-                ) = Unit
-
-                override fun downloadStarted() = Unit
-
-                override fun setPossibleTilesInArea(total: Int) = Unit
-
-                override fun onTaskFailed(errors: Int) {
-                    finishOnce(getString(R.string.settings_download_failed, errors))
-                }
-            }
-        )
     }
 
     private fun checkForUpdates() {
