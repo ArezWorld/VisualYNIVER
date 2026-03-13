@@ -2,8 +2,6 @@
 
 import android.Manifest
 import android.app.AlertDialog
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
@@ -12,7 +10,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.location.Geocoder
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -214,16 +211,13 @@ class MapFragment : Fragment() {
         // Отключаем повтор мира при сильном отдалении, чтобы не было двух карт на экране.
         binding.mapView.setHorizontalMapRepetitionEnabled(false)
         binding.mapView.setVerticalMapRepetitionEnabled(false)
-        binding.mapView.controller.setZoom(15.0)
+        val hasRestoredViewport = restoreLastMapViewportOrDefault()
         applyMapPresentation()
 
-        val defaultLocation = GeoPoint(51.2, 58.3)
-        binding.mapView.controller.setCenter(defaultLocation)
-
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-        shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext())
+        shouldAutoCenter = SettingsPreferences.isFollowLocationEnabled(requireContext()) &&
+            !hasRestoredViewport
 
-        createNotificationChannel()
         requestLocationPermissions()
         setupFab()
         setupSearch()
@@ -268,6 +262,32 @@ class MapFragment : Fragment() {
         // останутся доступными даже без интернета.
         binding.mapView.setUseDataConnection(true)
         binding.mapView.invalidate()
+    }
+
+    private fun restoreLastMapViewportOrDefault(): Boolean {
+        val restoredViewport = SettingsPreferences.getLastMapViewport(requireContext())
+        if (restoredViewport != null) {
+            binding.mapView.controller.setZoom(restoredViewport.zoom.coerceIn(2.0, 20.0))
+            binding.mapView.controller.setCenter(
+                GeoPoint(restoredViewport.latitude, restoredViewport.longitude)
+            )
+            return true
+        }
+
+        // Резервная стартовая точка только для самого первого запуска.
+        binding.mapView.controller.setZoom(15.0)
+        binding.mapView.controller.setCenter(GeoPoint(51.2, 58.3))
+        return false
+    }
+
+    private fun saveCurrentMapViewport() {
+        if (!isAdded || _binding == null) return
+        val center = binding.mapView.mapCenter ?: return
+        val latitude = center.latitude
+        val longitude = center.longitude
+        val zoom = binding.mapView.zoomLevelDouble
+        if (!latitude.isFinite() || !longitude.isFinite() || !zoom.isFinite()) return
+        SettingsPreferences.saveLastMapViewport(requireContext(), latitude, longitude, zoom)
     }
 
     private fun animationsEnabled(): Boolean {
@@ -1370,25 +1390,6 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "task_reminders",
-                getString(R.string.map_channel_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = getString(R.string.map_channel_desc)
-                enableVibration(true)
-                enableLights(true)
-                lightColor = Color.BLUE
-            }
-
-            val notificationManager = requireContext()
-                .getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
         val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 48
         val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 48
@@ -1837,8 +1838,10 @@ class MapFragment : Fragment() {
 
         // Обновляем поведение после изменения настроек
         val selectedTask = viewModel.selectedTask.value
+        val hasSavedViewport = SettingsPreferences.getLastMapViewport(requireContext()) != null
         shouldAutoCenter = selectedTask == null &&
-            SettingsPreferences.isFollowLocationEnabled(requireContext())
+            SettingsPreferences.isFollowLocationEnabled(requireContext()) &&
+            !hasSavedViewport
         applyMapPresentation()
         refreshDisplayedMarkers()
         selectedTask?.let {
@@ -1853,6 +1856,7 @@ class MapFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         binding.mapView.onPause()
+        saveCurrentMapViewport()
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
         showBottomNavigationAfterMotion()

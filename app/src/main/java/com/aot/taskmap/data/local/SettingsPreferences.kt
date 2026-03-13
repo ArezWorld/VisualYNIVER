@@ -16,6 +16,17 @@ object SettingsPreferences {
     private const val KEY_MAP_STYLE = "map_style"
     private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
     private const val KEY_SHOW_COMPLETED_MARKERS = "show_completed_markers"
+    private const val KEY_NOTIFICATION_SOUND_ENABLED = "notification_sound_enabled"
+    private const val KEY_LAST_MAP_STATE_SAVED = "last_map_state_saved"
+    private const val KEY_LAST_MAP_LAT_BITS = "last_map_lat_bits"
+    private const val KEY_LAST_MAP_LNG_BITS = "last_map_lng_bits"
+    private const val KEY_LAST_MAP_ZOOM_BITS = "last_map_zoom_bits"
+
+    data class MapViewport(
+        val latitude: Double,
+        val longitude: Double,
+        val zoom: Double
+    )
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -81,5 +92,36 @@ object SettingsPreferences {
 
     fun setShowCompletedMarkersEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SHOW_COMPLETED_MARKERS, enabled).apply()
+    }
+
+    fun isNotificationSoundEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_NOTIFICATION_SOUND_ENABLED, true)
+
+    fun setNotificationSoundEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_NOTIFICATION_SOUND_ENABLED, enabled).apply()
+    }
+
+    fun saveLastMapViewport(context: Context, latitude: Double, longitude: Double, zoom: Double) {
+        prefs(context).edit()
+            .putBoolean(KEY_LAST_MAP_STATE_SAVED, true)
+            .putLong(KEY_LAST_MAP_LAT_BITS, java.lang.Double.doubleToRawLongBits(latitude))
+            .putLong(KEY_LAST_MAP_LNG_BITS, java.lang.Double.doubleToRawLongBits(longitude))
+            .putLong(KEY_LAST_MAP_ZOOM_BITS, java.lang.Double.doubleToRawLongBits(zoom))
+            .apply()
+    }
+
+    fun getLastMapViewport(context: Context): MapViewport? {
+        val settings = prefs(context)
+        if (!settings.getBoolean(KEY_LAST_MAP_STATE_SAVED, false)) return null
+
+        val lat = java.lang.Double.longBitsToDouble(settings.getLong(KEY_LAST_MAP_LAT_BITS, 0L))
+        val lng = java.lang.Double.longBitsToDouble(settings.getLong(KEY_LAST_MAP_LNG_BITS, 0L))
+        val zoom = java.lang.Double.longBitsToDouble(settings.getLong(KEY_LAST_MAP_ZOOM_BITS, 0L))
+
+        if (!lat.isFinite() || !lng.isFinite() || !zoom.isFinite()) return null
+        if (lat !in -90.0..90.0 || lng !in -180.0..180.0) return null
+        if (zoom <= 0.0) return null
+
+        return MapViewport(latitude = lat, longitude = lng, zoom = zoom)
     }
 }

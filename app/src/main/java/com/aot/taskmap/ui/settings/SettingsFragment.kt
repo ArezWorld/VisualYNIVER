@@ -93,9 +93,11 @@ class SettingsFragment : Fragment() {
             if (isGranted) {
                 SettingsPreferences.setNotificationsEnabled(context, true)
                 _binding?.switchNotifications?.isChecked = true
+                updateNotificationSoundUi(true)
                 startLocationService()
             } else {
                 _binding?.switchNotifications?.isChecked = false
+                updateNotificationSoundUi(false)
             }
         }
     }
@@ -230,7 +232,14 @@ class SettingsFragment : Fragment() {
 
         binding.switchNotifications.isChecked =
             SettingsPreferences.isNotificationsEnabled(context)
+        binding.switchNotificationSound.isChecked =
+            SettingsPreferences.isNotificationSoundEnabled(context)
+        updateNotificationSoundUi(binding.switchNotifications.isChecked)
+        binding.switchNotificationSound.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setNotificationSoundEnabled(context, checked)
+        }
         binding.switchNotifications.setOnCheckedChangeListener { _, checked ->
+            updateNotificationSoundUi(checked)
             if (checked) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(
@@ -240,6 +249,7 @@ class SettingsFragment : Fragment() {
                 ) {
                     pendingEnableNotifications = true
                     binding.switchNotifications.isChecked = false
+                    updateNotificationSoundUi(false)
                     notificationPermissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
                     return@setOnCheckedChangeListener
                 }
@@ -250,6 +260,12 @@ class SettingsFragment : Fragment() {
                 stopLocationService()
             }
         }
+    }
+
+    private fun updateNotificationSoundUi(notificationsEnabled: Boolean) {
+        if (_binding == null) return
+        binding.switchNotificationSound.isEnabled = notificationsEnabled
+        binding.textNotificationSoundDesc.alpha = if (notificationsEnabled) 1f else 0.5f
     }
 
     private fun startLocationService() {

@@ -53,6 +53,7 @@
     <string name="settings_animations">Плавные анимации интерфейса</string>
     <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
     <string name="settings_notifications_enabled">Уведомления о приближении</string>
+    <string name="settings_notification_sound">Звук уведомлений</string>
     <string name="settings_version">Версия приложения</string>
     <string name="settings_version_format">Версия приложения: %1$s</string>
     <string name="settings_developers">Разработано: студенты БПИ-23\nАстафьев Д.А., Осадчук И.Д.</string>
@@ -80,6 +81,7 @@
     <string name="settings_region_novosibirsk">Новосибирская область</string>
     <string name="settings_region_orenburg">Оренбургская область</string>
     <string name="settings_desc_notifications">Уведомлять при приближении к месту задачи</string>
+    <string name="settings_desc_notification_sound">Проигрывать звук при срабатывании уведомления по метке</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
     <string name="settings_check_updates">Проверить обновления</string>
     <string name="settings_check_updates_loading">Проверка…</string>
@@ -123,6 +125,8 @@
     <string name="map_confirm_yes">Да</string>
     <string name="map_confirm_no">Отмена</string>
     <string name="map_channel_name">Напоминания о задачах</string>
+    <string name="map_channel_name_sound">Напоминания о задачах (со звуком)</string>
+    <string name="map_channel_name_silent">Напоминания о задачах (без звука)</string>
     <string name="map_channel_desc">Уведомления о задачах на основе местоположения</string>
     <string name="service_tracking_title">AOT - отслеживание задач</string>
     <string name="service_tracking_text">Фоновая геолокация включена</string>

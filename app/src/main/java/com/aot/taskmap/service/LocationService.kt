@@ -7,12 +7,15 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 import com.aot.taskmap.R
+import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.TaskDatabase
 import com.aot.taskmap.domain.model.Task
 import com.aot.taskmap.ui.MainActivity
@@ -46,10 +49,14 @@ class LocationService : Service() {
     private var lastKnownLatitude: Double? = null
     private var lastKnownLongitude: Double? = null
     private var isForegroundStarted = false
+    private val lastNotifiedAt = mutableMapOf<Long, Long>()
 
     companion object {
-        const val CHANNEL_ID = "task_reminders"
+        private const val SERVICE_CHANNEL_ID = "task_tracking_service"
+        private const val ALERT_CHANNEL_ID_SOUND = "task_reminders_sound"
+        private const val ALERT_CHANNEL_ID_SILENT = "task_reminders_silent"
         const val NOTIFICATION_ID = 1001
+        private const val NOTIFICATION_COOLDOWN_MS = 60_000L
         @Volatile
         private var running = false
 
@@ -59,7 +66,7 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
         running = true
-        createNotificationChannel()
+        createNotificationChannels()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         taskDao = TaskDatabase.getDatabase(applicationContext).taskDao()
         setupLocationCallback()
@@ -152,6 +159,7 @@ class LocationService : Service() {
                 trackedTasks = tasks
                 val activeIds = tasks.map { it.id }.toSet()
                 lastInsideState.keys.retainAll(activeIds)
+                lastNotifiedAt.keys.retainAll(activeIds)
                 refreshTrackingMode()
             }
         }
@@ -172,10 +180,18 @@ class LocationService : Service() {
 
             if (!hasState) {
                 lastInsideState[task.id] = isInside
+                if (isInside && canNotifyTask(task.id)) {
+                    showTaskNotification(task)
+                    if (task.autoRemoveAfterTrigger) {
+                        serviceScope.launch {
+                            taskDao.deleteTaskById(task.id)
+                        }
+                    }
+                }
                 continue
             }
 
-            if (!wasInside && isInside) {
+            if (!wasInside && isInside && canNotifyTask(task.id)) {
                 showTaskNotification(task)
                 if (task.autoRemoveAfterTrigger) {
                     serviceScope.launch {
@@ -187,6 +203,14 @@ class LocationService : Service() {
             lastInsideState[task.id] = isInside
         }
         refreshTrackingMode()
+    }
+
+    private fun canNotifyTask(taskId: Long): Boolean {
+        val now = System.currentTimeMillis()
+        val last = lastNotifiedAt[taskId] ?: 0L
+        if (now - last < NOTIFICATION_COOLDOWN_MS) return false
+        lastNotifiedAt[taskId] = now
+        return true
     }
 
     private fun showTaskNotification(task: Task) {
@@ -211,7 +235,14 @@ class LocationService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val soundEnabled = SettingsPreferences.isNotificationSoundEnabled(this)
+        val channelId = if (soundEnabled) {
+            ALERT_CHANNEL_ID_SOUND
+        } else {
+            ALERT_CHANNEL_ID_SILENT
+        }
+
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.service_task_nearby))
             .setContentText(task.title)
@@ -223,7 +254,12 @@ class LocationService : Service() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setVibrate(longArrayOf(0, 500, 200, 500))
-            .build()
+
+        if (!soundEnabled) {
+            notificationBuilder.setSilent(true)
+        }
+
+        val notification = notificationBuilder.build()
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(task.id.toInt(), notification)
@@ -238,7 +274,7 @@ class LocationService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, SERVICE_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.service_tracking_title))
             .setContentText(content)
@@ -248,20 +284,54 @@ class LocationService : Service() {
             .build()
     }
 
-    private fun createNotificationChannel() {
+    private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.map_channel_name),
+            val serviceChannel = NotificationChannel(
+                SERVICE_CHANNEL_ID,
+                getString(R.string.service_tracking_title),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = getString(R.string.service_tracking_text)
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
+                setShowBadge(false)
+            }
+
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            val soundChannel = NotificationChannel(
+                ALERT_CHANNEL_ID_SOUND,
+                getString(R.string.map_channel_name_sound),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = getString(R.string.map_channel_desc)
                 enableVibration(true)
                 enableLights(true)
+                setSound(
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                    audioAttributes
+                )
+            }
+
+            val silentChannel = NotificationChannel(
+                ALERT_CHANNEL_ID_SILENT,
+                getString(R.string.map_channel_name_silent),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = getString(R.string.map_channel_desc)
+                enableVibration(true)
+                enableLights(true)
+                setSound(null, null)
             }
 
             val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(serviceChannel)
+            notificationManager.createNotificationChannel(soundChannel)
+            notificationManager.createNotificationChannel(silentChannel)
         }
     }
 
