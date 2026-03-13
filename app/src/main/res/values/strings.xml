@@ -159,7 +159,7 @@
     <string name="marker_icon">Значок метки</string>
     <string name="marker_icon_pin">Классика</string>
     <string name="marker_icon_flag">Флаг</string>
-    <string name="marker_icon_star">Звезда</string>
+    <string name="marker_icon_star">Метка</string>
     <string name="marker_icon_target">Цель</string>
     <string name="marker_icon_briefcase">Портфель</string>
     <string name="marker_pick_color">Выбрать цвет метки</string>

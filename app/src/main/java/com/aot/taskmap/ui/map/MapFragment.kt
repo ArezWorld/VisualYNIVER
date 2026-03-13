@@ -143,6 +143,22 @@ class MapFragment : Fragment() {
         val point: GeoPoint
     )
 
+    private data class CuratedImportantPlace(
+        val title: String,
+        val category: String,
+        val point: GeoPoint,
+        val minZoom: Double,
+        val visibleRadiusMeters: Double
+    )
+
+    private data class ImportantPlacesConfig(
+        val radiusMeters: Int,
+        val maxItems: Int,
+        val amenityRegex: String,
+        val includeShopLayer: Boolean,
+        val includeTourismLayer: Boolean
+    )
+
     private data class MarkerIconOption(
         val key: String,
         val radioId: Int,
@@ -159,9 +175,19 @@ class MapFragment : Fragment() {
     private val markerIconOptions = listOf(
         MarkerIconOption("pin", R.id.icon_pin, R.drawable.ic_marker_pin, R.string.marker_icon_pin),
         MarkerIconOption("flag", R.id.icon_flag, R.drawable.ic_marker_flag, R.string.marker_icon_flag),
-        MarkerIconOption("star", R.id.icon_star, R.drawable.ic_marker_star, R.string.marker_icon_star),
+        MarkerIconOption("star", R.id.icon_star, R.drawable.ic_marker_pin, R.string.marker_icon_star),
         MarkerIconOption("target", R.id.icon_target, R.drawable.ic_marker_target, R.string.marker_icon_target),
         MarkerIconOption("briefcase", R.id.icon_briefcase, R.drawable.ic_marker_briefcase, R.string.marker_icon_briefcase)
+    )
+
+    private val curatedImportantPlaces = listOf(
+        CuratedImportantPlace(
+            title = "Новотроицкий филиал МИСиС",
+            category = "university",
+            point = GeoPoint(51.1949998, 58.3101847),
+            minZoom = 11.8,
+            visibleRadiusMeters = 30000.0
+        )
     )
 
     private val markerColorOptions = listOf(
@@ -500,42 +526,108 @@ class MapFragment : Fragment() {
 
         val center = binding.mapView.mapCenter ?: return
         val zoom = binding.mapView.zoomLevelDouble
-        if (zoom < 11.5) {
+        val config = resolveImportantPlacesConfig(zoom)
+        if (config == null) {
             clearImportantPlaceOverlays()
             return
         }
 
         val latitude = center.latitude
         val longitude = center.longitude
-        val radiusMeters = when {
-            zoom >= 16.5 -> 1200
-            zoom >= 15.0 -> 2000
-            zoom >= 13.0 -> 3500
-            else -> 5000
-        }
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 700L else 350L)
             val places = withContext(Dispatchers.IO) {
-                fetchImportantPlaces(latitude, longitude, radiusMeters)
+                fetchImportantPlaces(latitude, longitude, config)
             }
             if (!isAdded || _binding == null) return@launch
-            updateImportantPlaceOverlays(places)
+            if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
+                clearImportantPlaceOverlays()
+                return@launch
+            }
+            val mergedPlaces = mergeCuratedImportantPlaces(
+                places = places,
+                center = GeoPoint(latitude, longitude),
+                zoom = zoom
+            ).take(config.maxItems)
+            updateImportantPlaceOverlays(mergedPlaces)
+        }
+    }
+
+    private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig? {
+        if (zoom < 11.5) return null
+        return when {
+            zoom >= 17.5 -> ImportantPlacesConfig(
+                radiusMeters = 850,
+                maxItems = 120,
+                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library|parking",
+                includeShopLayer = true,
+                includeTourismLayer = true
+            )
+            zoom >= 16.0 -> ImportantPlacesConfig(
+                radiusMeters = 1400,
+                maxItems = 95,
+                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library",
+                includeShopLayer = true,
+                includeTourismLayer = true
+            )
+            zoom >= 14.5 -> ImportantPlacesConfig(
+                radiusMeters = 2200,
+                maxItems = 70,
+                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|cafe|restaurant|fast_food|bank",
+                includeShopLayer = true,
+                includeTourismLayer = false
+            )
+            zoom >= 13.0 -> ImportantPlacesConfig(
+                radiusMeters = 3200,
+                maxItems = 55,
+                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university|bank",
+                includeShopLayer = true,
+                includeTourismLayer = false
+            )
+            else -> ImportantPlacesConfig(
+                radiusMeters = 5200,
+                maxItems = 40,
+                amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
+                includeShopLayer = false,
+                includeTourismLayer = false
+            )
         }
     }
 
     private fun fetchImportantPlaces(
         latitude: Double,
         longitude: Double,
-        radiusMeters: Int
+        config: ImportantPlacesConfig
     ): List<ImportantPlace> {
+        val shopLayer = if (config.includeShopLayer) {
+            """
+              node(around:${config.radiusMeters},$latitude,$longitude)["shop"~"supermarket|convenience|mall|department_store"];
+              way(around:${config.radiusMeters},$latitude,$longitude)["shop"~"supermarket|convenience|mall|department_store"];
+            """.trimIndent()
+        } else {
+            ""
+        }
+        val tourismLayer = if (config.includeTourismLayer) {
+            """
+              node(around:${config.radiusMeters},$latitude,$longitude)["tourism"~"attraction|museum|viewpoint"];
+              way(around:${config.radiusMeters},$latitude,$longitude)["tourism"~"attraction|museum|viewpoint"];
+              node(around:${config.radiusMeters},$latitude,$longitude)["leisure"="park"];
+              way(around:${config.radiusMeters},$latitude,$longitude)["leisure"="park"];
+            """.trimIndent()
+        } else {
+            ""
+        }
+
         val query = """
-            [out:json][timeout:12];
+            [out:json][timeout:14];
             (
-              node(around:$radiusMeters,$latitude,$longitude)["amenity"~"hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university"];
-              node(around:$radiusMeters,$latitude,$longitude)["shop"="supermarket"];
+              node(around:${config.radiusMeters},$latitude,$longitude)["amenity"~"${config.amenityRegex}"];
+              way(around:${config.radiusMeters},$latitude,$longitude)["amenity"~"${config.amenityRegex}"];
+              $shopLayer
+              $tourismLayer
             );
-            out body;
+            out center;
         """.trimIndent()
 
         val request = Request.Builder()
@@ -554,13 +646,26 @@ class MapFragment : Fragment() {
 
                 for (index in 0 until elements.length()) {
                     val item = elements.optJSONObject(index) ?: continue
-                    val lat = item.optDouble("lat", Double.NaN)
-                    val lon = item.optDouble("lon", Double.NaN)
+                    val center = item.optJSONObject("center")
+                    val nodeLat = item.optDouble("lat", Double.NaN)
+                    val nodeLon = item.optDouble("lon", Double.NaN)
+                    val lat = if (nodeLat.isFinite()) {
+                        nodeLat
+                    } else {
+                        center?.optDouble("lat", Double.NaN) ?: Double.NaN
+                    }
+                    val lon = if (nodeLon.isFinite()) {
+                        nodeLon
+                    } else {
+                        center?.optDouble("lon", Double.NaN) ?: Double.NaN
+                    }
                     if (!lat.isFinite() || !lon.isFinite()) continue
 
                     val tags = item.optJSONObject("tags") ?: JSONObject()
                     val category = tags.optString("amenity")
                         .ifBlank { tags.optString("shop") }
+                        .ifBlank { tags.optString("tourism") }
+                        .ifBlank { tags.optString("leisure") }
                         .lowercase(Locale.ROOT)
                     if (category.isBlank()) continue
 
@@ -573,11 +678,35 @@ class MapFragment : Fragment() {
                         category = category,
                         point = GeoPoint(lat, lon)
                     )
-                    if (unique.size >= 35) break
+                    if (unique.size >= config.maxItems) break
                 }
                 unique.values.toList()
             }
         }.getOrDefault(emptyList())
+    }
+
+    private fun mergeCuratedImportantPlaces(
+        places: List<ImportantPlace>,
+        center: GeoPoint,
+        zoom: Double
+    ): List<ImportantPlace> {
+        val merged = linkedMapOf<String, ImportantPlace>()
+        places.forEach { place ->
+            val key = "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
+            merged[key] = place
+        }
+        curatedImportantPlaces.forEach { curated ->
+            if (zoom < curated.minZoom) return@forEach
+            if (center.distanceToAsDouble(curated.point) > curated.visibleRadiusMeters) return@forEach
+            val key =
+                "${curated.point.latitude.format(5)}:${curated.point.longitude.format(5)}:${curated.category}"
+            merged[key] = ImportantPlace(
+                title = curated.title,
+                category = curated.category,
+                point = curated.point
+            )
+        }
+        return merged.values.toList()
     }
 
     private fun resolveImportantPlaceCategoryLabel(category: String): String {
@@ -589,13 +718,28 @@ class MapFragment : Fragment() {
             "fuel" -> "АЗС"
             "bus_station" -> "Автовокзал"
             "school" -> "Школа"
+            "college" -> "Колледж"
             "university" -> "Университет"
+            "kindergarten" -> "Детский сад"
             "supermarket" -> "Супермаркет"
+            "convenience", "mall", "department_store" -> "Магазин"
+            "cafe", "restaurant", "fast_food" -> "Кафе"
+            "bank", "atm" -> "Банк"
+            "post_office" -> "Почта"
+            "library" -> "Библиотека"
+            "parking" -> "Парковка"
+            "museum", "attraction", "viewpoint" -> "Достопримечательность"
+            "park" -> "Парк"
             else -> "Важное место"
         }
     }
 
     private fun updateImportantPlaceOverlays(places: List<ImportantPlace>) {
+        if (!isAdded || _binding == null) return
+        if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
+            clearImportantPlaceOverlays()
+            return
+        }
         clearImportantPlaceOverlays()
         places.forEach { place ->
             val marker = Marker(binding.mapView).apply {
@@ -603,9 +747,10 @@ class MapFragment : Fragment() {
                 title = place.title
                 snippet = resolveImportantPlaceCategoryLabel(place.category)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_marker_star)?.mutate()?.also {
-                    DrawableCompat.setTint(it, resolveImportantPlaceColor(place.category))
-                }
+                icon = ContextCompat.getDrawable(
+                    requireContext(),
+                    resolveImportantPlaceIconRes(place.category)
+                )?.mutate()
             }
             binding.mapView.overlays.add(marker)
             importantPlaceOverlays.add(marker)
@@ -620,16 +765,20 @@ class MapFragment : Fragment() {
         binding.mapView.invalidate()
     }
 
-    private fun resolveImportantPlaceColor(category: String): Int {
-        val colorRes = when (category) {
-            "hospital", "clinic" -> R.color.marker_red
-            "pharmacy" -> R.color.marker_green
-            "fuel" -> R.color.marker_orange
-            "police", "fire_station" -> R.color.marker_blue
-            "school", "university" -> R.color.marker_purple
-            else -> R.color.marker_yellow
+    private fun resolveImportantPlaceIconRes(category: String): Int {
+        return when (category) {
+            "hospital", "clinic" -> R.drawable.ic_poi_hospital
+            "pharmacy" -> R.drawable.ic_poi_pharmacy
+            "school", "college", "university", "kindergarten", "library" ->
+                R.drawable.ic_poi_education
+            "supermarket", "convenience", "mall", "department_store" ->
+                R.drawable.ic_poi_shop
+            "cafe", "restaurant", "fast_food" -> R.drawable.ic_poi_cafe
+            "bus_station", "fuel", "police", "fire_station", "bank", "atm",
+            "post_office", "parking", "museum", "attraction", "viewpoint", "park" ->
+                R.drawable.ic_poi_place
+            else -> R.drawable.ic_poi_default_pin
         }
-        return ContextCompat.getColor(requireContext(), colorRes)
     }
 
     private fun Double.format(fractionDigits: Int): String {
@@ -821,10 +970,7 @@ class MapFragment : Fragment() {
 
     private fun showSearchResultOverlay(title: String, point: GeoPoint) {
         clearSearchResultOverlay()
-        val icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_marker_target)?.mutate()
-        if (icon != null) {
-            DrawableCompat.setTint(icon, ContextCompat.getColor(requireContext(), R.color.marker_purple))
-        }
+        val icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_poi_place)?.mutate()
         val marker = Marker(binding.mapView).apply {
             position = point
             this.title = title
@@ -1208,19 +1354,19 @@ class MapFragment : Fragment() {
         dialogBinding.buttonToggleColorPicker.setIconResource(R.drawable.ic_expand_more)
         dialogBinding.buttonToggleIconPicker.setIconResource(R.drawable.ic_expand_more)
         dialogBinding.buttonToggleColorPicker.setOnClickListener {
-            val open = dialogBinding.panelColorPicker.visibility != View.VISIBLE
-            togglePanel(
-                panel = dialogBinding.panelColorPicker,
-                trigger = dialogBinding.buttonToggleColorPicker,
-                expand = open
+            toggleSelectionPanel(
+                targetPanel = dialogBinding.panelColorPicker,
+                targetButton = dialogBinding.buttonToggleColorPicker,
+                secondaryPanel = dialogBinding.panelIconPicker,
+                secondaryButton = dialogBinding.buttonToggleIconPicker
             )
         }
         dialogBinding.buttonToggleIconPicker.setOnClickListener {
-            val open = dialogBinding.panelIconPicker.visibility != View.VISIBLE
-            togglePanel(
-                panel = dialogBinding.panelIconPicker,
-                trigger = dialogBinding.buttonToggleIconPicker,
-                expand = open
+            toggleSelectionPanel(
+                targetPanel = dialogBinding.panelIconPicker,
+                targetButton = dialogBinding.buttonToggleIconPicker,
+                secondaryPanel = dialogBinding.panelColorPicker,
+                secondaryButton = dialogBinding.buttonToggleColorPicker
             )
         }
 
@@ -1322,19 +1468,19 @@ class MapFragment : Fragment() {
         dialogBinding.buttonToggleColorPicker.setIconResource(R.drawable.ic_expand_more)
         dialogBinding.buttonToggleIconPicker.setIconResource(R.drawable.ic_expand_more)
         dialogBinding.buttonToggleColorPicker.setOnClickListener {
-            val open = dialogBinding.panelColorPicker.visibility != View.VISIBLE
-            togglePanel(
-                panel = dialogBinding.panelColorPicker,
-                trigger = dialogBinding.buttonToggleColorPicker,
-                expand = open
+            toggleSelectionPanel(
+                targetPanel = dialogBinding.panelColorPicker,
+                targetButton = dialogBinding.buttonToggleColorPicker,
+                secondaryPanel = dialogBinding.panelIconPicker,
+                secondaryButton = dialogBinding.buttonToggleIconPicker
             )
         }
         dialogBinding.buttonToggleIconPicker.setOnClickListener {
-            val open = dialogBinding.panelIconPicker.visibility != View.VISIBLE
-            togglePanel(
-                panel = dialogBinding.panelIconPicker,
-                trigger = dialogBinding.buttonToggleIconPicker,
-                expand = open
+            toggleSelectionPanel(
+                targetPanel = dialogBinding.panelIconPicker,
+                targetButton = dialogBinding.buttonToggleIconPicker,
+                secondaryPanel = dialogBinding.panelColorPicker,
+                secondaryButton = dialogBinding.buttonToggleColorPicker
             )
         }
 
@@ -1575,6 +1721,19 @@ class MapFragment : Fragment() {
                     viewModel.updateCurrentLocation(geoPoint.latitude, geoPoint.longitude)
                 }
             }
+        }
+    }
+
+    private fun toggleSelectionPanel(
+        targetPanel: View,
+        targetButton: MaterialButton,
+        secondaryPanel: View,
+        secondaryButton: MaterialButton
+    ) {
+        val shouldExpand = targetPanel.visibility != View.VISIBLE
+        togglePanel(targetPanel, targetButton, shouldExpand)
+        if (shouldExpand && secondaryPanel.visibility == View.VISIBLE) {
+            togglePanel(secondaryPanel, secondaryButton, false)
         }
     }
 
