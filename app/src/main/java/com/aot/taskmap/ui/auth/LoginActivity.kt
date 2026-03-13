@@ -18,6 +18,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.SignInButton
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
@@ -73,6 +74,9 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun configureGoogleSignIn() {
+        binding.btnGoogleLogin.setSize(SignInButton.SIZE_WIDE)
+        binding.btnGoogleLogin.setColorScheme(SignInButton.COLOR_LIGHT)
+
         val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID.trim()
         if (clientId.isBlank()) {
             googleSignInClient = null

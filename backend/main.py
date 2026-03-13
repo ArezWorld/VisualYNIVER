@@ -2,26 +2,43 @@ from datetime import datetime, timedelta
 import os
 import re
 import secrets
-import sqlite3
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect, text
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "aot_secret_key_change_in_production"
-app.config["JWT_SECRET_KEY"] = "aot_jwt_secret_key_change_in_production"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///aot.db"
+
+
+def resolve_database_url():
+    raw_url = os.getenv("DATABASE_URL", "sqlite:///aot.db").strip()
+    if raw_url.startswith("postgres://"):
+        return raw_url.replace("postgres://", "postgresql://", 1)
+    return raw_url
+
+
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "aot_secret_key_change_in_production")
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "aot_jwt_secret_key_change_in_production")
+app.config["SQLALCHEMY_DATABASE_URI"] = resolve_database_url()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+}
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
 app.config["GOOGLE_WEB_CLIENT_ID"] = os.getenv("GOOGLE_WEB_CLIENT_ID", "").strip()
 
 db = SQLAlchemy(app)
-CORS(app)
+cors_origins = os.getenv("CORS_ORIGINS", "*")
+if cors_origins == "*":
+    CORS(app)
+else:
+    origins = [item.strip() for item in cors_origins.split(",") if item.strip()]
+    CORS(app, resources={r"/*": {"origins": origins}})
 jwt = JWTManager(app)
 
 
@@ -58,22 +75,27 @@ with app.app_context():
 
 
 def ensure_task_columns():
-    db_path = os.path.join(app.instance_path, "aot.db")
-    with sqlite3.connect(db_path) as connection:
-        cursor = connection.cursor()
-        cursor.execute("PRAGMA table_info(task)")
-        existing_columns = {row[1] for row in cursor.fetchall()}
-        if "marker_color" not in existing_columns:
-            cursor.execute("ALTER TABLE task ADD COLUMN marker_color INTEGER DEFAULT 4280391411")
-        if "marker_icon" not in existing_columns:
-            cursor.execute("ALTER TABLE task ADD COLUMN marker_icon TEXT DEFAULT 'pin'")
-        if "category" not in existing_columns:
-            cursor.execute("ALTER TABLE task ADD COLUMN category TEXT DEFAULT 'general'")
-        if "auto_remove_after_trigger" not in existing_columns:
-            cursor.execute(
-                "ALTER TABLE task ADD COLUMN auto_remove_after_trigger BOOLEAN DEFAULT 0"
-            )
-        connection.commit()
+    inspector = inspect(db.engine)
+    if "task" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("task")}
+    dialect = db.engine.dialect.name
+    statements = {
+        "marker_color": "ALTER TABLE task ADD COLUMN marker_color INTEGER DEFAULT 4280391411",
+        "marker_icon": "ALTER TABLE task ADD COLUMN marker_icon VARCHAR(64) DEFAULT 'pin'",
+        "category": "ALTER TABLE task ADD COLUMN category VARCHAR(64) DEFAULT 'general'",
+        "auto_remove_after_trigger": "ALTER TABLE task ADD COLUMN auto_remove_after_trigger BOOLEAN DEFAULT FALSE",
+    }
+
+    for column, query in statements.items():
+        if column in existing_columns:
+            continue
+        # Для SQLite значение FALSE не всегда доступно как литерал.
+        if dialect == "sqlite" and column == "auto_remove_after_trigger":
+            query = "ALTER TABLE task ADD COLUMN auto_remove_after_trigger BOOLEAN DEFAULT 0"
+        db.session.execute(text(query))
+        db.session.commit()
 
 
 ensure_task_columns()
@@ -112,6 +134,22 @@ def require_fields(data, fields):
     if missing:
         return jsonify({"detail": f"Missing fields: {', '.join(missing)}"}), 400
     return None
+
+
+def parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "y", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "n", "off"}:
+            return False
+    return default
 
 
 def sanitize_username(raw_value):
@@ -287,8 +325,8 @@ def create_task():
         marker_color=int(data.get("marker_color", 0xFF2196F3)),
         marker_icon=data.get("marker_icon", "pin"),
         category=data.get("category", "general"),
-        auto_remove_after_trigger=bool(data.get("auto_remove_after_trigger", False)),
-        is_notification_enabled=bool(data.get("is_notification_enabled", True)),
+        auto_remove_after_trigger=parse_bool(data.get("auto_remove_after_trigger"), False),
+        is_notification_enabled=parse_bool(data.get("is_notification_enabled"), True),
         user_id=user_id,
     )
     db.session.add(task)
@@ -326,13 +364,13 @@ def update_task(task_id):
     if "category" in data:
         task.category = data["category"]
     if "auto_remove_after_trigger" in data:
-        task.auto_remove_after_trigger = bool(data["auto_remove_after_trigger"])
+        task.auto_remove_after_trigger = parse_bool(data["auto_remove_after_trigger"], False)
     if "is_completed" in data:
-        is_completed = bool(data["is_completed"])
+        is_completed = parse_bool(data["is_completed"], False)
         task.is_completed = is_completed
         task.completed_at = datetime.utcnow() if is_completed else None
     if "is_notification_enabled" in data:
-        task.is_notification_enabled = bool(data["is_notification_enabled"])
+        task.is_notification_enabled = parse_bool(data["is_notification_enabled"], True)
 
     db.session.commit()
 
@@ -375,5 +413,13 @@ def root():
     return jsonify({"message": "AOT API is running", "version": "1.0.0"})
 
 
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    debug_enabled = os.getenv("FLASK_DEBUG", "false").strip().lower() == "true"
+    app.run(host=host, port=port, debug=debug_enabled)

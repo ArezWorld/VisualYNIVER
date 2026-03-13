@@ -82,14 +82,12 @@
             android:text="@string/action_login"
             android:textSize="16sp" />
 
-        <com.google.android.material.button.MaterialButton
+        <com.google.android.gms.common.SignInButton
             android:id="@+id/btnGoogleLogin"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="12dp"
-            android:text="@string/action_login_google"
-            android:textSize="16sp" />
+            android:contentDescription="@string/action_login_google" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRegister"
