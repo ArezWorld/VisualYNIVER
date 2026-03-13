@@ -2,6 +2,7 @@ package com.aot.taskmap
 
 import android.app.Application
 import com.aot.taskmap.data.local.ThemePreferences
+import com.aot.taskmap.ui.settings.UpdateCheckScheduler
 import org.osmdroid.config.Configuration
 
 class AOTApplication : Application() {
@@ -18,5 +19,7 @@ class AOTApplication : Application() {
             tileFileSystemCacheMaxBytes = 300L * 1024L * 1024L
             tileFileSystemCacheTrimBytes = 220L * 1024L * 1024L
         }
+
+        UpdateCheckScheduler.refresh(this)
     }
 }

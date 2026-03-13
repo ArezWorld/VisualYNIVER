@@ -6,11 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.data.local.SessionManager
 import com.aot.taskmap.data.local.TaskDatabase
+import com.aot.taskmap.data.remote.ApiBaseUrlProvider
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.data.repository.RemoteTaskRepository
 import com.aot.taskmap.data.repository.TaskRepository
 import com.aot.taskmap.domain.model.Task
-import com.aot.taskmap.ui.auth.LoginActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sessionManager = SessionManager(application)
-    private val apiClient = ApiClient(LoginActivity.BASE_URL).apply {
+    private val apiClient = ApiClient(ApiBaseUrlProvider.resolve()).apply {
         sessionManager.authToken?.let { setToken(it) }
     }
 
@@ -58,7 +58,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun loadTasks() {
         viewModelScope.launch {
             _isLoading.value = true
-            if (!BuildConfig.DEBUG) {
+            if (!BuildConfig.DEBUG && isLoggedIn()) {
                 val result = remoteRepository.fetchTasks()
                 result.onSuccess { tasks ->
                     val mergedTasks = tasks.map { remoteTask ->
@@ -115,7 +115,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             )
             localRepository.insertTask(localTask)
 
-            if (!BuildConfig.DEBUG) {
+            if (!BuildConfig.DEBUG && isLoggedIn()) {
                 val result = remoteRepository.createTask(
                     title = title,
                     description = description,
@@ -144,7 +144,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = null
 
             localRepository.updateTask(task)
-            if (!BuildConfig.DEBUG) {
+            if (!BuildConfig.DEBUG && isLoggedIn()) {
                 val result = remoteRepository.updateTask(task)
                 result.onFailure { e ->
                     _error.value = e.message
@@ -161,7 +161,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = null
 
             localRepository.deleteTask(task)
-            if (!BuildConfig.DEBUG) {
+            if (!BuildConfig.DEBUG && isLoggedIn()) {
                 val result = remoteRepository.deleteTask(task.id)
                 result.onFailure { e ->
                     _error.value = e.message
@@ -182,7 +182,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = null
 
             localRepository.toggleTaskCompletion(task.id, !task.isCompleted)
-            if (!BuildConfig.DEBUG) {
+            if (!BuildConfig.DEBUG && isLoggedIn()) {
                 val result = remoteRepository.toggleTaskCompletion(task.id)
                 result.onFailure { e ->
                     _error.value = e.message

@@ -8,6 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SessionManager
 import com.aot.taskmap.data.local.ThemePreferences
+import com.aot.taskmap.data.remote.ApiBaseUrlProvider
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.databinding.ActivityRegisterBinding
 import com.aot.taskmap.ui.MainActivity
@@ -18,6 +19,7 @@ class RegisterActivity : AppCompatActivity() {
     private lateinit var binding: ActivityRegisterBinding
     private lateinit var sessionManager: SessionManager
     private lateinit var apiClient: ApiClient
+    private lateinit var apiBaseUrl: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(ThemePreferences.getThemeRes(this))
@@ -26,7 +28,8 @@ class RegisterActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         sessionManager = SessionManager(this)
-        apiClient = ApiClient(LoginActivity.BASE_URL)
+        apiBaseUrl = ApiBaseUrlProvider.resolve()
+        apiClient = ApiClient(apiBaseUrl)
 
         setupListeners()
     }
@@ -89,7 +92,14 @@ class RegisterActivity : AppCompatActivity() {
 
             result.onFailure { error ->
                 showLoading(false)
-                showError(error.message ?: getString(R.string.error_register_failed))
+                showError(
+                    AuthErrorFormatter.format(
+                        context = this@RegisterActivity,
+                        error = error,
+                        fallbackMessage = getString(R.string.error_register_failed),
+                        baseUrl = apiBaseUrl
+                    )
+                )
             }
         }
     }

@@ -101,6 +101,7 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.isAutoUpdateCheckEnabled(context)
         binding.switchAutoUpdateCheck.setOnCheckedChangeListener { _, checked ->
             SettingsPreferences.setAutoUpdateCheckEnabled(context, checked)
+            UpdateCheckScheduler.refresh(context)
         }
 
         binding.switchDarkTheme.isChecked = ThemePreferences.isDarkMode(context)
@@ -321,7 +322,7 @@ class SettingsFragment : Fragment() {
             result.fold(
                 onSuccess = { release ->
                     val remoteVersion = release.versionTag.ifBlank { release.releaseName ?: "" }
-                    if (!isRemoteVersionNewer(remoteVersion, BuildConfig.VERSION_NAME)) {
+                    if (!UpdateVersionComparator.isRemoteVersionNewer(remoteVersion, BuildConfig.VERSION_NAME)) {
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.settings_update_not_found),
@@ -407,31 +408,6 @@ class SettingsFragment : Fragment() {
                 Toast.LENGTH_SHORT
             ).show()
         }
-    }
-
-    private fun isRemoteVersionNewer(remoteVersion: String, localVersion: String): Boolean {
-        val remoteParts = extractVersionParts(remoteVersion)
-        val localParts = extractVersionParts(localVersion)
-
-        if (remoteParts.isEmpty() || localParts.isEmpty()) {
-            return remoteVersion.trim() != localVersion.trim()
-        }
-
-        val maxSize = maxOf(remoteParts.size, localParts.size)
-        for (index in 0 until maxSize) {
-            val remote = remoteParts.getOrElse(index) { 0 }
-            val local = localParts.getOrElse(index) { 0 }
-            if (remote != local) return remote > local
-        }
-        return false
-    }
-
-    private fun extractVersionParts(version: String): List<Int> {
-        val normalized = version.trim().lowercase()
-        val match = Regex("""\d+(?:\.\d+)*""").find(normalized) ?: return emptyList()
-        return match.value
-            .split('.')
-            .mapNotNull { part -> part.toIntOrNull() }
     }
 
     private fun hasLocationPermission(context: android.content.Context): Boolean {

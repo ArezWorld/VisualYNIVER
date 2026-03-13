@@ -12,6 +12,7 @@
     <string name="action_login">Войти</string>
     <string name="action_login_google">Войти через Google</string>
     <string name="action_register">Регистрация</string>
+    <string name="action_continue_guest">Перейти на карту без входа</string>
 
     <string name="register_title">Регистрация</string>
     <string name="hint_email">Email</string>
@@ -33,6 +34,8 @@
     <string name="error_google_login_failed">Ошибка входа через Google</string>
     <string name="error_register_failed">Ошибка регистрации</string>
     <string name="error_register_login_failed">Регистрация успешна, но не удалось войти. Используйте вход.</string>
+    <string name="error_server_unreachable">Сервер авторизации недоступен. Проверьте интернет и адрес сервера.</string>
+    <string name="error_server_emulator_host">Сейчас используется адрес %1$s, он работает только в эмуляторе Android. Для телефона укажите IP вашего ПК в API_BASE_URL.</string>
     <string name="debug_skip_auth">Debug: вход без сервера</string>
     <string name="debug_register_disabled">Debug: регистрация отключена</string>
 
@@ -99,6 +102,10 @@
     <string name="update_download_failed">Не удалось начать загрузку обновления</string>
     <string name="update_install_started">Загрузка завершена. Открывается установка.</string>
     <string name="update_install_permission_required">Разрешите установку из этого приложения для обновления</string>
+    <string name="update_notification_channel_name">Обновления AOT</string>
+    <string name="update_notification_channel_desc">Уведомления о выходе новых версий приложения</string>
+    <string name="update_available_notification_title">Доступно обновление AOT</string>
+    <string name="update_available_notification_text">Вышла версия %1$s. Нажмите, чтобы открыть обновление.</string>
     <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
     <string name="map_toast_add_marker">Нажмите на карту, чтобы поставить метку</string>
     <string name="map_result_default">Результат</string>

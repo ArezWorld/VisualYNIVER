@@ -10,6 +10,7 @@ import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SessionManager
 import com.aot.taskmap.data.local.ThemePreferences
+import com.aot.taskmap.data.remote.ApiBaseUrlProvider
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.databinding.ActivityLoginBinding
 import com.aot.taskmap.ui.MainActivity
@@ -24,12 +25,8 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private lateinit var sessionManager: SessionManager
     private lateinit var apiClient: ApiClient
+    private lateinit var apiBaseUrl: String
     private var googleSignInClient: GoogleSignInClient? = null
-
-    companion object {
-        // Замените на IP вашего сервера
-        const val BASE_URL = "http://10.0.2.2:8000"
-    }
 
     private val googleSignInRequest = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -55,7 +52,8 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         sessionManager = SessionManager(this)
-        apiClient = ApiClient(BASE_URL)
+        apiBaseUrl = ApiBaseUrlProvider.resolve()
+        apiClient = ApiClient(apiBaseUrl)
 
         // Если уже вошёл - переходим на главный экран
         if (sessionManager.isSessionLoggedIn()) {
@@ -77,7 +75,7 @@ class LoginActivity : AppCompatActivity() {
     private fun configureGoogleSignIn() {
         val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID.trim()
         if (clientId.isBlank()) {
-            binding.btnGoogleLogin.visibility = View.GONE
+            googleSignInClient = null
             return
         }
 
@@ -100,6 +98,10 @@ class LoginActivity : AppCompatActivity() {
 
         binding.btnRegister.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
+        }
+
+        binding.btnContinueGuest.setOnClickListener {
+            continueAsGuest()
         }
 
         binding.btnGoogleLogin.setOnClickListener {
@@ -135,7 +137,14 @@ class LoginActivity : AppCompatActivity() {
 
             result.onFailure { error ->
                 showLoading(false)
-                showError(error.message ?: getString(R.string.error_login_failed))
+                showError(
+                    AuthErrorFormatter.format(
+                        context = this@LoginActivity,
+                        error = error,
+                        fallbackMessage = getString(R.string.error_login_failed),
+                        baseUrl = apiBaseUrl
+                    )
+                )
             }
         }
     }
@@ -153,7 +162,14 @@ class LoginActivity : AppCompatActivity() {
 
             result.onFailure { error ->
                 showLoading(false)
-                showError(error.message ?: getString(R.string.error_google_login_failed))
+                showError(
+                    AuthErrorFormatter.format(
+                        context = this@LoginActivity,
+                        error = error,
+                        fallbackMessage = getString(R.string.error_google_login_failed),
+                        baseUrl = apiBaseUrl
+                    )
+                )
             }
         }
     }
@@ -163,6 +179,13 @@ class LoginActivity : AppCompatActivity() {
         binding.btnLogin.isEnabled = !show
         binding.btnGoogleLogin.isEnabled = !show
         binding.btnRegister.isEnabled = !show
+        binding.btnContinueGuest.isEnabled = !show
+    }
+
+    private fun continueAsGuest() {
+        sessionManager.clearSession()
+        apiClient.setToken(null)
+        navigateToMain(triggerUpdateCheck = false)
     }
 
     private fun showError(message: String) {

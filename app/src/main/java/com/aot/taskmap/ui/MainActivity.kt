@@ -22,6 +22,7 @@ import com.aot.taskmap.databinding.ActivityMainBinding
 import com.aot.taskmap.service.LocationService
 import com.aot.taskmap.ui.settings.GitHubUpdateChecker
 import com.aot.taskmap.ui.settings.InAppUpdateManager
+import com.aot.taskmap.ui.settings.UpdateVersionComparator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -187,7 +188,7 @@ class MainActivity : AppCompatActivity() {
 
             result.onSuccess { release ->
                 val remoteVersion = release.versionTag.ifBlank { release.releaseName ?: "" }
-                if (!isRemoteVersionNewer(remoteVersion, BuildConfig.VERSION_NAME)) return@onSuccess
+                if (!UpdateVersionComparator.isRemoteVersionNewer(remoteVersion, BuildConfig.VERSION_NAME)) return@onSuccess
                 if (isFinishing || isDestroyed) return@onSuccess
 
                 MaterialAlertDialogBuilder(this@MainActivity)
@@ -239,31 +240,6 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
-    }
-
-    private fun isRemoteVersionNewer(remoteVersion: String, localVersion: String): Boolean {
-        val remoteParts = extractVersionParts(remoteVersion)
-        val localParts = extractVersionParts(localVersion)
-
-        if (remoteParts.isEmpty() || localParts.isEmpty()) {
-            return remoteVersion.trim() != localVersion.trim()
-        }
-
-        val maxSize = maxOf(remoteParts.size, localParts.size)
-        for (index in 0 until maxSize) {
-            val remote = remoteParts.getOrElse(index) { 0 }
-            val local = localParts.getOrElse(index) { 0 }
-            if (remote != local) return remote > local
-        }
-        return false
-    }
-
-    private fun extractVersionParts(version: String): List<Int> {
-        val normalized = version.trim().lowercase()
-        val match = Regex("""\d+(?:\.\d+)*""").find(normalized) ?: return emptyList()
-        return match.value
-            .split('.')
-            .mapNotNull { part -> part.toIntOrNull() }
     }
 
     override fun onNewIntent(intent: Intent) {

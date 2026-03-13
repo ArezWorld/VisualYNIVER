@@ -39,12 +39,18 @@ jobs:
         shell: bash
         run: |
           BASE_SERIES="1.4"
+          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
+          IS_PRERELEASE="false"
+          if [[ "$COMMIT_MESSAGE" == *"[pre-release]"* ]]; then
+            IS_PRERELEASE="true"
+          fi
+
           git fetch --tags --force
-          LAST_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | head -n1)
-          if [ -z "$LAST_TAG" ]; then
+          LAST_STABLE_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | grep -E "^v${BASE_SERIES}\\.[0-9]+$" | head -n1)
+          if [ -z "$LAST_STABLE_TAG" ]; then
             NEXT_PATCH=1
           else
-            LAST_PATCH=${LAST_TAG##*.}
+            LAST_PATCH=${LAST_STABLE_TAG##*.}
             if [[ "$LAST_PATCH" =~ ^[0-9]+$ ]]; then
               NEXT_PATCH=$((LAST_PATCH + 1))
             else
@@ -54,11 +60,29 @@ jobs:
 
           APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
           APP_VERSION_CODE=$((14000 + NEXT_PATCH))
-          TAG_NAME="v${APP_VERSION_NAME}"
+
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            LAST_RC_TAG=$(git tag -l "v${APP_VERSION_NAME}-rc.*" --sort=-v:refname | head -n1)
+            if [ -z "$LAST_RC_TAG" ]; then
+              NEXT_RC=1
+            else
+              LAST_RC=${LAST_RC_TAG##*.}
+              if [[ "$LAST_RC" =~ ^[0-9]+$ ]]; then
+                NEXT_RC=$((LAST_RC + 1))
+              else
+                NEXT_RC=1
+              fi
+            fi
+            APP_VERSION_NAME="${APP_VERSION_NAME}-rc.${NEXT_RC}"
+            TAG_NAME="v${APP_VERSION_NAME}"
+          else
+            TAG_NAME="v${APP_VERSION_NAME}"
+          fi
 
           echo "APP_VERSION_NAME=${APP_VERSION_NAME}" >> "$GITHUB_ENV"
           echo "APP_VERSION_CODE=${APP_VERSION_CODE}" >> "$GITHUB_ENV"
           echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_ENV"
           echo "APK_NAME=AOT-${TAG_NAME}.apk" >> "$GITHUB_ENV"
 
       - name: Build debug APK
@@ -78,9 +102,11 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: AOT ${{ env.TAG_NAME }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body: |
             Automatic build for commit ${{ github.sha }}.
             App version: ${{ env.APP_VERSION_NAME }}
+            Pre-release: ${{ env.IS_PRERELEASE }}
           files: |
             ${{ env.APK_NAME }}
             AOT-latest.apk

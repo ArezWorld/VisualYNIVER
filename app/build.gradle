@@ -14,6 +14,10 @@ def googleWebClientId = (
         System.getenv("GOOGLE_WEB_CLIENT_ID") ?:
         (project.findProperty("GOOGLE_WEB_CLIENT_ID") ?: "")
     ).toString().trim()
+def apiBaseUrl = (
+        System.getenv("API_BASE_URL") ?:
+        (project.findProperty("API_BASE_URL") ?: "http://10.0.2.2:8000")
+    ).toString().trim()
 def resolvedVersionName = (envVersionName != null && !envVersionName.trim().isEmpty()) ?
         envVersionName.trim() :
         "${baseVersionSeries}.${defaultVersionPatch}"
@@ -38,6 +42,7 @@ android {
         buildConfigField 'String', 'UPDATE_LATEST_APK_URL', '"https://github.com/ArezWorld/VisualYNIVER/releases/latest/download/AOT-latest.apk"'
         buildConfigField 'String', 'UPDATE_RELEASES_PAGE', '"https://github.com/ArezWorld/VisualYNIVER/releases"'
         buildConfigField 'String', 'GOOGLE_WEB_CLIENT_ID', "\"${escapeBuildConfigValue(googleWebClientId)}\""
+        buildConfigField 'String', 'API_BASE_URL', "\"${escapeBuildConfigValue(apiBaseUrl)}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -111,6 +116,9 @@ dependencies {
     // Navigation Component
     implementation 'androidx.navigation:navigation-fragment-ktx:2.7.6'
     implementation 'androidx.navigation:navigation-ui-ktx:2.7.6'
+
+    // WorkManager
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
     
     // OkHttp for API
     implementation 'com.squareup.okhttp3:okhttp:4.9.3'

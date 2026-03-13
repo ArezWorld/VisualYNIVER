@@ -18,6 +18,7 @@ object SettingsPreferences {
     private const val KEY_NOTIFICATION_SOUND_ENABLED = "notification_sound_enabled"
     private const val KEY_NOTIFICATION_SOUND_URI = "notification_sound_uri"
     private const val KEY_AUTO_UPDATE_CHECK_ENABLED = "auto_update_check_enabled"
+    private const val KEY_LAST_NOTIFIED_UPDATE_VERSION = "last_notified_update_version"
     private const val KEY_HIGHLIGHT_IMPORTANT_PLACES = "highlight_important_places"
     private const val KEY_LAST_MAP_STATE_SAVED = "last_map_state_saved"
     private const val KEY_LAST_MAP_LAT_BITS = "last_map_lat_bits"
@@ -101,6 +102,19 @@ object SettingsPreferences {
 
     fun setAutoUpdateCheckEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_AUTO_UPDATE_CHECK_ENABLED, enabled).apply()
+    }
+
+    fun getLastNotifiedUpdateVersion(context: Context): String? =
+        prefs(context).getString(KEY_LAST_NOTIFIED_UPDATE_VERSION, null)
+
+    fun setLastNotifiedUpdateVersion(context: Context, version: String?) {
+        val editor = prefs(context).edit()
+        if (version.isNullOrBlank()) {
+            editor.remove(KEY_LAST_NOTIFIED_UPDATE_VERSION)
+        } else {
+            editor.putString(KEY_LAST_NOTIFIED_UPDATE_VERSION, version)
+        }
+        editor.apply()
     }
 
     fun getNotificationSoundUri(context: Context): String? =
