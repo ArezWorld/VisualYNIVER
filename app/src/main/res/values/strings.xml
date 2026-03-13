@@ -93,6 +93,12 @@
     <string name="settings_update_check_failed_download">Не удалось проверить обновления. Открыть последнюю сборку?</string>
     <string name="settings_update_open_releases">Открыть релизы</string>
     <string name="settings_update_no_apk">В релизе не найден APK-файл</string>
+    <string name="update_download_title">Обновление AOT</string>
+    <string name="update_download_description">Загрузка новой версии в фоне</string>
+    <string name="update_download_started">Загрузка обновления началась в фоне</string>
+    <string name="update_download_failed">Не удалось начать загрузку обновления</string>
+    <string name="update_install_started">Загрузка завершена. Открывается установка.</string>
+    <string name="update_install_permission_required">Разрешите установку из этого приложения для обновления</string>
     <string name="map_toast_location_permission">Разрешение на геолокацию не предоставлено</string>
     <string name="map_toast_add_marker">Нажмите на карту, чтобы поставить метку</string>
     <string name="map_result_default">Результат</string>

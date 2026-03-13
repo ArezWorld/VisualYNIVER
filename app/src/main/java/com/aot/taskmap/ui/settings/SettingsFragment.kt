@@ -93,7 +93,7 @@ class SettingsFragment : Fragment() {
             openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
         }
         binding.buttonDownloadLatestApk.setOnClickListener {
-            openUpdateLink(BuildConfig.UPDATE_LATEST_APK_URL)
+            startInAppUpdateDownload(BuildConfig.UPDATE_LATEST_APK_URL)
         }
 
         val context = requireContext()
@@ -341,7 +341,7 @@ class SettingsFragment : Fragment() {
                         .setMessage(message)
                         .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
                             val url = release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL
-                            openUpdateLink(url)
+                            startInAppUpdateDownload(url)
                         }
                         .setNegativeButton(R.string.settings_update_action_later, null)
                         .show()
@@ -359,13 +359,32 @@ class SettingsFragment : Fragment() {
             .setTitle(R.string.settings_update_check_failed)
             .setMessage(R.string.settings_update_check_failed_download)
             .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
-                openUpdateLink(BuildConfig.UPDATE_LATEST_APK_URL)
+                startInAppUpdateDownload(BuildConfig.UPDATE_LATEST_APK_URL)
             }
             .setNeutralButton(R.string.settings_update_open_releases) { _, _ ->
                 openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
             }
             .setNegativeButton(R.string.settings_update_action_later, null)
             .show()
+    }
+
+    private fun startInAppUpdateDownload(url: String) {
+        val context = context ?: return
+        InAppUpdateManager.startBackgroundDownload(context, url)
+            .onSuccess {
+                Toast.makeText(
+                    context,
+                    getString(R.string.update_download_started),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .onFailure {
+                Toast.makeText(
+                    context,
+                    getString(R.string.update_download_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
     }
 
     private fun setUpdateButtonLoading(isLoading: Boolean) {

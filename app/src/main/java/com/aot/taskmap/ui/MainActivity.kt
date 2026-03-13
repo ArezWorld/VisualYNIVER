@@ -21,6 +21,7 @@ import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.databinding.ActivityMainBinding
 import com.aot.taskmap.service.LocationService
 import com.aot.taskmap.ui.settings.GitHubUpdateChecker
+import com.aot.taskmap.ui.settings.InAppUpdateManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -199,7 +200,7 @@ class MainActivity : AppCompatActivity() {
                         )
                     )
                     .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
-                        openUpdateLink(release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL)
+                        startInAppUpdateDownload(release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL)
                     }
                     .setNeutralButton(R.string.settings_update_open_releases) { _, _ ->
                         openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
@@ -220,6 +221,24 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    private fun startInAppUpdateDownload(url: String) {
+        InAppUpdateManager.startBackgroundDownload(this, url)
+            .onSuccess {
+                Toast.makeText(
+                    this,
+                    getString(R.string.update_download_started),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .onFailure {
+                Toast.makeText(
+                    this,
+                    getString(R.string.update_download_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
     }
 
     private fun isRemoteVersionNewer(remoteVersion: String, localVersion: String): Boolean {
