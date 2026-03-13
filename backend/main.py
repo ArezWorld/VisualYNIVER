@@ -10,7 +10,10 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, text
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
+from dotenv import load_dotenv
 from werkzeug.security import check_password_hash, generate_password_hash
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
 
@@ -18,7 +21,9 @@ app = Flask(__name__)
 def resolve_database_url():
     raw_url = os.getenv("DATABASE_URL", "sqlite:///aot.db").strip()
     if raw_url.startswith("postgres://"):
-        return raw_url.replace("postgres://", "postgresql://", 1)
+        raw_url = raw_url.replace("postgres://", "postgresql://", 1)
+    if raw_url.startswith("postgresql://"):
+        return raw_url.replace("postgresql://", "postgresql+psycopg://", 1)
     return raw_url
 
 
@@ -98,7 +103,8 @@ def ensure_task_columns():
         db.session.commit()
 
 
-ensure_task_columns()
+with app.app_context():
+    ensure_task_columns()
 
 
 def serialize_task(task):
