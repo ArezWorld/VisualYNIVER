@@ -119,6 +119,12 @@ class SettingsFragment : Fragment() {
         binding.buttonCheckUpdates.setOnClickListener {
             checkForUpdates()
         }
+        binding.buttonOpenReleases.setOnClickListener {
+            openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
+        }
+        binding.buttonDownloadLatestApk.setOnClickListener {
+            openUpdateLink(BuildConfig.UPDATE_LATEST_APK_URL)
+        }
 
         val context = requireContext()
 

@@ -84,6 +84,8 @@
     <string name="settings_desc_notification_sound">Проигрывать звук при срабатывании уведомления по метке</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
     <string name="settings_check_updates">Проверить обновления</string>
+    <string name="settings_open_releases_page">Открыть релизы GitHub</string>
+    <string name="settings_download_latest_apk">Скачать latest APK</string>
     <string name="settings_check_updates_loading">Проверка…</string>
     <string name="settings_update_available_title">Доступно обновление</string>
     <string name="settings_update_available_message">Найдена версия %1$s. Текущая версия: %2$s.</string>
