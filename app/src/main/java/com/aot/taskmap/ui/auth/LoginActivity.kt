@@ -3,7 +3,7 @@
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.aot.taskmap.BuildConfig
@@ -13,6 +13,10 @@ import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.databinding.ActivityLoginBinding
 import com.aot.taskmap.ui.MainActivity
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
@@ -20,10 +24,30 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private lateinit var sessionManager: SessionManager
     private lateinit var apiClient: ApiClient
+    private var googleSignInClient: GoogleSignInClient? = null
 
     companion object {
         // Замените на IP вашего сервера
         const val BASE_URL = "http://10.0.2.2:8000"
+    }
+
+    private val googleSignInRequest = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val signInResult = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = signInResult.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken.isNullOrBlank()) {
+                showLoading(false)
+                showError(getString(R.string.error_google_id_token_missing))
+                return@registerForActivityResult
+            }
+            loginWithGoogle(idToken)
+        } catch (_: ApiException) {
+            showLoading(false)
+            showError(getString(R.string.error_google_login_cancelled))
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,14 +56,6 @@ class LoginActivity : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
         apiClient = ApiClient(BASE_URL)
-
-        if (BuildConfig.DEBUG) {
-            sessionManager.saveSession("debug-token", 0L, "debug")
-            apiClient.setToken(sessionManager.authToken)
-            Toast.makeText(this, getString(R.string.debug_skip_auth), Toast.LENGTH_SHORT).show()
-            navigateToMain()
-            return
-        }
 
         // Если уже вошёл - переходим на главный экран
         if (sessionManager.isSessionLoggedIn()) {
@@ -54,7 +70,22 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        configureGoogleSignIn()
         setupListeners()
+    }
+
+    private fun configureGoogleSignIn() {
+        val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID.trim()
+        if (clientId.isBlank()) {
+            binding.btnGoogleLogin.visibility = View.GONE
+            return
+        }
+
+        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestIdToken(clientId)
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, options)
     }
 
     private fun setupListeners() {
@@ -69,6 +100,16 @@ class LoginActivity : AppCompatActivity() {
 
         binding.btnRegister.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
+        }
+
+        binding.btnGoogleLogin.setOnClickListener {
+            val client = googleSignInClient
+            if (client == null) {
+                showError(getString(R.string.error_google_login_unavailable))
+                return@setOnClickListener
+            }
+            showLoading(true)
+            googleSignInRequest.launch(client.signInIntent)
         }
     }
 
@@ -89,7 +130,7 @@ class LoginActivity : AppCompatActivity() {
                 sessionManager.authToken = response.accessToken
                 sessionManager.isLoggedIn = true
                 apiClient.setToken(response.accessToken)
-                navigateToMain()
+                navigateToMain(triggerUpdateCheck = true)
             }
 
             result.onFailure { error ->
@@ -99,9 +140,28 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    private fun loginWithGoogle(idToken: String) {
+        lifecycleScope.launch {
+            val result = apiClient.loginWithGoogle(idToken)
+
+            result.onSuccess { response ->
+                sessionManager.authToken = response.accessToken
+                sessionManager.isLoggedIn = true
+                apiClient.setToken(response.accessToken)
+                navigateToMain(triggerUpdateCheck = true)
+            }
+
+            result.onFailure { error ->
+                showLoading(false)
+                showError(error.message ?: getString(R.string.error_google_login_failed))
+            }
+        }
+    }
+
     private fun showLoading(show: Boolean) {
         binding.progressBar.visibility = if (show) View.VISIBLE else View.GONE
         binding.btnLogin.isEnabled = !show
+        binding.btnGoogleLogin.isEnabled = !show
         binding.btnRegister.isEnabled = !show
     }
 
@@ -110,9 +170,10 @@ class LoginActivity : AppCompatActivity() {
         binding.textError.visibility = View.VISIBLE
     }
 
-    private fun navigateToMain() {
+    private fun navigateToMain(triggerUpdateCheck: Boolean = false) {
         val intent = Intent(this, MainActivity::class.java)
         intent.putExtra("api_token", apiClient.getToken())
+        intent.putExtra(MainActivity.EXTRA_TRIGGER_UPDATE_CHECK, triggerUpdateCheck)
         startActivity(intent)
         finish()
     }

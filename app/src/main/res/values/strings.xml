@@ -10,6 +10,7 @@
     <string name="hint_username">Имя пользователя</string>
     <string name="hint_password">Пароль</string>
     <string name="action_login">Войти</string>
+    <string name="action_login_google">Войти через Google</string>
     <string name="action_register">Регистрация</string>
 
     <string name="register_title">Регистрация</string>
@@ -26,6 +27,10 @@
     <string name="error_password_short">Минимум 6 символов</string>
     <string name="error_password_mismatch">Пароли не совпадают</string>
     <string name="error_login_failed">Ошибка входа</string>
+    <string name="error_google_login_unavailable">Google вход не настроен. Добавьте GOOGLE_WEB_CLIENT_ID.</string>
+    <string name="error_google_login_cancelled">Вход через Google отменён</string>
+    <string name="error_google_id_token_missing">Не удалось получить токен Google</string>
+    <string name="error_google_login_failed">Ошибка входа через Google</string>
     <string name="error_register_failed">Ошибка регистрации</string>
     <string name="error_register_login_failed">Регистрация успешна, но не удалось войти. Используйте вход.</string>
     <string name="debug_skip_auth">Debug: вход без сервера</string>
@@ -74,6 +79,8 @@
     <string name="settings_notification_sound_picker_title">Выбор звука уведомления</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
     <string name="settings_check_updates">Проверить обновления</string>
+    <string name="settings_auto_update_check">Автопроверка обновлений после входа</string>
+    <string name="settings_desc_auto_update_check">Автоматически проверять новую версию сразу после авторизации</string>
     <string name="settings_open_releases_page">Открыть релизы GitHub</string>
     <string name="settings_download_latest_apk">Скачать latest APK</string>
     <string name="settings_check_updates_loading">Проверка…</string>

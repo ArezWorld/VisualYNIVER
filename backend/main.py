@@ -1,11 +1,15 @@
 from datetime import datetime, timedelta
 import os
+import re
+import secrets
 import sqlite3
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from flask_sqlalchemy import SQLAlchemy
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -14,6 +18,7 @@ app.config["JWT_SECRET_KEY"] = "aot_jwt_secret_key_change_in_production"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///aot.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
+app.config["GOOGLE_WEB_CLIENT_ID"] = os.getenv("GOOGLE_WEB_CLIENT_ID", "").strip()
 
 db = SQLAlchemy(app)
 CORS(app)
@@ -109,6 +114,25 @@ def require_fields(data, fields):
     return None
 
 
+def sanitize_username(raw_value):
+    value = (raw_value or "").strip().lower()
+    value = re.sub(r"[^a-z0-9_]+", "_", value)
+    value = value.strip("_")
+    if len(value) < 3:
+        value = f"user_{secrets.token_hex(2)}"
+    return value[:40]
+
+
+def make_unique_username(base_username):
+    candidate = sanitize_username(base_username)
+    suffix = 1
+    while User.query.filter_by(username=candidate).first():
+        suffix += 1
+        candidate = f"{base_username}_{suffix}"
+        candidate = sanitize_username(candidate)
+    return candidate
+
+
 @app.route("/register", methods=["POST"])
 def register():
     data = get_json_or_form()
@@ -151,6 +175,49 @@ def login():
     user = User.query.filter_by(username=data["username"]).first()
     if not user or not check_password_hash(user.hashed_password, data["password"]):
         return jsonify({"detail": "Invalid username or password"}), 401
+
+    access_token = create_access_token(identity=str(user.id))
+    return jsonify({"access_token": access_token, "token_type": "bearer"})
+
+
+@app.route("/auth/google", methods=["POST"])
+def login_with_google():
+    data = get_json_or_form()
+    missing_response = require_fields(data, ["id_token"])
+    if missing_response:
+        return missing_response
+
+    client_id = app.config.get("GOOGLE_WEB_CLIENT_ID", "")
+    if not client_id:
+        return jsonify({"detail": "Google login is not configured on server"}), 503
+
+    try:
+        payload = google_id_token.verify_oauth2_token(
+            data["id_token"],
+            google_requests.Request(),
+            client_id,
+        )
+    except Exception:
+        return jsonify({"detail": "Invalid Google token"}), 401
+
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"detail": "Google account email is missing"}), 400
+    if not payload.get("email_verified", False):
+        return jsonify({"detail": "Google email is not verified"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        name_candidate = payload.get("name") or payload.get("given_name") or email.split("@")[0]
+        username = make_unique_username(name_candidate)
+        user = User(
+            username=username,
+            email=email,
+            hashed_password=generate_password_hash(secrets.token_urlsafe(32)),
+            is_active=True,
+        )
+        db.session.add(user)
+        db.session.commit()
 
     access_token = create_access_token(identity=str(user.id))
     return jsonify({"access_token": access_token, "token_type": "bearer"})

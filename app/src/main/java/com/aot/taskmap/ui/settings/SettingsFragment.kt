@@ -97,6 +97,11 @@ class SettingsFragment : Fragment() {
         }
 
         val context = requireContext()
+        binding.switchAutoUpdateCheck.isChecked =
+            SettingsPreferences.isAutoUpdateCheckEnabled(context)
+        binding.switchAutoUpdateCheck.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setAutoUpdateCheckEnabled(context, checked)
+        }
 
         binding.switchDarkTheme.isChecked = ThemePreferences.isDarkMode(context)
         binding.switchDarkTheme.setOnCheckedChangeListener { _, checked ->

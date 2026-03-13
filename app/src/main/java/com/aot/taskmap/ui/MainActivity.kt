@@ -3,24 +3,38 @@
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.setupWithNavController
+import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.databinding.ActivityMainBinding
 import com.aot.taskmap.service.LocationService
+import com.aot.taskmap.ui.settings.GitHubUpdateChecker
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var lastNavClickTime = 0L
+    private var updateCheckTriggered = false
+
+    companion object {
+        const val EXTRA_TRIGGER_UPDATE_CHECK = "trigger_update_check"
+    }
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -48,6 +62,7 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
         requestLocationPermissionIfNeeded()
         handleIntent(intent)
+        maybeCheckForUpdatesAfterAuthorization(intent, savedInstanceState == null)
     }
 
     private fun requestLocationPermissionIfNeeded() {
@@ -151,8 +166,90 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun maybeCheckForUpdatesAfterAuthorization(intent: Intent?, onlyOnFirstCreate: Boolean) {
+        if (!onlyOnFirstCreate || updateCheckTriggered) return
+        if (!SettingsPreferences.isAutoUpdateCheckEnabled(this)) return
+        val shouldCheck = intent?.getBooleanExtra(EXTRA_TRIGGER_UPDATE_CHECK, false) == true
+        if (!shouldCheck) return
+
+        updateCheckTriggered = true
+        intent.removeExtra(EXTRA_TRIGGER_UPDATE_CHECK)
+        setIntent(intent)
+        runPostAuthUpdateCheck()
+    }
+
+    private fun runPostAuthUpdateCheck() {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { GitHubUpdateChecker.fetchLatestRelease() }
+            }
+
+            result.onSuccess { release ->
+                val remoteVersion = release.versionTag.ifBlank { release.releaseName ?: "" }
+                if (!isRemoteVersionNewer(remoteVersion, BuildConfig.VERSION_NAME)) return@onSuccess
+                if (isFinishing || isDestroyed) return@onSuccess
+
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle(R.string.settings_update_available_title)
+                    .setMessage(
+                        getString(
+                            R.string.settings_update_available_message,
+                            remoteVersion,
+                            BuildConfig.VERSION_NAME
+                        )
+                    )
+                    .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
+                        openUpdateLink(release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL)
+                    }
+                    .setNeutralButton(R.string.settings_update_open_releases) { _, _ ->
+                        openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
+                    }
+                    .setNegativeButton(R.string.settings_update_action_later, null)
+                    .show()
+            }
+        }
+    }
+
+    private fun openUpdateLink(url: String) {
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        }.onFailure {
+            Toast.makeText(
+                this,
+                getString(R.string.settings_update_check_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun isRemoteVersionNewer(remoteVersion: String, localVersion: String): Boolean {
+        val remoteParts = extractVersionParts(remoteVersion)
+        val localParts = extractVersionParts(localVersion)
+
+        if (remoteParts.isEmpty() || localParts.isEmpty()) {
+            return remoteVersion.trim() != localVersion.trim()
+        }
+
+        val maxSize = maxOf(remoteParts.size, localParts.size)
+        for (index in 0 until maxSize) {
+            val remote = remoteParts.getOrElse(index) { 0 }
+            val local = localParts.getOrElse(index) { 0 }
+            if (remote != local) return remote > local
+        }
+        return false
+    }
+
+    private fun extractVersionParts(version: String): List<Int> {
+        val normalized = version.trim().lowercase()
+        val match = Regex("""\d+(?:\.\d+)*""").find(normalized) ?: return emptyList()
+        return match.value
+            .split('.')
+            .mapNotNull { part -> part.toIntOrNull() }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
+        maybeCheckForUpdatesAfterAuthorization(intent, onlyOnFirstCreate = true)
     }
 }

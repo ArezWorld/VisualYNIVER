@@ -3,10 +3,8 @@
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SessionManager
 import com.aot.taskmap.data.local.ThemePreferences
@@ -29,12 +27,6 @@ class RegisterActivity : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
         apiClient = ApiClient(LoginActivity.BASE_URL)
-
-        if (BuildConfig.DEBUG) {
-            Toast.makeText(this, getString(R.string.debug_register_disabled), Toast.LENGTH_SHORT).show()
-            finish()
-            return
-        }
 
         setupListeners()
     }
@@ -86,7 +78,7 @@ class RegisterActivity : AppCompatActivity() {
                     sessionManager.isLoggedIn = true
                     apiClient.setToken(response.accessToken)
 
-                    navigateToMain()
+                    navigateToMain(triggerUpdateCheck = true)
                 }
 
                 loginResult.onFailure {
@@ -112,9 +104,10 @@ class RegisterActivity : AppCompatActivity() {
         binding.textError.visibility = View.VISIBLE
     }
 
-    private fun navigateToMain() {
+    private fun navigateToMain(triggerUpdateCheck: Boolean = false) {
         val intent = Intent(this, MainActivity::class.java)
         intent.putExtra("api_token", apiClient.getToken())
+        intent.putExtra(MainActivity.EXTRA_TRIGGER_UPDATE_CHECK, triggerUpdateCheck)
         startActivity(intent)
         finishAffinity()
     }

@@ -108,6 +108,30 @@ class ApiClient(private val baseUrl: String) {
             }
         }
 
+    suspend fun loginWithGoogle(idToken: String): Result<LoginResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val body = createJsonBody(mapOf("id_token" to idToken))
+                val request = Request.Builder()
+                    .url("$baseUrl/auth/google")
+                    .post(body)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val json = JSONObject(response.body?.string() ?: "{}")
+                    val newToken = json.getString("access_token")
+                    token = newToken
+                    Result.success(LoginResponse(newToken, "bearer"))
+                } else {
+                    val error = parseErrorMessage(response.body?.string(), "Google login error")
+                    Result.failure(Exception(error))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
     suspend fun getTasks(completed: Boolean? = null): Result<List<TaskDto>> =
         withContext(Dispatchers.IO) {
             try {
