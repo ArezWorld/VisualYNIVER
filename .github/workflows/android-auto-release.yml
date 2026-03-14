@@ -46,7 +46,7 @@ jobs:
           fi
 
           git fetch --tags --force
-          LAST_STABLE_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | grep -E "^v${BASE_SERIES}\\.[0-9]+$" | head -n1)
+          LAST_STABLE_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | grep -E "^v${BASE_SERIES}\\.[0-9]+$" | head -n1 || true)
           if [ -z "$LAST_STABLE_TAG" ]; then
             NEXT_PATCH=1
           else
