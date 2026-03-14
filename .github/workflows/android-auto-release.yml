@@ -38,7 +38,7 @@ jobs:
       - name: Prepare release metadata
         shell: bash
         run: |
-          BASE_SERIES="1.4"
+          BASE_SERIES="1.5"
           COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
           IS_PRERELEASE="false"
           if [[ "$COMMIT_MESSAGE" == *"[pre-release]"* ]]; then
@@ -59,7 +59,7 @@ jobs:
           fi
 
           APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
-          APP_VERSION_CODE=$((14000 + NEXT_PATCH))
+          APP_VERSION_CODE=$((15000 + NEXT_PATCH))
 
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             LAST_RC_TAG=$(git tag -l "v${APP_VERSION_NAME}-rc.*" --sort=-v:refname | head -n1)
