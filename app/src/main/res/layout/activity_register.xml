@@ -122,6 +122,22 @@
             android:textSize="16sp"
             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnServerSettings"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/action_server_settings"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/textServerUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="12sp" />
+
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"

@@ -10,7 +10,6 @@ object SettingsPreferences {
     private const val KEY_FOLLOW_LOCATION = "follow_location"
     private const val KEY_SHOW_RADIUS = "show_radius"
     private const val KEY_CONFIRM_COMPLETE = "confirm_complete"
-    private const val KEY_SEARCH_AUTO_EXPAND = "search_auto_expand"
     private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
     private const val KEY_MAP_STYLE = "map_style"
     private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
@@ -54,13 +53,6 @@ object SettingsPreferences {
 
     fun setConfirmCompleteEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_CONFIRM_COMPLETE, enabled).apply()
-    }
-
-    fun isSearchAutoExpandEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SEARCH_AUTO_EXPAND, true)
-
-    fun setSearchAutoExpandEnabled(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_SEARCH_AUTO_EXPAND, enabled).apply()
     }
 
     fun isNotificationsEnabled(context: Context): Boolean =
@@ -139,12 +131,13 @@ object SettingsPreferences {
     }
 
     fun saveLastMapViewport(context: Context, latitude: Double, longitude: Double, zoom: Double) {
+        // Save synchronously to avoid losing viewport on fast app close.
         prefs(context).edit()
             .putBoolean(KEY_LAST_MAP_STATE_SAVED, true)
             .putLong(KEY_LAST_MAP_LAT_BITS, java.lang.Double.doubleToRawLongBits(latitude))
             .putLong(KEY_LAST_MAP_LNG_BITS, java.lang.Double.doubleToRawLongBits(longitude))
             .putLong(KEY_LAST_MAP_ZOOM_BITS, java.lang.Double.doubleToRawLongBits(zoom))
-            .apply()
+            .commit()
     }
 
     fun getLastMapViewport(context: Context): MapViewport? {

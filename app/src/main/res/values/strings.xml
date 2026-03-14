@@ -63,7 +63,6 @@
     <string name="settings_map_style">Стиль карты</string>
     <string name="settings_map_style_standard">2GIS (Россия)</string>
     <string name="settings_map_style_terrain">OpenStreetMap (глобальная)</string>
-    <string name="settings_search_expand">Показывать поиск при запуске</string>
     <string name="settings_animations">Плавные анимации интерфейса</string>
     <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
     <string name="settings_notifications_enabled">Уведомления о приближении</string>
@@ -73,7 +72,6 @@
     <string name="settings_developers">Разработано: студенты БПИ-23\nАстафьев Д.А., Осадчук И.Д.</string>
     <string name="settings_about_text">AOT (Absolutely Optimize Task) — мобильное приложение-органайзер с геопривязкой задач. Оно помогает планировать задачи и получать уведомления при приближении к месту выполнения.</string>
     <string name="settings_desc_dark_theme">Переключение светлой и тёмной темы</string>
-    <string name="settings_desc_search_expand">Показывать строку поиска при открытии карты</string>
     <string name="settings_desc_animations">Плавное открытие и скрытие меню по всему приложению</string>
     <string name="settings_desc_follow_location">Автоматически держать карту на вашей позиции</string>
     <string name="settings_desc_show_radius">Показывать окружности радиуса задач</string>
@@ -91,7 +89,6 @@
     <string name="settings_auto_update_check">Автопроверка обновлений после входа</string>
     <string name="settings_desc_auto_update_check">Автоматически проверять новую версию сразу после авторизации</string>
     <string name="settings_open_releases_page">Открыть релизы GitHub</string>
-    <string name="settings_download_latest_apk">Скачать latest APK</string>
     <string name="settings_check_updates_loading">Проверка…</string>
     <string name="settings_update_available_title">Доступно обновление</string>
     <string name="settings_update_available_message">Найдена версия %1$s. Текущая версия: %2$s.</string>

@@ -92,9 +92,6 @@ class SettingsFragment : Fragment() {
         binding.buttonOpenReleases.setOnClickListener {
             openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
         }
-        binding.buttonDownloadLatestApk.setOnClickListener {
-            startInAppUpdateDownload(BuildConfig.UPDATE_LATEST_APK_URL)
-        }
 
         val context = requireContext()
         binding.switchAutoUpdateCheck.isChecked =
@@ -146,12 +143,6 @@ class SettingsFragment : Fragment() {
                 }
                 activity?.recreate()
             }
-        }
-
-        binding.switchSearchExpand.isChecked =
-            SettingsPreferences.isSearchAutoExpandEnabled(context)
-        binding.switchSearchExpand.setOnCheckedChangeListener { _, checked ->
-            SettingsPreferences.setSearchAutoExpandEnabled(context, checked)
         }
 
         binding.switchAnimations.isChecked =

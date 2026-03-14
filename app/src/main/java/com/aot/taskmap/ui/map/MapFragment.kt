@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.location.Geocoder
 import android.os.Bundle
@@ -121,12 +122,23 @@ class MapFragment : Fragment() {
     private var activeTasksCache = emptyList<Task>()
     private var completedTasksCache = emptyList<Task>()
     private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
-    private val overpassApiUrl = "https://overpass-api.de/api/interpreter"
+    private val overpassApiUrls = listOf(
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://lz4.overpass-api.de/api/interpreter"
+    )
     private val searchHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(6, TimeUnit.SECONDS)
             .readTimeout(6, TimeUnit.SECONDS)
             .callTimeout(8, TimeUnit.SECONDS)
+            .build()
+    }
+    private val importantPlacesHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(16, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
             .build()
     }
 
@@ -536,7 +548,7 @@ class MapFragment : Fragment() {
         val longitude = center.longitude
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
-            delay(if (animationsEnabled()) 700L else 350L)
+            delay(if (animationsEnabled()) 260L else 120L)
             val places = withContext(Dispatchers.IO) {
                 fetchImportantPlaces(latitude, longitude, config)
             }
@@ -555,39 +567,39 @@ class MapFragment : Fragment() {
     }
 
     private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig? {
-        if (zoom < 11.5) return null
+        if (zoom < 10.5) return null
         return when {
             zoom >= 17.5 -> ImportantPlacesConfig(
                 radiusMeters = 850,
-                maxItems = 120,
+                maxItems = 70,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library|parking",
                 includeShopLayer = true,
                 includeTourismLayer = true
             )
             zoom >= 16.0 -> ImportantPlacesConfig(
                 radiusMeters = 1400,
-                maxItems = 95,
+                maxItems = 56,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library",
                 includeShopLayer = true,
                 includeTourismLayer = true
             )
             zoom >= 14.5 -> ImportantPlacesConfig(
                 radiusMeters = 2200,
-                maxItems = 70,
+                maxItems = 42,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|cafe|restaurant|fast_food|bank",
                 includeShopLayer = true,
                 includeTourismLayer = false
             )
-            zoom >= 13.0 -> ImportantPlacesConfig(
-                radiusMeters = 3200,
-                maxItems = 55,
+            zoom >= 12.5 -> ImportantPlacesConfig(
+                radiusMeters = 2900,
+                maxItems = 30,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university|bank",
-                includeShopLayer = true,
+                includeShopLayer = false,
                 includeTourismLayer = false
             )
             else -> ImportantPlacesConfig(
-                radiusMeters = 5200,
-                maxItems = 40,
+                radiusMeters = 3800,
+                maxItems = 22,
                 amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
                 includeShopLayer = false,
                 includeTourismLayer = false
@@ -630,59 +642,74 @@ class MapFragment : Fragment() {
             out center;
         """.trimIndent()
 
-        val request = Request.Builder()
-            .url(overpassApiUrl)
-            .post(query.toRequestBody("text/plain; charset=utf-8".toMediaType()))
-            .header("User-Agent", "${requireContext().packageName}/important-places")
-            .build()
+        for (endpoint in overpassApiUrls) {
+            val request = Request.Builder()
+                .url(endpoint)
+                .post(query.toRequestBody("text/plain; charset=utf-8".toMediaType()))
+                .header("User-Agent", "${requireContext().packageName}/important-places")
+                .build()
 
-        return runCatching {
-            searchHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return emptyList()
-                val body = response.body?.string().orEmpty()
-                val json = JSONObject(body)
-                val elements = json.optJSONArray("elements") ?: return emptyList()
-                val unique = linkedMapOf<String, ImportantPlace>()
-
-                for (index in 0 until elements.length()) {
-                    val item = elements.optJSONObject(index) ?: continue
-                    val center = item.optJSONObject("center")
-                    val nodeLat = item.optDouble("lat", Double.NaN)
-                    val nodeLon = item.optDouble("lon", Double.NaN)
-                    val lat = if (nodeLat.isFinite()) {
-                        nodeLat
-                    } else {
-                        center?.optDouble("lat", Double.NaN) ?: Double.NaN
-                    }
-                    val lon = if (nodeLon.isFinite()) {
-                        nodeLon
-                    } else {
-                        center?.optDouble("lon", Double.NaN) ?: Double.NaN
-                    }
-                    if (!lat.isFinite() || !lon.isFinite()) continue
-
-                    val tags = item.optJSONObject("tags") ?: JSONObject()
-                    val category = tags.optString("amenity")
-                        .ifBlank { tags.optString("shop") }
-                        .ifBlank { tags.optString("tourism") }
-                        .ifBlank { tags.optString("leisure") }
-                        .lowercase(Locale.ROOT)
-                    if (category.isBlank()) continue
-
-                    val title = tags.optString("name").trim().ifBlank {
-                        resolveImportantPlaceCategoryLabel(category)
-                    }
-                    val key = "${lat.format(5)}:${lon.format(5)}:$category"
-                    unique[key] = ImportantPlace(
-                        title = title,
-                        category = category,
-                        point = GeoPoint(lat, lon)
-                    )
-                    if (unique.size >= config.maxItems) break
+            val places = runCatching {
+                importantPlacesHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use null
+                    val body = response.body?.string().orEmpty()
+                    parseImportantPlacesResponse(body, config.maxItems)
                 }
-                unique.values.toList()
+            }.getOrNull()
+
+            if (places != null) return places
+        }
+
+        return emptyList()
+    }
+
+    private fun parseImportantPlacesResponse(
+        body: String,
+        maxItems: Int
+    ): List<ImportantPlace> {
+        if (body.isBlank()) return emptyList()
+        val json = JSONObject(body)
+        val elements = json.optJSONArray("elements") ?: return emptyList()
+        val unique = linkedMapOf<String, ImportantPlace>()
+
+        for (index in 0 until elements.length()) {
+            val item = elements.optJSONObject(index) ?: continue
+            val center = item.optJSONObject("center")
+            val nodeLat = item.optDouble("lat", Double.NaN)
+            val nodeLon = item.optDouble("lon", Double.NaN)
+            val lat = if (nodeLat.isFinite()) {
+                nodeLat
+            } else {
+                center?.optDouble("lat", Double.NaN) ?: Double.NaN
             }
-        }.getOrDefault(emptyList())
+            val lon = if (nodeLon.isFinite()) {
+                nodeLon
+            } else {
+                center?.optDouble("lon", Double.NaN) ?: Double.NaN
+            }
+            if (!lat.isFinite() || !lon.isFinite()) continue
+
+            val tags = item.optJSONObject("tags") ?: JSONObject()
+            val category = tags.optString("amenity")
+                .ifBlank { tags.optString("shop") }
+                .ifBlank { tags.optString("tourism") }
+                .ifBlank { tags.optString("leisure") }
+                .lowercase(Locale.ROOT)
+            if (category.isBlank()) continue
+
+            val title = tags.optString("name").trim().ifBlank {
+                resolveImportantPlaceCategoryLabel(category)
+            }
+            val key = "${lat.format(5)}:${lon.format(5)}:$category"
+            unique[key] = ImportantPlace(
+                title = title,
+                category = category,
+                point = GeoPoint(lat, lon)
+            )
+            if (unique.size >= maxItems) break
+        }
+
+        return unique.values.toList()
     }
 
     private fun mergeCuratedImportantPlaces(
@@ -747,10 +774,7 @@ class MapFragment : Fragment() {
                 title = place.title
                 snippet = resolveImportantPlaceCategoryLabel(place.category)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                icon = ContextCompat.getDrawable(
-                    requireContext(),
-                    resolveImportantPlaceIconRes(place.category)
-                )?.mutate()
+                icon = buildImportantPlaceIconDrawable(place.category)
             }
             binding.mapView.overlays.add(marker)
             importantPlaceOverlays.add(marker)
@@ -779,6 +803,29 @@ class MapFragment : Fragment() {
                 R.drawable.ic_poi_place
             else -> R.drawable.ic_poi_default_pin
         }
+    }
+
+    private fun buildImportantPlaceIconDrawable(category: String): Drawable? {
+        val source = ContextCompat.getDrawable(
+            requireContext(),
+            resolveImportantPlaceIconRes(category)
+        )?.mutate() ?: return null
+
+        val iconDp = when {
+            binding.mapView.zoomLevelDouble >= 17.0 -> 20
+            binding.mapView.zoomLevelDouble >= 15.0 -> 18
+            binding.mapView.zoomLevelDouble >= 13.0 -> 16
+            else -> 14
+        }
+        val iconPx = (iconDp * resources.displayMetrics.density)
+            .toInt()
+            .coerceAtLeast(14)
+
+        val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        source.setBounds(0, 0, iconPx, iconPx)
+        source.draw(canvas)
+        return BitmapDrawable(resources, bitmap)
     }
 
     private fun Double.format(fractionDigits: Int): String {
@@ -2059,12 +2106,12 @@ class MapFragment : Fragment() {
     }
 
     private fun applySearchInitialState() {
-        val autoExpand = SettingsPreferences.isSearchAutoExpandEnabled(requireContext())
-        isSearchExpanded = autoExpand
-        binding.searchCard.visibility = if (autoExpand) View.VISIBLE else View.GONE
-        binding.searchFab.visibility = if (autoExpand) View.GONE else View.VISIBLE
-        binding.searchCard.alpha = if (autoExpand) 1f else 0f
-        binding.searchFab.alpha = if (autoExpand) 0f else 1f
+        // По умолчанию показываем только кнопку поиска, чтобы интерфейс карты оставался чистым.
+        isSearchExpanded = false
+        binding.searchCard.visibility = View.GONE
+        binding.searchFab.visibility = View.VISIBLE
+        binding.searchCard.alpha = 0f
+        binding.searchFab.alpha = 1f
     }
 
     private fun collapseSearchUi() {
@@ -2205,8 +2252,8 @@ class MapFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        binding.mapView.onPause()
         saveCurrentMapViewport()
+        binding.mapView.onPause()
         importantPlacesRefreshJob?.cancel()
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
