@@ -82,12 +82,22 @@
             android:text="@string/action_login"
             android:textSize="16sp" />
 
-        <com.google.android.gms.common.SignInButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGoogleLogin"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="12dp"
-            android:contentDescription="@string/action_login_google" />
+            android:backgroundTint="@android:color/white"
+            android:contentDescription="@string/action_login_google"
+            android:text="@string/action_login_google"
+            android:textAllCaps="false"
+            android:textColor="#1F1F1F"
+            app:icon="@drawable/ic_google_logo"
+            app:iconGravity="textStart"
+            app:iconPadding="10dp"
+            app:iconTint="@null"
+            app:strokeColor="#DADCE0"
+            app:strokeWidth="1dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRegister"
@@ -111,6 +121,22 @@
             android:layout_marginTop="4dp"
             android:text="@string/action_continue_guest"
             android:textSize="15sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnServerSettings"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/action_server_settings"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/textServerUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="12sp" />
 
         <ProgressBar
             android:id="@+id/progressBar"

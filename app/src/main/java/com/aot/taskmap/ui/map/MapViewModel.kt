@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sessionManager = SessionManager(application)
-    private val apiClient = ApiClient(ApiBaseUrlProvider.resolve()).apply {
+    private val apiClient = ApiClient(ApiBaseUrlProvider.resolve(application)).apply {
         sessionManager.authToken?.let { setToken(it) }
     }
 

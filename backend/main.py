@@ -267,6 +267,17 @@ def login_with_google():
     return jsonify({"access_token": access_token, "token_type": "bearer"})
 
 
+@app.route("/auth/config", methods=["GET"])
+def auth_config():
+    client_id = app.config.get("GOOGLE_WEB_CLIENT_ID", "").strip()
+    return jsonify(
+        {
+            "google_sign_in_enabled": bool(client_id),
+            "google_web_client_id": client_id,
+        }
+    )
+
+
 @app.route("/me", methods=["GET"])
 @jwt_required()
 def get_current_user():

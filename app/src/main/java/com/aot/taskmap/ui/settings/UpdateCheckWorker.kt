@@ -1,5 +1,6 @@
 package com.aot.taskmap.ui.settings
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -52,8 +53,10 @@ class UpdateCheckWorker(
         return Result.success()
     }
 
+    @SuppressLint("MissingPermission")
     private fun showUpdateNotification(remoteVersion: String) {
         createNotificationChannelIfNeeded()
+        if (!hasNotificationPermission()) return
 
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -88,8 +91,10 @@ class UpdateCheckWorker(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 
-        NotificationManagerCompat.from(applicationContext)
-            .notify(UPDATE_NOTIFICATION_ID, notification)
+        runCatching {
+            NotificationManagerCompat.from(applicationContext)
+                .notify(UPDATE_NOTIFICATION_ID, notification)
+        }
     }
 
     private fun createNotificationChannelIfNeeded() {

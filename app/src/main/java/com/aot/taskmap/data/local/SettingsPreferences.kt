@@ -24,6 +24,7 @@ object SettingsPreferences {
     private const val KEY_LAST_MAP_LAT_BITS = "last_map_lat_bits"
     private const val KEY_LAST_MAP_LNG_BITS = "last_map_lng_bits"
     private const val KEY_LAST_MAP_ZOOM_BITS = "last_map_zoom_bits"
+    private const val KEY_API_BASE_URL_OVERRIDE = "api_base_url_override"
 
     data class MapViewport(
         val latitude: Double,
@@ -159,5 +160,21 @@ object SettingsPreferences {
         if (zoom <= 0.0) return null
 
         return MapViewport(latitude = lat, longitude = lng, zoom = zoom)
+    }
+
+    fun getApiBaseUrlOverride(context: Context): String? =
+        prefs(context).getString(KEY_API_BASE_URL_OVERRIDE, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+    fun setApiBaseUrlOverride(context: Context, url: String?) {
+        val editor = prefs(context).edit()
+        val normalized = url?.trim().orEmpty()
+        if (normalized.isBlank()) {
+            editor.remove(KEY_API_BASE_URL_OVERRIDE)
+        } else {
+            editor.putString(KEY_API_BASE_URL_OVERRIDE, normalized)
+        }
+        editor.apply()
     }
 }

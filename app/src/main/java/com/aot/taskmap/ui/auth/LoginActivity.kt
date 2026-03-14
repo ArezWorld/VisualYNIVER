@@ -1,5 +1,6 @@
-﻿package com.aot.taskmap.ui.auth
+package com.aot.taskmap.ui.auth
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -8,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
+import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.SessionManager
 import com.aot.taskmap.data.local.ThemePreferences
 import com.aot.taskmap.data.remote.ApiBaseUrlProvider
@@ -18,8 +20,11 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.SignInButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 class LoginActivity : AppCompatActivity() {
 
@@ -28,6 +33,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var apiClient: ApiClient
     private lateinit var apiBaseUrl: String
     private var googleSignInClient: GoogleSignInClient? = null
+    private var googleConfigRequestToken: Int = 0
 
     private val googleSignInRequest = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -53,10 +59,9 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         sessionManager = SessionManager(this)
-        apiBaseUrl = ApiBaseUrlProvider.resolve()
-        apiClient = ApiClient(apiBaseUrl)
+        rebuildApiClient()
 
-        // Если уже вошёл - переходим на главный экран
+        // Active session shortcut.
         if (sessionManager.isSessionLoggedIn()) {
             val token = sessionManager.authToken
             if (token != null) {
@@ -68,21 +73,42 @@ class LoginActivity : AppCompatActivity() {
 
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        updateServerUrlLabel()
 
         configureGoogleSignIn()
         setupListeners()
     }
 
-    private fun configureGoogleSignIn() {
-        binding.btnGoogleLogin.setSize(SignInButton.SIZE_WIDE)
-        binding.btnGoogleLogin.setColorScheme(SignInButton.COLOR_LIGHT)
+    private fun rebuildApiClient() {
+        apiBaseUrl = ApiBaseUrlProvider.resolve(this)
+        apiClient = ApiClient(apiBaseUrl)
+        sessionManager.authToken?.let { apiClient.setToken(it) }
+    }
 
-        val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID.trim()
-        if (clientId.isBlank()) {
-            googleSignInClient = null
+    private fun updateServerUrlLabel() {
+        binding.textServerUrl.text = getString(R.string.server_url_current, apiBaseUrl)
+    }
+
+    private fun configureGoogleSignIn() {
+        val clientIdFromBuildConfig = BuildConfig.GOOGLE_WEB_CLIENT_ID.trim()
+        if (clientIdFromBuildConfig.isNotBlank()) {
+            applyGoogleClient(clientIdFromBuildConfig)
             return
         }
 
+        googleSignInClient = null
+        val requestToken = ++googleConfigRequestToken
+        lifecycleScope.launch {
+            val result = apiClient.getAuthConfig()
+            if (requestToken != googleConfigRequestToken) return@launch
+            val serverClientId = result.getOrNull()?.googleWebClientId.orEmpty()
+            if (serverClientId.isNotBlank()) {
+                applyGoogleClient(serverClientId)
+            }
+        }
+    }
+
+    private fun applyGoogleClient(clientId: String) {
         val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
             .requestIdToken(clientId)
@@ -108,6 +134,10 @@ class LoginActivity : AppCompatActivity() {
             continueAsGuest()
         }
 
+        binding.btnServerSettings.setOnClickListener {
+            showServerSettingsDialog()
+        }
+
         binding.btnGoogleLogin.setOnClickListener {
             val client = googleSignInClient
             if (client == null) {
@@ -117,6 +147,51 @@ class LoginActivity : AppCompatActivity() {
             showLoading(true)
             googleSignInRequest.launch(client.signInIntent)
         }
+    }
+
+    private fun showServerSettingsDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_server_url, null)
+        val inputLayout = view.findViewById<TextInputLayout>(R.id.inputServerUrlLayout)
+        val editServerUrl = view.findViewById<TextInputEditText>(R.id.editServerUrl)
+        editServerUrl.setText(apiBaseUrl)
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.server_url_dialog_title)
+            .setView(view)
+            .setPositiveButton(R.string.map_save_task, null)
+            .setNeutralButton(R.string.action_reset, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                inputLayout.error = null
+                val rawValue = editServerUrl.text?.toString().orEmpty().trim()
+                val normalizedUrl = ApiBaseUrlProvider.normalize(rawValue)
+                if (normalizedUrl.toHttpUrlOrNull() == null) {
+                    inputLayout.error = getString(R.string.error_server_url_invalid)
+                    return@setOnClickListener
+                }
+
+                SettingsPreferences.setApiBaseUrlOverride(this, normalizedUrl)
+                rebuildApiClient()
+                updateServerUrlLabel()
+                configureGoogleSignIn()
+                hideError()
+                dialog.dismiss()
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                SettingsPreferences.setApiBaseUrlOverride(this, null)
+                rebuildApiClient()
+                updateServerUrlLabel()
+                configureGoogleSignIn()
+                hideError()
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
     }
 
     private fun validateInput(username: String, password: String): Boolean {
@@ -184,6 +259,7 @@ class LoginActivity : AppCompatActivity() {
         binding.btnGoogleLogin.isEnabled = !show
         binding.btnRegister.isEnabled = !show
         binding.btnContinueGuest.isEnabled = !show
+        binding.btnServerSettings.isEnabled = !show
     }
 
     private fun continueAsGuest() {
@@ -195,6 +271,10 @@ class LoginActivity : AppCompatActivity() {
     private fun showError(message: String) {
         binding.textError.text = message
         binding.textError.visibility = View.VISIBLE
+    }
+
+    private fun hideError() {
+        binding.textError.visibility = View.GONE
     }
 
     private fun navigateToMain(triggerUpdateCheck: Boolean = false) {

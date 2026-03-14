@@ -13,6 +13,8 @@
     <string name="action_login_google">Войти через Google</string>
     <string name="action_register">Регистрация</string>
     <string name="action_continue_guest">Перейти на карту без входа</string>
+    <string name="action_server_settings">Адрес сервера</string>
+    <string name="action_reset">Сбросить</string>
 
     <string name="register_title">Регистрация</string>
     <string name="hint_email">Email</string>
@@ -28,14 +30,18 @@
     <string name="error_password_short">Минимум 6 символов</string>
     <string name="error_password_mismatch">Пароли не совпадают</string>
     <string name="error_login_failed">Ошибка входа</string>
-    <string name="error_google_login_unavailable">Google вход не настроен. Добавьте GOOGLE_WEB_CLIENT_ID.</string>
+    <string name="error_google_login_unavailable">Google вход недоступен. Укажите GOOGLE_WEB_CLIENT_ID на сервере.</string>
     <string name="error_google_login_cancelled">Вход через Google отменён</string>
     <string name="error_google_id_token_missing">Не удалось получить токен Google</string>
     <string name="error_google_login_failed">Ошибка входа через Google</string>
     <string name="error_register_failed">Ошибка регистрации</string>
     <string name="error_register_login_failed">Регистрация успешна, но не удалось войти. Используйте вход.</string>
     <string name="error_server_unreachable">Сервер авторизации недоступен. Проверьте интернет и адрес сервера.</string>
-    <string name="error_server_emulator_host">Сейчас используется адрес %1$s, он работает только в эмуляторе Android. Для телефона укажите IP вашего ПК в API_BASE_URL.</string>
+    <string name="error_server_emulator_host">Сейчас используется адрес %1$s, он работает только в эмуляторе Android. Для телефона укажите реальный адрес сервера через кнопку «Адрес сервера».</string>
+    <string name="error_server_url_invalid">Некорректный адрес сервера</string>
+    <string name="server_url_current">Сервер: %1$s</string>
+    <string name="server_url_hint">https://example.com</string>
+    <string name="server_url_dialog_title">Настройка сервера API</string>
     <string name="debug_skip_auth">Debug: вход без сервера</string>
     <string name="debug_register_disabled">Debug: регистрация отключена</string>
 

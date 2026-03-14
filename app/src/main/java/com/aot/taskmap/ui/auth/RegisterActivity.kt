@@ -28,7 +28,7 @@ class RegisterActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         sessionManager = SessionManager(this)
-        apiBaseUrl = ApiBaseUrlProvider.resolve()
+        apiBaseUrl = ApiBaseUrlProvider.resolve(this)
         apiClient = ApiClient(apiBaseUrl)
 
         setupListeners()

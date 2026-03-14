@@ -13,6 +13,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
+data class AuthConfigDto(
+    val googleWebClientId: String,
+    val googleSignInEnabled: Boolean
+)
+
 class ApiClient(private val baseUrl: String) {
 
     private val client = OkHttpClient.Builder()
@@ -131,6 +136,30 @@ class ApiClient(private val baseUrl: String) {
                 Result.failure(e)
             }
         }
+
+    suspend fun getAuthConfig(): Result<AuthConfigDto> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/auth/config")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val json = JSONObject(response.body?.string() ?: "{}")
+                Result.success(
+                    AuthConfigDto(
+                        googleWebClientId = json.optString("google_web_client_id", "").trim(),
+                        googleSignInEnabled = json.optBoolean("google_sign_in_enabled", false)
+                    )
+                )
+            } else {
+                Result.failure(Exception("Auth config error: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun getTasks(completed: Boolean? = null): Result<List<TaskDto>> =
         withContext(Dispatchers.IO) {
