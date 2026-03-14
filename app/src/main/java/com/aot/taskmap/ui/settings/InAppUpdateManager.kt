@@ -14,6 +14,7 @@ object InAppUpdateManager {
 
     private const val PREFS_NAME = "in_app_update_prefs"
     private const val KEY_PENDING_DOWNLOAD_ID = "pending_download_id"
+    private const val KEY_PENDING_APK_URI = "pending_apk_uri"
     private const val UPDATE_FILE_NAME = "AOT-update.apk"
 
     fun startBackgroundDownload(context: Context, apkUrl: String): Result<Long> {
@@ -27,6 +28,7 @@ object InAppUpdateManager {
                 downloadManager.remove(pendingId)
                 clearPendingDownloadId(appContext)
             }
+            clearPendingApkUri(appContext)
 
             val targetDir = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                 ?: throw IllegalStateException("External files dir unavailable")
@@ -92,6 +94,7 @@ object InAppUpdateManager {
         if (apkUri == null) {
             return DownloadCompleteResult.Failed
         }
+        savePendingApkUri(appContext, apkUri.toString())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             !appContext.packageManager.canRequestPackageInstalls()
         ) {
@@ -99,6 +102,25 @@ object InAppUpdateManager {
         }
 
         return if (installDownloadedApk(appContext, apkUri)) {
+            clearPendingApkUri(appContext)
+            DownloadCompleteResult.InstallStarted
+        } else {
+            DownloadCompleteResult.Failed
+        }
+    }
+
+    fun resumePendingInstallIfPossible(context: Context): DownloadCompleteResult {
+        val appContext = context.applicationContext
+        val pendingUri = getPendingApkUri(appContext) ?: return DownloadCompleteResult.Ignored
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !appContext.packageManager.canRequestPackageInstalls()
+        ) {
+            return DownloadCompleteResult.RequiresInstallPermission
+        }
+
+        return if (installDownloadedApk(appContext, Uri.parse(pendingUri))) {
+            clearPendingApkUri(appContext)
             DownloadCompleteResult.InstallStarted
         } else {
             DownloadCompleteResult.Failed
@@ -145,6 +167,25 @@ object InAppUpdateManager {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_PENDING_DOWNLOAD_ID)
+            .apply()
+    }
+
+    private fun getPendingApkUri(context: Context): String? {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_PENDING_APK_URI, null)
+    }
+
+    private fun savePendingApkUri(context: Context, apkUri: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PENDING_APK_URI, apkUri)
+            .apply()
+    }
+
+    private fun clearPendingApkUri(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_PENDING_APK_URI)
             .apply()
     }
 }

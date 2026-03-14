@@ -67,6 +67,12 @@ class MainActivity : AppCompatActivity() {
         maybeCheckForUpdatesAfterAuthorization(intent, savedInstanceState == null)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Если APK уже скачан, автоматически пробуем запустить установку при возврате в приложение.
+        InAppUpdateManager.resumePendingInstallIfPossible(this)
+    }
+
     private fun requestLocationPermissionIfNeeded() {
         if (hasLocationPermission()) {
             requestNotificationPermission()
