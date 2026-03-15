@@ -1,12 +1,5 @@
 package com.aot.taskmap.data.model
 
-data class UserDto(
-    val id: Int,
-    val username: String,
-    val email: String,
-    val isActive: Boolean
-)
-
 data class LoginRequest(
     val username: String,
     val password: String
@@ -15,12 +8,6 @@ data class LoginRequest(
 data class LoginResponse(
     val accessToken: String,
     val tokenType: String
-)
-
-data class RegisterRequest(
-    val username: String,
-    val email: String,
-    val password: String
 )
 
 data class TaskDto(

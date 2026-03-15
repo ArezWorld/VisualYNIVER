@@ -1,6 +1,8 @@
 package com.aot.taskmap.data.local
 
 import android.content.Context
+import java.util.UUID
+import kotlin.random.Random
 
 object SettingsPreferences {
     const val MAP_STYLE_STANDARD = "standard"
@@ -24,6 +26,10 @@ object SettingsPreferences {
     private const val KEY_LAST_MAP_LNG_BITS = "last_map_lng_bits"
     private const val KEY_LAST_MAP_ZOOM_BITS = "last_map_zoom_bits"
     private const val KEY_API_BASE_URL_OVERRIDE = "api_base_url_override"
+    private const val KEY_PROFILE_NAME = "profile_name"
+    private const val KEY_PROFILE_AUTO_NICKNAME = "profile_auto_nickname"
+    private const val KEY_PROFILE_SENDER_ID = "profile_sender_id"
+    private const val KEY_PROFILE_AVATAR_URI = "profile_avatar_uri"
 
     data class MapViewport(
         val latitude: Double,
@@ -169,5 +175,83 @@ object SettingsPreferences {
             editor.putString(KEY_API_BASE_URL_OVERRIDE, normalized)
         }
         editor.apply()
+    }
+
+    fun getProfileName(context: Context): String? =
+        prefs(context).getString(KEY_PROFILE_NAME, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+    fun setProfileName(context: Context, name: String?) {
+        val normalized = name?.trim().orEmpty()
+        val editor = prefs(context).edit()
+        if (normalized.isBlank()) {
+            editor.remove(KEY_PROFILE_NAME)
+        } else {
+            editor.putString(KEY_PROFILE_NAME, normalized)
+        }
+        editor.apply()
+    }
+
+    fun getEffectiveProfileName(context: Context): String {
+        val explicitName = getProfileName(context)
+        if (!explicitName.isNullOrBlank()) return explicitName
+
+        val settings = prefs(context)
+        val savedAutoNickname = settings.getString(KEY_PROFILE_AUTO_NICKNAME, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        if (!savedAutoNickname.isNullOrBlank()) return savedAutoNickname
+
+        val generated = generateNickname()
+        settings.edit().putString(KEY_PROFILE_AUTO_NICKNAME, generated).apply()
+        return generated
+    }
+
+    fun generateAndSaveRandomNickname(context: Context): String {
+        val nickname = generateNickname()
+        prefs(context).edit()
+            .putString(KEY_PROFILE_AUTO_NICKNAME, nickname)
+            .remove(KEY_PROFILE_NAME)
+            .apply()
+        return nickname
+    }
+
+    fun getOrCreateSenderId(context: Context): String {
+        val settings = prefs(context)
+        val existing = settings.getString(KEY_PROFILE_SENDER_ID, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        if (!existing.isNullOrBlank()) return existing
+
+        val generated = UUID.randomUUID().toString()
+        settings.edit().putString(KEY_PROFILE_SENDER_ID, generated).apply()
+        return generated
+    }
+
+    fun getProfileAvatarUri(context: Context): String? =
+        prefs(context).getString(KEY_PROFILE_AVATAR_URI, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+    fun setProfileAvatarUri(context: Context, uri: String?) {
+        val normalized = uri?.trim().orEmpty()
+        val editor = prefs(context).edit()
+        if (normalized.isBlank()) {
+            editor.remove(KEY_PROFILE_AVATAR_URI)
+        } else {
+            editor.putString(KEY_PROFILE_AVATAR_URI, normalized)
+        }
+        editor.apply()
+    }
+
+    private fun generateNickname(): String {
+        val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        val code = buildString(4) {
+            repeat(4) {
+                append(alphabet[Random.nextInt(alphabet.length)])
+            }
+        }
+        return "AOT-$code"
     }
 }

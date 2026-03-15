@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AOT</string>
+    <string name="title_profile">Профиль</string>
     <string name="title_map">Карта</string>
     <string name="title_tasks">Задачи</string>
     <string name="title_settings">Настройки</string>
@@ -11,31 +12,17 @@
     <string name="hint_password">Пароль</string>
     <string name="action_login">Войти</string>
     <string name="action_login_google">Войти через Google</string>
-    <string name="action_register">Регистрация</string>
     <string name="action_continue_guest">Перейти на карту без входа</string>
     <string name="action_server_settings">Адрес сервера</string>
     <string name="action_reset">Сбросить</string>
 
-    <string name="register_title">Регистрация</string>
-    <string name="hint_email">Email</string>
-    <string name="hint_confirm_password">Подтвердите пароль</string>
-    <string name="action_register_submit">Зарегистрироваться</string>
-    <string name="action_back_to_login">Назад ко входу</string>
-
     <string name="error_username_required">Введите имя пользователя</string>
-    <string name="error_username_short">Минимум 3 символа</string>
-    <string name="error_email_required">Введите email</string>
-    <string name="error_email_invalid">Неверный формат email</string>
     <string name="error_password_required">Введите пароль</string>
-    <string name="error_password_short">Минимум 6 символов</string>
-    <string name="error_password_mismatch">Пароли не совпадают</string>
     <string name="error_login_failed">Ошибка входа</string>
     <string name="error_google_login_unavailable">Google вход недоступен. Укажите GOOGLE_WEB_CLIENT_ID на сервере.</string>
     <string name="error_google_login_cancelled">Вход через Google отменён</string>
     <string name="error_google_id_token_missing">Не удалось получить токен Google</string>
     <string name="error_google_login_failed">Ошибка входа через Google</string>
-    <string name="error_register_failed">Ошибка регистрации</string>
-    <string name="error_register_login_failed">Регистрация успешна, но не удалось войти. Используйте вход.</string>
     <string name="error_server_unreachable">Сервер авторизации недоступен. Проверьте интернет и адрес сервера.</string>
     <string name="error_server_emulator_host">Сейчас используется адрес %1$s, он работает только в эмуляторе Android. Для телефона укажите реальный адрес сервера через кнопку «Адрес сервера».</string>
     <string name="error_server_url_invalid">Некорректный адрес сервера</string>
@@ -43,7 +30,6 @@
     <string name="server_url_hint">https://example.com</string>
     <string name="server_url_dialog_title">Настройка сервера API</string>
     <string name="debug_skip_auth">Debug: вход без сервера</string>
-    <string name="debug_register_disabled">Debug: регистрация отключена</string>
 
     <string name="search_hint">Поиск адреса, кафе, организации</string>
     <string name="search_choose_title">Выберите место</string>
@@ -199,8 +185,41 @@
     <string name="tasks_filter_menu">Меню фильтров задач</string>
     <string name="tasks_filter_active">Активные задачи</string>
     <string name="tasks_filter_completed">Выполненные задачи</string>
+    <string name="tasks_filter_export">Экспорт задач</string>
+    <string name="tasks_filter_import">Импорт задач</string>
     <string name="tasks_action_navigate">Перейти к метке</string>
     <string name="tasks_confirm_title">Подтвердить действие</string>
     <string name="tasks_confirm_message_complete">Вы уверены, что хотите отметить задачу выполненной?</string>
     <string name="tasks_confirm_message_restore">Вы уверены, что хотите вернуть задачу в работу?</string>
+    <string name="tasks_export_chooser">Поделиться задачами</string>
+    <string name="tasks_export_empty">Нет задач для экспорта</string>
+    <string name="tasks_export_message_template">Список задач AOT (%1$d шт.)\n%2$s</string>
+    <string name="tasks_import_title">Импорт задач</string>
+    <string name="tasks_import_hint">Вставьте ссылку формата aot://tasks/import?data=...</string>
+    <string name="tasks_import_action">Импортировать</string>
+    <string name="tasks_import_from_clipboard">Из буфера</string>
+    <string name="tasks_import_clipboard_empty">В буфере обмена нет ссылки</string>
+    <string name="tasks_import_success">Импортировано задач: %1$d. Отправитель: %2$s</string>
+    <string name="tasks_import_error">Не удалось импортировать задачи</string>
+    <string name="tasks_import_error_invalid_link">Некорректная ссылка импорта</string>
+    <string name="tasks_import_error_unsupported_version">Неподдерживаемая версия ссылки</string>
+    <string name="tasks_import_error_empty">Список задач в ссылке пуст</string>
+    <string name="tasks_import_default_title">Импортированная задача</string>
+    <string name="tasks_import_unknown_sender">Неизвестный отправитель</string>
+    <string name="tasks_import_sender_line">От: %1$s</string>
+
+    <string name="profile_title">Профиль пользователя</string>
+    <string name="profile_avatar">Аватар пользователя</string>
+    <string name="profile_pick_avatar">Выбрать аватар</string>
+    <string name="profile_remove_avatar">Убрать</string>
+    <string name="profile_name_hint">Имя отправителя</string>
+    <string name="profile_save">Сохранить</string>
+    <string name="profile_random_nickname">Случайный ник</string>
+    <string name="profile_effective_name_value">Имя для отправки: %1$s</string>
+    <string name="profile_sender_id_value">Ваш sender ID: %1$s</string>
+    <string name="profile_help">Если имя не задано, приложение использует случайный ник. Этот профиль применяется при экспорте задач по ссылке.</string>
+    <string name="profile_saved">Профиль сохранён</string>
+    <string name="profile_random_generated">Установлен ник: %1$s</string>
+    <string name="profile_avatar_saved">Аватар обновлён</string>
+    <string name="profile_avatar_removed">Аватар удалён</string>
 </resources>

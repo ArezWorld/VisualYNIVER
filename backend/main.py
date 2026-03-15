@@ -177,38 +177,6 @@ def make_unique_username(base_username):
     return candidate
 
 
-@app.route("/register", methods=["POST"])
-def register():
-    data = get_json_or_form()
-    missing_response = require_fields(data, ["username", "email", "password"])
-    if missing_response:
-        return missing_response
-
-    if User.query.filter_by(username=data["username"]).first():
-        return jsonify({"detail": "Username already taken"}), 400
-
-    if User.query.filter_by(email=data["email"]).first():
-        return jsonify({"detail": "Email already registered"}), 400
-
-    hashed_password = generate_password_hash(data["password"])
-    user = User(
-        username=data["username"],
-        email=data["email"],
-        hashed_password=hashed_password,
-    )
-    db.session.add(user)
-    db.session.commit()
-
-    return jsonify(
-        {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "is_active": user.is_active,
-        }
-    ), 201
-
-
 @app.route("/token", methods=["POST"])
 def login():
     data = get_json_or_form()

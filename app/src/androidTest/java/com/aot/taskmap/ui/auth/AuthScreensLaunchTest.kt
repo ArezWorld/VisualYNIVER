@@ -18,10 +18,4 @@ class AuthScreensLaunchTest {
         ActivityScenario.launch(LoginActivity::class.java)
         onView(withId(R.id.btnLogin)).check(matches(isDisplayed()))
     }
-
-    @Test
-    fun registerActivity_launches() {
-        ActivityScenario.launch(RegisterActivity::class.java)
-        onView(withId(R.id.btnRegister)).check(matches(isDisplayed()))
-    }
 }

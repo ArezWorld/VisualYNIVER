@@ -6,6 +6,12 @@
     app:startDestination="@id/mapFragment">
 
     <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.aot.taskmap.ui.profile.ProfileFragment"
+        android:label="@string/title_profile"
+        tools:layout="@layout/fragment_profile" />
+
+    <fragment
         android:id="@+id/mapFragment"
         android:name="com.aot.taskmap.ui.map.MapFragment"
         android:label="@string/title_map"

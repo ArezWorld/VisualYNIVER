@@ -16,6 +16,7 @@ import com.aot.taskmap.data.remote.ApiBaseUrlProvider
 import com.aot.taskmap.data.remote.ApiClient
 import com.aot.taskmap.databinding.ActivityLoginBinding
 import com.aot.taskmap.ui.MainActivity
+import com.aot.taskmap.ui.tasks.TaskShareManager
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -60,15 +61,21 @@ class LoginActivity : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
         rebuildApiClient()
+        val sharedTasksText = TaskShareManager.extractShareTextFromIntent(intent)
 
         // Active session shortcut.
         if (sessionManager.isSessionLoggedIn()) {
             val token = sessionManager.authToken
             if (token != null) {
                 apiClient.setToken(token)
-                navigateToMain()
+                navigateToMain(importTasksText = sharedTasksText)
                 return
             }
+        }
+
+        if (!sharedTasksText.isNullOrBlank()) {
+            continueAsGuest(importTasksText = sharedTasksText)
+            return
         }
 
         binding = ActivityLoginBinding.inflate(layoutInflater)
@@ -124,10 +131,6 @@ class LoginActivity : AppCompatActivity() {
             if (validateInput(username, password)) {
                 login(username, password)
             }
-        }
-
-        binding.btnRegister.setOnClickListener {
-            startActivity(Intent(this, RegisterActivity::class.java))
         }
 
         binding.btnContinueGuest.setOnClickListener {
@@ -257,15 +260,14 @@ class LoginActivity : AppCompatActivity() {
         binding.progressBar.visibility = if (show) View.VISIBLE else View.GONE
         binding.btnLogin.isEnabled = !show
         binding.btnGoogleLogin.isEnabled = !show
-        binding.btnRegister.isEnabled = !show
         binding.btnContinueGuest.isEnabled = !show
         binding.btnServerSettings.isEnabled = !show
     }
 
-    private fun continueAsGuest() {
+    private fun continueAsGuest(importTasksText: String? = null) {
         sessionManager.clearSession()
         apiClient.setToken(null)
-        navigateToMain(triggerUpdateCheck = false)
+        navigateToMain(triggerUpdateCheck = false, importTasksText = importTasksText)
     }
 
     private fun showError(message: String) {
@@ -277,10 +279,16 @@ class LoginActivity : AppCompatActivity() {
         binding.textError.visibility = View.GONE
     }
 
-    private fun navigateToMain(triggerUpdateCheck: Boolean = false) {
+    private fun navigateToMain(
+        triggerUpdateCheck: Boolean = false,
+        importTasksText: String? = null
+    ) {
         val intent = Intent(this, MainActivity::class.java)
         intent.putExtra("api_token", apiClient.getToken())
         intent.putExtra(MainActivity.EXTRA_TRIGGER_UPDATE_CHECK, triggerUpdateCheck)
+        if (!importTasksText.isNullOrBlank()) {
+            intent.putExtra(MainActivity.EXTRA_IMPORT_TASKS_TEXT, importTasksText)
+        }
         startActivity(intent)
         finish()
     }

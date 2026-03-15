@@ -9,4 +9,12 @@
         android:id="@+id/filter_completed"
         android:title="@string/tasks_filter_completed"
         android:checkable="true" />
+
+    <item
+        android:id="@+id/action_export_tasks"
+        android:title="@string/tasks_filter_export" />
+
+    <item
+        android:id="@+id/action_import_tasks"
+        android:title="@string/tasks_filter_import" />
 </menu>

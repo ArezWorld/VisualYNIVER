@@ -1,3 +1,13 @@
 {
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.jdt.ls.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+    "java.import.gradle.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+    "gradle.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Program Files\\Android\\Android Studio\\jbr",
+            "default": true
+        }
+    ]
 }

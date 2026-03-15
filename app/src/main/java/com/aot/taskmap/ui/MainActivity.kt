@@ -23,6 +23,7 @@ import com.aot.taskmap.service.LocationService
 import com.aot.taskmap.ui.settings.GitHubUpdateChecker
 import com.aot.taskmap.ui.settings.InAppUpdateManager
 import com.aot.taskmap.ui.settings.UpdateVersionComparator
+import com.aot.taskmap.ui.tasks.TaskShareManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_TRIGGER_UPDATE_CHECK = "trigger_update_check"
+        const val EXTRA_IMPORT_TASKS_TEXT = "import_tasks_text"
     }
 
     private val locationPermissionRequest = registerForActivityResult(
@@ -167,6 +169,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        val sharedTasksText = intent?.getStringExtra(EXTRA_IMPORT_TASKS_TEXT)
+        if (!sharedTasksText.isNullOrBlank()) {
+            handleImportedTasksText(sharedTasksText)
+            intent.removeExtra(EXTRA_IMPORT_TASKS_TEXT)
+            setIntent(intent)
+        }
+
         intent?.getLongExtra("task_id", -1)?.let { taskId ->
             if (taskId != -1L) {
                 // Навигация к задаче при необходимости
@@ -246,6 +255,31 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
+    }
+
+    private fun handleImportedTasksText(sharedText: String) {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                TaskShareManager.importTasksFromShareText(applicationContext, sharedText)
+            }
+            result.onSuccess { imported ->
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(
+                        R.string.tasks_import_success,
+                        imported.addedCount,
+                        imported.senderName
+                    ),
+                    Toast.LENGTH_LONG
+                ).show()
+            }.onFailure { error ->
+                Toast.makeText(
+                    this@MainActivity,
+                    error.message ?: getString(R.string.tasks_import_error),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

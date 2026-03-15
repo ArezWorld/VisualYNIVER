@@ -2,7 +2,6 @@ package com.aot.taskmap.data.remote
 
 import com.aot.taskmap.data.model.LoginResponse
 import com.aot.taskmap.data.model.TaskDto
-import com.aot.taskmap.data.model.UserDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -48,41 +47,6 @@ class ApiClient(private val baseUrl: String) {
             body
         }
     }
-
-    suspend fun register(username: String, email: String, password: String): Result<UserDto> =
-        withContext(Dispatchers.IO) {
-            try {
-                val body = createJsonBody(
-                    mapOf(
-                        "username" to username,
-                        "email" to email,
-                        "password" to password
-                    )
-                )
-                val request = Request.Builder()
-                    .url("$baseUrl/register")
-                    .post(body)
-                    .build()
-
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val json = JSONObject(response.body?.string() ?: "{}")
-                    Result.success(
-                        UserDto(
-                            id = json.getInt("id"),
-                            username = json.getString("username"),
-                            email = json.getString("email"),
-                            isActive = json.getBoolean("is_active")
-                        )
-                    )
-                } else {
-                    val error = parseErrorMessage(response.body?.string(), "Registration error")
-                    Result.failure(Exception(error))
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
 
     suspend fun login(username: String, password: String): Result<LoginResponse> =
         withContext(Dispatchers.IO) {

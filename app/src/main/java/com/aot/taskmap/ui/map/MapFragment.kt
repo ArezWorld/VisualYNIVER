@@ -492,11 +492,18 @@ class MapFragment : Fragment() {
 
     private fun loadSearchSuggestions(query: String) {
         searchSuggestionJob?.cancel()
+        val appContext = context?.applicationContext ?: return
         val viewport = captureSearchViewport()
         searchSuggestionJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 260L else 120L)
             val suggestions = withContext(Dispatchers.IO) {
-                fetchSearchCandidates(query, 10, viewport)
+                fetchSearchCandidates(
+                    query = query,
+                    limit = 10,
+                    viewport = viewport,
+                    geocoderContext = appContext,
+                    userAgentPackage = appContext.packageName
+                )
             }
 
             if (!isAdded || _binding == null) return@launch
@@ -546,11 +553,12 @@ class MapFragment : Fragment() {
 
         val latitude = center.latitude
         val longitude = center.longitude
+        val userAgentPackage = context?.applicationContext?.packageName ?: return
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 260L else 120L)
             val places = withContext(Dispatchers.IO) {
-                fetchImportantPlaces(latitude, longitude, config)
+                fetchImportantPlaces(latitude, longitude, config, userAgentPackage)
             }
             if (!isAdded || _binding == null) return@launch
             if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
@@ -610,7 +618,8 @@ class MapFragment : Fragment() {
     private fun fetchImportantPlaces(
         latitude: Double,
         longitude: Double,
-        config: ImportantPlacesConfig
+        config: ImportantPlacesConfig,
+        userAgentPackage: String
     ): List<ImportantPlace> {
         val shopLayer = if (config.includeShopLayer) {
             """
@@ -646,7 +655,7 @@ class MapFragment : Fragment() {
             val request = Request.Builder()
                 .url(endpoint)
                 .post(query.toRequestBody("text/plain; charset=utf-8".toMediaType()))
-                .header("User-Agent", "${requireContext().packageName}/important-places")
+                .header("User-Agent", "$userAgentPackage/important-places")
                 .build()
 
             val places = runCatching {
@@ -835,18 +844,20 @@ class MapFragment : Fragment() {
     private fun fetchSearchCandidates(
         query: String,
         limit: Int,
-        viewport: SearchViewport?
+        viewport: SearchViewport?,
+        geocoderContext: Context?,
+        userAgentPackage: String
     ): List<Pair<String, GeoPoint>> {
         val unique = linkedMapOf<String, GeoPoint>()
 
-        fetchNominatimCandidates(query, limit, viewport).forEach { (label, point) ->
+        fetchNominatimCandidates(query, limit, viewport, userAgentPackage).forEach { (label, point) ->
             val normalized = normalizeSearchLabel(label)
             if (normalized.isNotBlank() && !unique.containsKey(normalized)) {
                 unique[normalized] = point
             }
         }
 
-        fetchGeocoderCandidates(query, limit).forEach { (label, point) ->
+        fetchGeocoderCandidates(query, limit, geocoderContext).forEach { (label, point) ->
             val normalized = normalizeSearchLabel(label)
             if (normalized.isNotBlank() && !unique.containsKey(normalized)) {
                 unique[normalized] = point
@@ -861,7 +872,8 @@ class MapFragment : Fragment() {
     private fun fetchNominatimCandidates(
         query: String,
         limit: Int,
-        viewport: SearchViewport?
+        viewport: SearchViewport?,
+        userAgentPackage: String
     ): List<Pair<String, GeoPoint>> {
         val endpoint = nominatimSearchUrl.toHttpUrlOrNull() ?: return emptyList()
         val urlBuilder = endpoint.newBuilder()
@@ -883,7 +895,7 @@ class MapFragment : Fragment() {
         val request = Request.Builder()
             .url(urlBuilder.build())
             .header("Accept", "application/json")
-            .header("User-Agent", "${requireContext().packageName}/map-search")
+            .header("User-Agent", "$userAgentPackage/map-search")
             .build()
 
         return try {
@@ -909,10 +921,15 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun fetchGeocoderCandidates(query: String, limit: Int): List<Pair<String, GeoPoint>> {
+    private fun fetchGeocoderCandidates(
+        query: String,
+        limit: Int,
+        geocoderContext: Context?
+    ): List<Pair<String, GeoPoint>> {
         if (!Geocoder.isPresent()) return emptyList()
+        val context = geocoderContext ?: return emptyList()
         return try {
-            Geocoder(requireContext(), Locale.getDefault())
+            Geocoder(context, Locale.getDefault())
                 .getFromLocationName(query, limit)
                 .orEmpty()
                 .mapNotNull { address ->
@@ -973,12 +990,20 @@ class MapFragment : Fragment() {
             ).show()
             return
         }
+        val appContext = context?.applicationContext ?: return
 
         viewLifecycleOwner.lifecycleScope.launch {
             val viewport = captureSearchViewport()
             val results = withContext(Dispatchers.IO) {
-                fetchSearchCandidates(query, 10, viewport)
+                fetchSearchCandidates(
+                    query = query,
+                    limit = 10,
+                    viewport = viewport,
+                    geocoderContext = appContext,
+                    userAgentPackage = appContext.packageName
+                )
             }
+            if (!isAdded || _binding == null) return@launch
 
             searchResults.clear()
             searchAdapter.clear()

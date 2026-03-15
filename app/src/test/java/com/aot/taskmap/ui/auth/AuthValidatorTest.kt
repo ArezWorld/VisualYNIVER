@@ -22,31 +22,4 @@ class AuthValidatorTest {
         assertTrue(result.isValid)
     }
 
-    @Test
-    fun register_invalidFields_returnsErrors() {
-        val result = AuthValidator.validateRegister(
-            username = "ab",
-            email = "bad",
-            password = "123",
-            confirmPassword = "321"
-        )
-
-        assertEquals(R.string.error_username_short, result.username)
-        assertEquals(R.string.error_email_invalid, result.email)
-        assertEquals(R.string.error_password_short, result.password)
-        assertEquals(R.string.error_password_mismatch, result.confirmPassword)
-        assertTrue(!result.isValid)
-    }
-
-    @Test
-    fun register_validFields_returnsValid() {
-        val result = AuthValidator.validateRegister(
-            username = "user",
-            email = "user@example.com",
-            password = "123456",
-            confirmPassword = "123456"
-        )
-
-        assertTrue(result.isValid)
-    }
 }
