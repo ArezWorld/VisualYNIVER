@@ -20,16 +20,19 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/imageAvatar"
             android:layout_width="112dp"
             android:layout_height="112dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="16dp"
             android:contentDescription="@string/profile_avatar"
-            android:padding="24dp"
+            android:padding="0dp"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_profile"
+            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.TaskMap.CircularAvatar"
+            app:strokeColor="?attr/colorPrimary"
+            app:strokeWidth="2dp"
             app:tint="?attr/colorPrimary" />
 
         <LinearLayout

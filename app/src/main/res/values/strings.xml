@@ -195,7 +195,7 @@
     <string name="tasks_export_empty">Нет задач для экспорта</string>
     <string name="tasks_export_message_template">Список задач AOT (%1$d шт.)\n%2$s</string>
     <string name="tasks_import_title">Импорт задач</string>
-    <string name="tasks_import_hint">Вставьте ссылку формата aot://tasks/import?data=...</string>
+    <string name="tasks_import_hint">Вставьте ссылку формата https://visualyniver.onrender.com/i/...</string>
     <string name="tasks_import_action">Импортировать</string>
     <string name="tasks_import_from_clipboard">Из буфера</string>
     <string name="tasks_import_clipboard_empty">В буфере обмена нет ссылки</string>
@@ -222,4 +222,6 @@
     <string name="profile_random_generated">Установлен ник: %1$s</string>
     <string name="profile_avatar_saved">Аватар обновлён</string>
     <string name="profile_avatar_removed">Аватар удалён</string>
+    <string name="profile_avatar_crop_title">Обрезка аватара</string>
+    <string name="profile_avatar_crop_failed">Не удалось обрезать изображение</string>
 </resources>

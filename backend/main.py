@@ -3,7 +3,7 @@ import os
 import re
 import secrets
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
 from flask_sqlalchemy import SQLAlchemy
@@ -16,6 +16,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
+SHARE_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def resolve_database_url():
@@ -36,6 +37,11 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
 app.config["GOOGLE_WEB_CLIENT_ID"] = os.getenv("GOOGLE_WEB_CLIENT_ID", "").strip()
+app.config["ANDROID_APP_PACKAGE"] = os.getenv("ANDROID_APP_PACKAGE", "com.aot.taskmap").strip()
+app.config["ANDROID_APP_SHA256"] = os.getenv(
+    "ANDROID_APP_SHA256",
+    "8A:7C:1C:C2:DF:34:D1:2D:67:A6:00:E7:3D:BC:E1:2A:47:3D:A8:E0:8E:F9:EC:83:62:12:54:97:3D:A3:FC:B9",
+).strip()
 
 db = SQLAlchemy(app)
 cors_origins = os.getenv("CORS_ORIGINS", "*")
@@ -401,6 +407,91 @@ def root():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
+
+
+@app.route("/.well-known/assetlinks.json", methods=["GET"])
+def asset_links():
+    package_name = app.config.get("ANDROID_APP_PACKAGE", "com.aot.taskmap").strip() or "com.aot.taskmap"
+    raw_fingerprints = app.config.get("ANDROID_APP_SHA256", "").strip()
+    fingerprints = [item.strip().upper() for item in raw_fingerprints.split(",") if item.strip()]
+    if not fingerprints:
+        fingerprints = [
+            "8A:7C:1C:C2:DF:34:D1:2D:67:A6:00:E7:3D:BC:E1:2A:47:3D:A8:E0:8E:F9:EC:83:62:12:54:97:3D:A3:FC:B9"
+        ]
+
+    payload = [
+        {
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": package_name,
+                "sha256_cert_fingerprints": fingerprints,
+            },
+        }
+    ]
+    return jsonify(payload), 200
+
+
+@app.route("/tasks/import", methods=["GET"])
+def tasks_import_redirect():
+    data_token = (request.args.get("d") or request.args.get("data") or "").strip()
+    if not data_token:
+        return jsonify({"detail": "Missing import token"}), 400
+    if not SHARE_TOKEN_PATTERN.fullmatch(data_token):
+        return jsonify({"detail": "Invalid import token"}), 400
+    return redirect(f"/i/{data_token}", code=302)
+
+
+@app.route("/i/<string:data_token>", methods=["GET"])
+def import_link_landing(data_token: str):
+    token = (data_token or "").strip()
+    if not SHARE_TOKEN_PATTERN.fullmatch(token):
+        return jsonify({"detail": "Invalid import token"}), 400
+
+    app_link_url = f"https://visualyniver.onrender.com/i/{token}"
+    custom_scheme_url = f"aot://tasks/i/{token}"
+    html = f"""<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AOT Import</title>
+  <meta http-equiv="refresh" content="0;url={custom_scheme_url}" />
+  <style>
+    body {{
+      font-family: Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0f1222;
+      color: #eef0ff;
+      text-align: center;
+      padding: 24px;
+    }}
+    a {{
+      color: #a9b7ff;
+      word-break: break-all;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <h2>Открываем AOT…</h2>
+    <p>Если приложение не открылось автоматически, нажмите:</p>
+    <p><a href="{custom_scheme_url}">Открыть в AOT</a></p>
+    <p>Ссылка импорта:</p>
+    <p><a href="{app_link_url}">{app_link_url}</a></p>
+  </main>
+  <script>
+    window.location.replace("{custom_scheme_url}");
+    setTimeout(function() {{
+      window.location.href = "{custom_scheme_url}";
+    }}, 450);
+  </script>
+</body>
+</html>"""
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
 if __name__ == "__main__":

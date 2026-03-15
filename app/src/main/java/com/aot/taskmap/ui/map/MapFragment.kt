@@ -83,6 +83,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
+import kotlin.math.roundToLong
 
 class MapFragment : Fragment() {
 
@@ -119,10 +121,16 @@ class MapFragment : Fragment() {
     private val searchHistoryPrefsName = "map_search_history"
     private val recentPlacesKey = "recent_places"
     private val recentPlacesLimit = 8
+    private val importantPlacesCache = linkedMapOf<String, Pair<Long, List<ImportantPlace>>>()
+    private val importantPlaceIconCache = mutableMapOf<String, Drawable>()
+    private val importantPlacesCacheTtlMs = 3 * 60_000L
+    private val importantPlacesCacheSoftReuseMs = 40_000L
+    private val importantPlacesCacheMaxEntries = 24
     private var activeTasksCache = emptyList<Task>()
     private var completedTasksCache = emptyList<Task>()
     private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
     private val overpassApiUrls = listOf(
+        "https://overpass.openstreetmap.ru/cgi/interpreter",
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
         "https://lz4.overpass-api.de/api/interpreter"
@@ -136,9 +144,9 @@ class MapFragment : Fragment() {
     }
     private val importantPlacesHttpClient by lazy {
         OkHttpClient.Builder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(16, TimeUnit.SECONDS)
-            .callTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .callTimeout(10, TimeUnit.SECONDS)
             .build()
     }
 
@@ -538,7 +546,8 @@ class MapFragment : Fragment() {
     private fun scheduleImportantPlacesRefresh() {
         importantPlacesRefreshJob?.cancel()
         if (!isAdded || _binding == null) return
-        if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
+        val safeContext = context ?: return
+        if (!SettingsPreferences.isHighlightImportantPlacesEnabled(safeContext)) {
             clearImportantPlaceOverlays()
             return
         }
@@ -553,20 +562,47 @@ class MapFragment : Fragment() {
 
         val latitude = center.latitude
         val longitude = center.longitude
-        val userAgentPackage = context?.applicationContext?.packageName ?: return
+        val appContext = safeContext.applicationContext
+        val userAgentPackage = appContext.packageName
+        val cacheKey = buildImportantPlacesCacheKey(latitude, longitude, zoom, config)
+        val now = System.currentTimeMillis()
+        val cachedEntry = importantPlacesCache[cacheKey]
+        val cachedPlaces = cachedEntry
+            ?.takeIf { now - it.first <= importantPlacesCacheTtlMs }
+            ?.second
+
+        if (!cachedPlaces.isNullOrEmpty()) {
+            val mergedCachedPlaces = mergeCuratedImportantPlaces(
+                places = cachedPlaces,
+                center = GeoPoint(latitude, longitude),
+                zoom = zoom
+            ).take(config.maxItems)
+            updateImportantPlaceOverlays(mergedCachedPlaces)
+        }
+        if (cachedEntry != null && now - cachedEntry.first <= importantPlacesCacheSoftReuseMs) {
+            return
+        }
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
-            delay(if (animationsEnabled()) 260L else 120L)
+            delay(if (animationsEnabled()) 120L else 60L)
             val places = withContext(Dispatchers.IO) {
                 fetchImportantPlaces(latitude, longitude, config, userAgentPackage)
             }
             if (!isAdded || _binding == null) return@launch
-            if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
+            if (!SettingsPreferences.isHighlightImportantPlacesEnabled(appContext)) {
                 clearImportantPlaceOverlays()
                 return@launch
             }
+            if (places.isNotEmpty()) {
+                saveImportantPlacesCache(cacheKey, places)
+            }
+            val effectivePlaces = when {
+                places.isNotEmpty() -> places
+                !cachedPlaces.isNullOrEmpty() -> cachedPlaces
+                else -> emptyList()
+            }
             val mergedPlaces = mergeCuratedImportantPlaces(
-                places = places,
+                places = effectivePlaces,
                 center = GeoPoint(latitude, longitude),
                 zoom = zoom
             ).take(config.maxItems)
@@ -578,40 +614,69 @@ class MapFragment : Fragment() {
         if (zoom < 10.5) return null
         return when {
             zoom >= 17.5 -> ImportantPlacesConfig(
-                radiusMeters = 850,
-                maxItems = 70,
+                radiusMeters = 650,
+                maxItems = 52,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library|parking",
                 includeShopLayer = true,
                 includeTourismLayer = true
             )
             zoom >= 16.0 -> ImportantPlacesConfig(
-                radiusMeters = 1400,
-                maxItems = 56,
+                radiusMeters = 1000,
+                maxItems = 40,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library",
                 includeShopLayer = true,
                 includeTourismLayer = true
             )
             zoom >= 14.5 -> ImportantPlacesConfig(
-                radiusMeters = 2200,
-                maxItems = 42,
+                radiusMeters = 1600,
+                maxItems = 30,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|cafe|restaurant|fast_food|bank",
                 includeShopLayer = true,
                 includeTourismLayer = false
             )
             zoom >= 12.5 -> ImportantPlacesConfig(
-                radiusMeters = 2900,
-                maxItems = 30,
+                radiusMeters = 2200,
+                maxItems = 22,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university|bank",
                 includeShopLayer = false,
                 includeTourismLayer = false
             )
             else -> ImportantPlacesConfig(
-                radiusMeters = 3800,
-                maxItems = 22,
+                radiusMeters = 2800,
+                maxItems = 16,
                 amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
                 includeShopLayer = false,
                 includeTourismLayer = false
             )
+        }
+    }
+
+    private fun buildImportantPlacesCacheKey(
+        latitude: Double,
+        longitude: Double,
+        zoom: Double,
+        config: ImportantPlacesConfig
+    ): String {
+        val cellSizeDegrees = max(0.004, config.radiusMeters / 111_320.0 * 0.55)
+        val latBucket = (latitude / cellSizeDegrees).roundToLong()
+        val lonBucket = (longitude / cellSizeDegrees).roundToLong()
+        val zoomBucket = (zoom * 2.0).roundToLong()
+        return listOf(
+            zoomBucket.toString(),
+            latBucket.toString(),
+            lonBucket.toString(),
+            config.radiusMeters.toString(),
+            config.maxItems.toString(),
+            config.includeShopLayer.toString(),
+            config.includeTourismLayer.toString()
+        ).joinToString(":")
+    }
+
+    private fun saveImportantPlacesCache(cacheKey: String, places: List<ImportantPlace>) {
+        importantPlacesCache[cacheKey] = System.currentTimeMillis() to places
+        while (importantPlacesCache.size > importantPlacesCacheMaxEntries) {
+            val oldestKey = importantPlacesCache.entries.firstOrNull()?.key ?: break
+            importantPlacesCache.remove(oldestKey)
         }
     }
 
@@ -641,7 +706,7 @@ class MapFragment : Fragment() {
         }
 
         val query = """
-            [out:json][timeout:14];
+            [out:json][timeout:8];
             (
               node(around:${config.radiusMeters},$latitude,$longitude)["amenity"~"${config.amenityRegex}"];
               way(around:${config.radiusMeters},$latitude,$longitude)["amenity"~"${config.amenityRegex}"];
@@ -815,11 +880,6 @@ class MapFragment : Fragment() {
     }
 
     private fun buildImportantPlaceIconDrawable(category: String): Drawable? {
-        val source = ContextCompat.getDrawable(
-            requireContext(),
-            resolveImportantPlaceIconRes(category)
-        )?.mutate() ?: return null
-
         val iconDp = when {
             binding.mapView.zoomLevelDouble >= 17.0 -> 20
             binding.mapView.zoomLevelDouble >= 15.0 -> 18
@@ -829,12 +889,26 @@ class MapFragment : Fragment() {
         val iconPx = (iconDp * resources.displayMetrics.density)
             .toInt()
             .coerceAtLeast(14)
+        val iconRes = resolveImportantPlaceIconRes(category)
+        val cacheKey = "$iconRes:$iconPx"
+        importantPlaceIconCache[cacheKey]
+            ?.constantState
+            ?.newDrawable(resources)
+            ?.mutate()
+            ?.let { return it }
+
+        val source = ContextCompat.getDrawable(
+            requireContext(),
+            iconRes
+        )?.mutate() ?: return null
 
         val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         source.setBounds(0, 0, iconPx, iconPx)
         source.draw(canvas)
-        return BitmapDrawable(resources, bitmap)
+        val drawable = BitmapDrawable(resources, bitmap)
+        importantPlaceIconCache[cacheKey] = drawable
+        return drawable
     }
 
     private fun Double.format(fractionDigits: Int): String {
@@ -2294,6 +2368,8 @@ class MapFragment : Fragment() {
         restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreMapHudRunnable = null
         clearImportantPlaceOverlays()
+        importantPlaceIconCache.clear()
+        importantPlacesCache.clear()
         clearSearchResultOverlay()
         super.onDestroyView()
         _binding = null

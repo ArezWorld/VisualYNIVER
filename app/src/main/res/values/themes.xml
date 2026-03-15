@@ -77,4 +77,9 @@
         <item name="android:windowBackground">@drawable/bg_theme_red_black</item>
         <item name="android:statusBarColor">#4A0003</item>
     </style>
+
+    <style name="ShapeAppearanceOverlay.TaskMap.CircularAvatar" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

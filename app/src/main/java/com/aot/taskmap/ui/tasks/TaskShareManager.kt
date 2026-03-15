@@ -23,9 +23,29 @@ data class TaskImportResult(
 )
 
 object TaskShareManager {
-    private const val LINK_PREFIX = "aot://tasks/import?data="
-    private const val PAYLOAD_VERSION = 1
-    private val importLinkRegex = Regex("aot://tasks/import\\?data=([A-Za-z0-9_-]+)")
+    private const val IMPORT_HTTPS_HOST = "visualyniver.onrender.com"
+    private const val HTTPS_LINK_PREFIX = "https://$IMPORT_HTTPS_HOST/i/"
+
+    private const val PAYLOAD_VERSION_LEGACY = 1
+    private const val PAYLOAD_VERSION_COMPACT = 2
+
+    private const val DEFAULT_RADIUS_METERS = 100
+    private const val DEFAULT_MARKER_COLOR = 0xFF2196F3.toInt()
+    private const val DEFAULT_MARKER_ICON = "pin"
+    private const val DEFAULT_CATEGORY = "general"
+
+    private const val FLAG_AUTO_REMOVE = 1
+    private const val FLAG_NOTIFICATIONS_ENABLED = 1 shl 1
+    private const val FLAG_COMPLETED = 1 shl 2
+
+    private val importLinkRegex = Regex(
+        "(?:(?:aot://tasks/(?:i/|import\\?(?:data|d)=))|(?:https://visualyniver\\.onrender\\.com/(?:i/|tasks/import\\?(?:data|d)=)))([A-Za-z0-9_-]+)"
+    )
+
+    private data class SenderInfo(
+        val name: String,
+        val id: String
+    )
 
     fun extractShareTextFromIntent(intent: Intent?): String? {
         if (intent == null) return null
@@ -39,41 +59,9 @@ object TaskShareManager {
     fun buildShareLink(context: Context, tasks: List<Task>): String {
         val senderName = SettingsPreferences.getEffectiveProfileName(context)
         val senderId = SettingsPreferences.getOrCreateSenderId(context)
-
-        val json = JSONObject().apply {
-            put("version", PAYLOAD_VERSION)
-            put("exportedAt", System.currentTimeMillis())
-            put(
-                "sender",
-                JSONObject().apply {
-                    put("name", senderName)
-                    put("id", senderId)
-                }
-            )
-            put("tasks", JSONArray().apply {
-                tasks.forEach { task ->
-                    put(
-                        JSONObject().apply {
-                            put("title", task.title)
-                            put("description", task.description)
-                            put("latitude", task.latitude)
-                            put("longitude", task.longitude)
-                            put("address", task.address)
-                            put("radius", task.radius)
-                            put("markerColor", task.markerColor)
-                            put("markerIcon", task.markerIcon)
-                            put("category", task.category)
-                            put("autoRemoveAfterTrigger", task.autoRemoveAfterTrigger)
-                            put("isNotificationEnabled", task.isNotificationEnabled)
-                            put("isCompleted", task.isCompleted)
-                        }
-                    )
-                }
-            })
-        }.toString()
-
-        val encodedPayload = encodePayload(json)
-        return "$LINK_PREFIX$encodedPayload"
+        val payloadJson = buildCompactPayloadJson(senderName, senderId, tasks)
+        val encodedPayload = encodePayload(payloadJson)
+        return "$HTTPS_LINK_PREFIX$encodedPayload"
     }
 
     fun buildShareMessage(context: Context, tasks: List<Task>): String {
@@ -90,22 +78,142 @@ object TaskShareManager {
         }
     }
 
+    private fun buildCompactPayloadJson(senderName: String, senderId: String, tasks: List<Task>): String {
+        return JSONObject().apply {
+            put("v", PAYLOAD_VERSION_COMPACT)
+            put("e", System.currentTimeMillis())
+            put(
+                "s",
+                JSONObject().apply {
+                    put("n", senderName)
+                    put("i", senderId)
+                }
+            )
+            put("t", JSONArray().apply {
+                tasks.forEach { task ->
+                    val flags =
+                        (if (task.autoRemoveAfterTrigger) FLAG_AUTO_REMOVE else 0) or
+                            (if (task.isNotificationEnabled) FLAG_NOTIFICATIONS_ENABLED else 0) or
+                            (if (task.isCompleted) FLAG_COMPLETED else 0)
+                    put(
+                        JSONArray().apply {
+                            put(task.title)
+                            put(task.description)
+                            put(task.latitude)
+                            put(task.longitude)
+                            put(task.address)
+                            put(task.radius.coerceIn(5, 250))
+                            put(task.markerColor)
+                            put(task.markerIcon)
+                            put(task.category)
+                            put(flags)
+                        }
+                    )
+                }
+            })
+        }.toString()
+    }
+
     private suspend fun parseAndImportTasks(context: Context, payloadJson: String): TaskImportResult {
         val root = JSONObject(payloadJson)
-        val payloadVersion = root.optInt("version", -1)
-        if (payloadVersion != PAYLOAD_VERSION) {
-            throw IllegalArgumentException(context.getString(R.string.tasks_import_error_unsupported_version))
+        val payloadVersion = root.optInt("v", root.optInt("version", -1))
+        val sender = when (payloadVersion) {
+            PAYLOAD_VERSION_COMPACT -> extractSenderInfoCompact(context, root)
+            PAYLOAD_VERSION_LEGACY -> extractSenderInfoLegacy(context, root)
+            else -> throw IllegalArgumentException(context.getString(R.string.tasks_import_error_unsupported_version))
         }
 
-        val sender = root.optJSONObject("sender") ?: JSONObject()
-        val senderName = sender.optString("name").trim()
-            .ifBlank { context.getString(R.string.tasks_import_unknown_sender) }
-        val senderId = sender.optString("id").trim().ifBlank { "unknown" }
+        val importedTasks = when (payloadVersion) {
+            PAYLOAD_VERSION_COMPACT -> parseCompactTasks(context, root, sender.name)
+            PAYLOAD_VERSION_LEGACY -> parseLegacyTasks(context, root, sender.name)
+            else -> emptyList()
+        }
 
-        val tasksArray = root.optJSONArray("tasks") ?: JSONArray()
-        if (tasksArray.length() == 0) {
+        if (importedTasks.isEmpty()) {
             throw IllegalArgumentException(context.getString(R.string.tasks_import_error_empty))
         }
+
+        val repository = TaskRepository(TaskDatabase.getDatabase(context).taskDao())
+        repository.insertTasks(importedTasks)
+        return TaskImportResult(
+            senderName = sender.name,
+            senderId = sender.id,
+            addedCount = importedTasks.size
+        )
+    }
+
+    private fun extractSenderInfoCompact(context: Context, root: JSONObject): SenderInfo {
+        val sender = root.optJSONObject("s") ?: JSONObject()
+        val name = sender.optString("n").trim()
+            .ifBlank { context.getString(R.string.tasks_import_unknown_sender) }
+        val id = sender.optString("i").trim().ifBlank { "unknown" }
+        return SenderInfo(name, id)
+    }
+
+    private fun extractSenderInfoLegacy(context: Context, root: JSONObject): SenderInfo {
+        val sender = root.optJSONObject("sender") ?: JSONObject()
+        val name = sender.optString("name").trim()
+            .ifBlank { context.getString(R.string.tasks_import_unknown_sender) }
+        val id = sender.optString("id").trim().ifBlank { "unknown" }
+        return SenderInfo(name, id)
+    }
+
+    private fun parseCompactTasks(
+        context: Context,
+        root: JSONObject,
+        senderName: String
+    ): List<Task> {
+        val tasksArray = root.optJSONArray("t") ?: JSONArray()
+        if (tasksArray.length() == 0) return emptyList()
+
+        val importedTasks = mutableListOf<Task>()
+        for (index in 0 until tasksArray.length()) {
+            val item = tasksArray.optJSONArray(index) ?: continue
+            val title = item.optString(0).trim().ifBlank {
+                context.getString(R.string.tasks_import_default_title)
+            }
+            val description = item.optString(1).trim()
+            val lat = item.optDouble(2, Double.NaN)
+            val lon = item.optDouble(3, Double.NaN)
+            if (!lat.isFinite() || !lon.isFinite()) continue
+
+            val flags = if (item.length() > 9 && !item.isNull(9)) {
+                item.optInt(9, FLAG_NOTIFICATIONS_ENABLED)
+            } else {
+                FLAG_NOTIFICATIONS_ENABLED
+            }
+
+            val importedDescription = buildImportedDescription(context, senderName, description)
+            importedTasks += Task(
+                title = title,
+                description = importedDescription,
+                latitude = lat,
+                longitude = lon,
+                address = item.optString(4, ""),
+                radius = item.optInt(5, DEFAULT_RADIUS_METERS).coerceIn(5, 250),
+                markerColor = item.optInt(6, DEFAULT_MARKER_COLOR),
+                markerIcon = item.optString(7, DEFAULT_MARKER_ICON),
+                category = item.optString(8, DEFAULT_CATEGORY),
+                autoRemoveAfterTrigger = flags and FLAG_AUTO_REMOVE != 0,
+                isNotificationEnabled = flags and FLAG_NOTIFICATIONS_ENABLED != 0,
+                isCompleted = flags and FLAG_COMPLETED != 0,
+                completedAt = if (flags and FLAG_COMPLETED != 0) {
+                    System.currentTimeMillis()
+                } else {
+                    null
+                }
+            )
+        }
+        return importedTasks
+    }
+
+    private fun parseLegacyTasks(
+        context: Context,
+        root: JSONObject,
+        senderName: String
+    ): List<Task> {
+        val tasksArray = root.optJSONArray("tasks") ?: JSONArray()
+        if (tasksArray.length() == 0) return emptyList()
 
         val importedTasks = mutableListOf<Task>()
         for (i in 0 until tasksArray.length()) {
@@ -119,38 +227,28 @@ object TaskShareManager {
             if (!lat.isFinite() || !lon.isFinite()) continue
 
             val importedDescription = buildImportedDescription(context, senderName, description)
+            val isCompleted = item.optBoolean("isCompleted", false)
             importedTasks += Task(
                 title = title,
                 description = importedDescription,
                 latitude = lat,
                 longitude = lon,
                 address = item.optString("address", ""),
-                radius = item.optInt("radius", 100).coerceIn(5, 250),
-                markerColor = item.optInt("markerColor", 0xFF2196F3.toInt()),
-                markerIcon = item.optString("markerIcon", "pin"),
-                category = item.optString("category", "general"),
+                radius = item.optInt("radius", DEFAULT_RADIUS_METERS).coerceIn(5, 250),
+                markerColor = item.optInt("markerColor", DEFAULT_MARKER_COLOR),
+                markerIcon = item.optString("markerIcon", DEFAULT_MARKER_ICON),
+                category = item.optString("category", DEFAULT_CATEGORY),
                 autoRemoveAfterTrigger = item.optBoolean("autoRemoveAfterTrigger", false),
                 isNotificationEnabled = item.optBoolean("isNotificationEnabled", true),
-                isCompleted = item.optBoolean("isCompleted", false),
-                completedAt = if (item.optBoolean("isCompleted", false)) {
+                isCompleted = isCompleted,
+                completedAt = if (isCompleted) {
                     System.currentTimeMillis()
                 } else {
                     null
                 }
             )
         }
-
-        if (importedTasks.isEmpty()) {
-            throw IllegalArgumentException(context.getString(R.string.tasks_import_error_empty))
-        }
-
-        val repository = TaskRepository(TaskDatabase.getDatabase(context).taskDao())
-        repository.insertTasks(importedTasks)
-        return TaskImportResult(
-            senderName = senderName,
-            senderId = senderId,
-            addedCount = importedTasks.size
-        )
+        return importedTasks
     }
 
     private fun buildImportedDescription(context: Context, senderName: String, original: String): String {
@@ -161,9 +259,8 @@ object TaskShareManager {
 
     private fun extractDataToken(rawText: String): String? {
         val trimmed = rawText.trim()
-        if (trimmed.startsWith(LINK_PREFIX)) {
-            return Uri.parse(trimmed).getQueryParameter("data")
-        }
+
+        extractDataTokenFromUri(trimmed)?.let { return it }
 
         val regexMatch = importLinkRegex.find(trimmed)
         if (regexMatch != null) {
@@ -174,6 +271,46 @@ object TaskShareManager {
             trimmed
         } else {
             null
+        }
+    }
+
+    private fun extractDataTokenFromUri(raw: String): String? {
+        val uri = runCatching { Uri.parse(raw) }.getOrNull() ?: return null
+        val scheme = uri.scheme?.lowercase().orEmpty()
+        return when (scheme) {
+            "aot" -> extractFromCustomUri(uri)
+            "https" -> extractFromHttpsUri(uri)
+            else -> null
+        }
+    }
+
+    private fun extractFromCustomUri(uri: Uri): String? {
+        if (!uri.host.equals("tasks", ignoreCase = true)) return null
+        val pathSegments = uri.pathSegments.orEmpty()
+        if (pathSegments.isEmpty()) {
+            return uri.getQueryParameter("d") ?: uri.getQueryParameter("data")
+        }
+        return when (pathSegments.firstOrNull()) {
+            "i" -> pathSegments.getOrNull(1)
+            "import" -> uri.getQueryParameter("d") ?: uri.getQueryParameter("data")
+            else -> null
+        }
+    }
+
+    private fun extractFromHttpsUri(uri: Uri): String? {
+        if (!uri.host.equals(IMPORT_HTTPS_HOST, ignoreCase = true)) return null
+        val pathSegments = uri.pathSegments.orEmpty()
+        if (pathSegments.isEmpty()) return null
+        return when (pathSegments.firstOrNull()) {
+            "i" -> pathSegments.getOrNull(1)
+            "tasks" -> {
+                if (pathSegments.getOrNull(1) == "import") {
+                    uri.getQueryParameter("d") ?: uri.getQueryParameter("data")
+                } else {
+                    null
+                }
+            }
+            else -> null
         }
     }
 
@@ -211,4 +348,3 @@ object TaskShareManager {
         return output.toByteArray()
     }
 }
-

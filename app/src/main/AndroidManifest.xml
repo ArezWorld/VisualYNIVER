@@ -46,6 +46,23 @@
                     android:scheme="aot"
                     android:host="tasks"
                     android:pathPrefix="/import" />
+                <data
+                    android:scheme="aot"
+                    android:host="tasks"
+                    android:pathPrefix="/i/" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="visualyniver.onrender.com"
+                    android:pathPrefix="/i/" />
+                <data
+                    android:scheme="https"
+                    android:host="visualyniver.onrender.com"
+                    android:pathPrefix="/tasks/import" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -56,6 +73,11 @@
 
         <activity
             android:name=".ui.MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TaskMap" />
+
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
             android:exported="false"
             android:theme="@style/Theme.TaskMap" />
 

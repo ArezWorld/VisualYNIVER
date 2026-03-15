@@ -15,6 +15,8 @@ object InAppUpdateManager {
     private const val PREFS_NAME = "in_app_update_prefs"
     private const val KEY_PENDING_DOWNLOAD_ID = "pending_download_id"
     private const val KEY_PENDING_APK_URI = "pending_apk_uri"
+    private const val KEY_CLEAR_DATA_AFTER_INSTALL = "clear_data_after_install"
+    private const val KEY_UNKNOWN_SOURCES_PROMPT_SHOWN = "unknown_sources_prompt_shown"
     private const val UPDATE_FILE_NAME = "AOT-update.apk"
 
     fun startBackgroundDownload(context: Context, apkUrl: String): Result<Long> {
@@ -27,8 +29,14 @@ object InAppUpdateManager {
             if (pendingId != -1L) {
                 downloadManager.remove(pendingId)
                 clearPendingDownloadId(appContext)
+                clearDataClearRequiredAfterInstall(appContext)
             }
             clearPendingApkUri(appContext)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                appContext.packageManager.canRequestPackageInstalls()
+            ) {
+                clearUnknownSourcesPromptShown(appContext)
+            }
 
             val targetDir = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                 ?: throw IllegalStateException("External files dir unavailable")
@@ -52,6 +60,7 @@ object InAppUpdateManager {
 
             val downloadId = downloadManager.enqueue(request)
             savePendingDownloadId(appContext, downloadId)
+            markDataClearRequiredAfterInstall(appContext)
             downloadId
         }
     }
@@ -66,6 +75,7 @@ object InAppUpdateManager {
         val downloadManager = appContext.getSystemService(DownloadManager::class.java)
             ?: run {
                 clearPendingDownloadId(appContext)
+                clearDataClearRequiredAfterInstall(appContext)
                 return DownloadCompleteResult.Failed
             }
 
@@ -73,17 +83,20 @@ object InAppUpdateManager {
         downloadManager.query(query).use { cursor ->
             if (cursor == null || !cursor.moveToFirst()) {
                 clearPendingDownloadId(appContext)
+                clearDataClearRequiredAfterInstall(appContext)
                 return DownloadCompleteResult.Failed
             }
 
             val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
             if (statusIndex == -1) {
                 clearPendingDownloadId(appContext)
+                clearDataClearRequiredAfterInstall(appContext)
                 return DownloadCompleteResult.Failed
             }
             val status = cursor.getInt(statusIndex)
             if (status != DownloadManager.STATUS_SUCCESSFUL) {
                 clearPendingDownloadId(appContext)
+                clearDataClearRequiredAfterInstall(appContext)
                 return DownloadCompleteResult.Failed
             }
         }
@@ -92,6 +105,7 @@ object InAppUpdateManager {
         clearPendingDownloadId(appContext)
 
         if (apkUri == null) {
+            clearDataClearRequiredAfterInstall(appContext)
             return DownloadCompleteResult.Failed
         }
         savePendingApkUri(appContext, apkUri.toString())
@@ -105,6 +119,7 @@ object InAppUpdateManager {
             clearPendingApkUri(appContext)
             DownloadCompleteResult.InstallStarted
         } else {
+            clearDataClearRequiredAfterInstall(appContext)
             DownloadCompleteResult.Failed
         }
     }
@@ -123,6 +138,7 @@ object InAppUpdateManager {
             clearPendingApkUri(appContext)
             DownloadCompleteResult.InstallStarted
         } else {
+            clearDataClearRequiredAfterInstall(appContext)
             DownloadCompleteResult.Failed
         }
     }
@@ -136,6 +152,32 @@ object InAppUpdateManager {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         appContext.startActivity(intent)
+    }
+
+    fun shouldPromptUnknownSourcesSettings(context: Context): Boolean {
+        val appContext = context.applicationContext
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        if (appContext.packageManager.canRequestPackageInstalls()) {
+            clearUnknownSourcesPromptShown(appContext)
+            return false
+        }
+
+        val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val wasShown = prefs.getBoolean(KEY_UNKNOWN_SOURCES_PROMPT_SHOWN, false)
+        if (!wasShown) {
+            prefs.edit().putBoolean(KEY_UNKNOWN_SOURCES_PROMPT_SHOWN, true).apply()
+            return true
+        }
+        return false
+    }
+
+    fun consumeDataClearRequiredAfterInstall(context: Context): Boolean {
+        val settings = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val required = settings.getBoolean(KEY_CLEAR_DATA_AFTER_INSTALL, false)
+        if (required) {
+            settings.edit().remove(KEY_CLEAR_DATA_AFTER_INSTALL).apply()
+        }
+        return required
     }
 
     private fun installDownloadedApk(context: Context, apkUri: Uri): Boolean {
@@ -186,6 +228,27 @@ object InAppUpdateManager {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_PENDING_APK_URI)
+            .apply()
+    }
+
+    private fun markDataClearRequiredAfterInstall(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_CLEAR_DATA_AFTER_INSTALL, true)
+            .apply()
+    }
+
+    private fun clearDataClearRequiredAfterInstall(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_CLEAR_DATA_AFTER_INSTALL)
+            .apply()
+    }
+
+    private fun clearUnknownSourcesPromptShown(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_UNKNOWN_SOURCES_PROMPT_SHOWN)
             .apply()
     }
 }

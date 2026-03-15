@@ -29,7 +29,9 @@ class UpdateDownloadReceiver : BroadcastReceiver() {
                     context.getString(R.string.update_install_permission_required),
                     Toast.LENGTH_LONG
                 ).show()
-                InAppUpdateManager.openUnknownSourcesSettings(context)
+                if (InAppUpdateManager.shouldPromptUnknownSourcesSettings(context)) {
+                    InAppUpdateManager.openUnknownSourcesSettings(context)
+                }
             }
 
             DownloadCompleteResult.Failed -> {

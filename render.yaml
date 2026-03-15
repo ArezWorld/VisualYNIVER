@@ -16,5 +16,9 @@ services:
         sync: false
       - key: GOOGLE_WEB_CLIENT_ID
         sync: false
+      - key: ANDROID_APP_PACKAGE
+        value: com.aot.taskmap
+      - key: ANDROID_APP_SHA256
+        value: 8A:7C:1C:C2:DF:34:D1:2D:67:A6:00:E7:3D:BC:E1:2A:47:3D:A8:E0:8E:F9:EC:83:62:12:54:97:3D:A3:FC:B9
       - key: CORS_ORIGINS
         value: "*"
