@@ -27,6 +27,7 @@ class StartupActivity : AppCompatActivity() {
     private var pendingImportText: String? = null
     private var pendingCameraUri: Uri? = null
     private var pendingCameraFile: File? = null
+    private var pendingCropSourceFile: File? = null
     private var pendingCropOutputUri: Uri? = null
 
     private val avatarPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -37,7 +38,12 @@ class StartupActivity : AppCompatActivity() {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         }
-        launchAvatarCrop(uri)
+        val localSourceUri = prepareCropSourceUri(uri)
+        if (localSourceUri == null) {
+            Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+            return@registerForActivityResult
+        }
+        launchAvatarCrop(localSourceUri)
     }
 
     private val avatarCameraLauncher = registerForActivityResult(
@@ -82,6 +88,7 @@ class StartupActivity : AppCompatActivity() {
             }
         }
         pendingCropOutputUri = null
+        clearPendingCropSource(deleteFile = true)
         clearPendingCameraCapture(deleteFile = true)
     }
 
@@ -217,6 +224,10 @@ class StartupActivity : AppCompatActivity() {
     }
 
     private fun launchAvatarCrop(sourceUri: Uri) {
+        val preparedSourceUri = prepareCropSourceUri(sourceUri) ?: run {
+            Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+            return
+        }
         val outputUri = createAvatarOutputUri()
         if (outputUri == null) {
             Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
@@ -231,7 +242,7 @@ class StartupActivity : AppCompatActivity() {
             setToolbarTitle(getString(R.string.profile_avatar_crop_title))
             setActiveControlsWidgetColor(ContextCompat.getColor(this@StartupActivity, R.color.primary))
         }
-        val intent = UCrop.of(sourceUri, outputUri)
+        val intent = UCrop.of(preparedSourceUri, outputUri)
             .withAspectRatio(1f, 1f)
             .withMaxResultSize(1024, 1024)
             .withOptions(options)
@@ -255,9 +266,35 @@ class StartupActivity : AppCompatActivity() {
         return runCatching {
             val avatarDir = File(filesDir, "avatars").apply { mkdirs() }
             val outputFile = File(avatarDir, "avatar_current.jpg")
-            val authority = "${packageName}.fileprovider"
-            FileProvider.getUriForFile(this, authority, outputFile)
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
+            outputFile.createNewFile()
+            Uri.fromFile(outputFile)
         }.getOrNull()
+    }
+
+    private fun prepareCropSourceUri(sourceUri: Uri): Uri? {
+        if (sourceUri.scheme.equals("file", ignoreCase = true)) return sourceUri
+        return runCatching {
+            val tempDir = File(cacheDir, "avatar_source").apply { mkdirs() }
+            clearPendingCropSource(deleteFile = true)
+            val tempFile = File(tempDir, "avatar_source_${System.currentTimeMillis()}.jpg")
+            contentResolver.openInputStream(sourceUri)?.use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            } ?: return null
+            pendingCropSourceFile = tempFile
+            Uri.fromFile(tempFile)
+        }.getOrNull()
+    }
+
+    private fun clearPendingCropSource(deleteFile: Boolean) {
+        if (deleteFile) {
+            runCatching { pendingCropSourceFile?.delete() }
+        }
+        pendingCropSourceFile = null
     }
 
     private fun saveAvatarUri(newUri: Uri) {
@@ -348,6 +385,7 @@ class StartupActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         pendingCropOutputUri = null
+        clearPendingCropSource(deleteFile = true)
         clearPendingCameraCapture(deleteFile = true)
     }
 }

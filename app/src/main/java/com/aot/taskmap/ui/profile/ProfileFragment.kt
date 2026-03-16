@@ -27,6 +27,7 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
     private var pendingCameraUri: Uri? = null
     private var pendingCameraFile: File? = null
+    private var pendingCropSourceFile: File? = null
     private var pendingCropOutputUri: Uri? = null
 
     private val avatarPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -37,7 +38,12 @@ class ProfileFragment : Fragment() {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         }
-        launchAvatarCrop(uri)
+        val localSourceUri = prepareCropSourceUri(uri)
+        if (localSourceUri == null) {
+            Toast.makeText(requireContext(), getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+            return@registerForActivityResult
+        }
+        launchAvatarCrop(localSourceUri)
     }
 
     private val avatarCameraLauncher = registerForActivityResult(
@@ -83,6 +89,7 @@ class ProfileFragment : Fragment() {
             }
         }
         pendingCropOutputUri = null
+        clearPendingCropSource(deleteFile = true)
         clearPendingCameraCapture(deleteFile = true)
     }
 
@@ -150,6 +157,10 @@ class ProfileFragment : Fragment() {
 
     private fun launchAvatarCrop(sourceUri: Uri) {
         val context = requireContext()
+        val preparedSourceUri = prepareCropSourceUri(sourceUri) ?: run {
+            Toast.makeText(context, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+            return
+        }
         val outputUri = createAvatarOutputUri()
         if (outputUri == null) {
             Toast.makeText(context, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
@@ -164,7 +175,7 @@ class ProfileFragment : Fragment() {
             setToolbarTitle(getString(R.string.profile_avatar_crop_title))
             setActiveControlsWidgetColor(ContextCompat.getColor(context, R.color.primary))
         }
-        val intent = UCrop.of(sourceUri, outputUri)
+        val intent = UCrop.of(preparedSourceUri, outputUri)
             .withAspectRatio(1f, 1f)
             .withMaxResultSize(1024, 1024)
             .withOptions(options)
@@ -198,8 +209,28 @@ class ProfileFragment : Fragment() {
         return runCatching {
             val avatarDir = File(context.filesDir, "avatars").apply { mkdirs() }
             val outputFile = File(avatarDir, "avatar_current.jpg")
-            val authority = "${context.packageName}.fileprovider"
-            FileProvider.getUriForFile(context, authority, outputFile)
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
+            outputFile.createNewFile()
+            Uri.fromFile(outputFile)
+        }.getOrNull()
+    }
+
+    private fun prepareCropSourceUri(sourceUri: Uri): Uri? {
+        if (sourceUri.scheme.equals("file", ignoreCase = true)) return sourceUri
+        val context = requireContext()
+        return runCatching {
+            val tempDir = File(context.cacheDir, "avatar_source").apply { mkdirs() }
+            clearPendingCropSource(deleteFile = true)
+            val tempFile = File(tempDir, "avatar_source_${System.currentTimeMillis()}.jpg")
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            } ?: return null
+            pendingCropSourceFile = tempFile
+            Uri.fromFile(tempFile)
         }.getOrNull()
     }
 
@@ -222,6 +253,13 @@ class ProfileFragment : Fragment() {
         }
         pendingCameraUri = null
         pendingCameraFile = null
+    }
+
+    private fun clearPendingCropSource(deleteFile: Boolean) {
+        if (deleteFile) {
+            runCatching { pendingCropSourceFile?.delete() }
+        }
+        pendingCropSourceFile = null
     }
 
     private fun saveAvatarUri(newUri: Uri) {
@@ -322,6 +360,7 @@ class ProfileFragment : Fragment() {
 
     override fun onDestroyView() {
         pendingCropOutputUri = null
+        clearPendingCropSource(deleteFile = true)
         clearPendingCameraCapture(deleteFile = true)
         super.onDestroyView()
         _binding = null

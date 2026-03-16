@@ -582,6 +582,7 @@ class MapFragment : Fragment() {
 
         val latitude = center.latitude
         val longitude = center.longitude
+        val centerPoint = GeoPoint(latitude, longitude)
         val appContext = safeContext.applicationContext
         val userAgentPackage = appContext.packageName
         val cacheKey = buildImportantPlacesCacheKey(latitude, longitude, zoom, config)
@@ -591,13 +592,15 @@ class MapFragment : Fragment() {
             ?.takeIf { now - it.first <= importantPlacesCacheTtlMs }
             ?.second
 
-        if (!cachedPlaces.isNullOrEmpty()) {
-            val mergedCachedPlaces = mergeCuratedImportantPlaces(
-                places = cachedPlaces,
-                center = GeoPoint(latitude, longitude),
-                zoom = zoom
-            ).take(config.maxItems)
-            updateImportantPlaceOverlays(mergedCachedPlaces)
+        // Сначала показываем локально доступные точки (включая curated),
+        // чтобы значки появлялись сразу без ожидания сети.
+        val immediatePlaces = mergeCuratedImportantPlaces(
+            places = cachedPlaces.orEmpty(),
+            center = centerPoint,
+            zoom = zoom
+        ).take(config.maxItems)
+        if (immediatePlaces.isNotEmpty()) {
+            updateImportantPlaceOverlays(immediatePlaces)
         }
         if (cachedEntry != null && now - cachedEntry.first <= importantPlacesCacheSoftReuseMs) {
             return
@@ -621,7 +624,7 @@ class MapFragment : Fragment() {
             }
             val mergedPlaces = mergeCuratedImportantPlaces(
                 places = effectivePlaces,
-                center = GeoPoint(latitude, longitude),
+                center = centerPoint,
                 zoom = zoom
             ).take(config.maxItems)
             updateImportantPlaceOverlays(mergedPlaces)
@@ -817,6 +820,7 @@ class MapFragment : Fragment() {
         }
 
         val pending = requests.toMutableList()
+        var hadSuccessfulResponse = false
         while (pending.isNotEmpty()) {
             val (endpoint, places) = select<Pair<String, List<ImportantPlace>?>> {
                 pending.forEach { deferred ->
@@ -827,17 +831,17 @@ class MapFragment : Fragment() {
 
             if (places != null) {
                 lastSuccessfulOverpassEndpoint = endpoint
+                hadSuccessfulResponse = true
                 if (places.isNotEmpty()) {
                     pending.forEach { it.cancel() }
                     return@supervisorScope places
                 }
-                // Если один из endpoint отдал корректный пустой ответ,
-                // считаем, что в текущей области POI нет.
-                pending.forEach { it.cancel() }
-                return@supervisorScope emptyList()
             }
         }
 
+        if (hadSuccessfulResponse) {
+            return@supervisorScope emptyList()
+        }
         return@supervisorScope emptyList()
     }
 
@@ -1019,14 +1023,14 @@ class MapFragment : Fragment() {
 
     private fun buildImportantPlaceIconDrawable(category: String): Drawable? {
         val iconDp = when {
-            binding.mapView.zoomLevelDouble >= 17.0 -> 20
-            binding.mapView.zoomLevelDouble >= 15.0 -> 18
-            binding.mapView.zoomLevelDouble >= 13.0 -> 16
-            else -> 14
+            binding.mapView.zoomLevelDouble >= 17.0 -> 24
+            binding.mapView.zoomLevelDouble >= 15.0 -> 22
+            binding.mapView.zoomLevelDouble >= 13.0 -> 20
+            else -> 18
         }
         val iconPx = (iconDp * resources.displayMetrics.density)
             .toInt()
-            .coerceAtLeast(14)
+            .coerceAtLeast(18)
         val iconRes = resolveImportantPlaceIconRes(category)
         val cacheKey = "$iconRes:$iconPx"
         importantPlaceIconCache[cacheKey]
