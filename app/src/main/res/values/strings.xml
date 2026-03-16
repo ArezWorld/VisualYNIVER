@@ -5,31 +5,10 @@
     <string name="title_map">Карта</string>
     <string name="title_tasks">Задачи</string>
     <string name="title_settings">Настройки</string>
-
-    <string name="login_title">AOT</string>
-    <string name="login_subtitle">Absolutely Optimize Task</string>
-    <string name="hint_username">Имя пользователя</string>
-    <string name="hint_password">Пароль</string>
-    <string name="action_login">Войти</string>
-    <string name="action_login_google">Войти через Google</string>
-    <string name="action_continue_guest">Перейти на карту без входа</string>
-    <string name="action_server_settings">Адрес сервера</string>
-    <string name="action_reset">Сбросить</string>
-
-    <string name="error_username_required">Введите имя пользователя</string>
-    <string name="error_password_required">Введите пароль</string>
-    <string name="error_login_failed">Ошибка входа</string>
-    <string name="error_google_login_unavailable">Google вход недоступен. Укажите GOOGLE_WEB_CLIENT_ID на сервере.</string>
-    <string name="error_google_login_cancelled">Вход через Google отменён</string>
-    <string name="error_google_id_token_missing">Не удалось получить токен Google</string>
-    <string name="error_google_login_failed">Ошибка входа через Google</string>
-    <string name="error_server_unreachable">Сервер авторизации недоступен. Проверьте интернет и адрес сервера.</string>
-    <string name="error_server_emulator_host">Сейчас используется адрес %1$s, он работает только в эмуляторе Android. Для телефона укажите реальный адрес сервера через кнопку «Адрес сервера».</string>
-    <string name="error_server_url_invalid">Некорректный адрес сервера</string>
-    <string name="server_url_current">Сервер: %1$s</string>
-    <string name="server_url_hint">https://example.com</string>
-    <string name="server_url_dialog_title">Настройка сервера API</string>
-    <string name="debug_skip_auth">Debug: вход без сервера</string>
+    <string name="startup_title">AOT</string>
+    <string name="startup_subtitle">Старт и профиль пользователя</string>
+    <string name="startup_profile_title">Быстрая настройка профиля</string>
+    <string name="startup_continue">Открыть приложение</string>
 
     <string name="search_hint">Поиск адреса, кафе, организации</string>
     <string name="search_choose_title">Выберите место</string>
@@ -72,8 +51,8 @@
     <string name="settings_notification_sound_picker_title">Выбор звука уведомления</string>
     <string name="settings_desc_confirm_complete">Спрашивать перед отметкой «выполнено»</string>
     <string name="settings_check_updates">Проверить обновления</string>
-    <string name="settings_auto_update_check">Автопроверка обновлений после входа</string>
-    <string name="settings_desc_auto_update_check">Автоматически проверять новую версию сразу после авторизации</string>
+    <string name="settings_auto_update_check">Автопроверка обновлений при запуске</string>
+    <string name="settings_desc_auto_update_check">Автоматически проверять новую версию при открытии приложения</string>
     <string name="settings_open_releases_page">Открыть релизы GitHub</string>
     <string name="settings_check_updates_loading">Проверка…</string>
     <string name="settings_update_available_title">Доступно обновление</string>

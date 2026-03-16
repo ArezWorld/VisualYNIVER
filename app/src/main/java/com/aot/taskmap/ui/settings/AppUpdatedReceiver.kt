@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import com.aot.taskmap.ui.auth.LoginActivity
+import com.aot.taskmap.ui.StartupActivity
 
 class AppUpdatedReceiver : BroadcastReceiver() {
 
@@ -19,7 +19,7 @@ class AppUpdatedReceiver : BroadcastReceiver() {
                 }
 
                 Handler(Looper.getMainLooper()).post {
-                    val launchIntent = Intent(context, LoginActivity::class.java).apply {
+                    val launchIntent = Intent(context, StartupActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
                     }

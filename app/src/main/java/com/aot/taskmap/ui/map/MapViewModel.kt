@@ -3,12 +3,7 @@ package com.aot.taskmap.ui.map
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.aot.taskmap.BuildConfig
-import com.aot.taskmap.data.local.SessionManager
 import com.aot.taskmap.data.local.TaskDatabase
-import com.aot.taskmap.data.remote.ApiBaseUrlProvider
-import com.aot.taskmap.data.remote.ApiClient
-import com.aot.taskmap.data.repository.RemoteTaskRepository
 import com.aot.taskmap.data.repository.TaskRepository
 import com.aot.taskmap.domain.model.Task
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,12 +14,6 @@ import kotlinx.coroutines.launch
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val sessionManager = SessionManager(application)
-    private val apiClient = ApiClient(ApiBaseUrlProvider.resolve(application)).apply {
-        sessionManager.authToken?.let { setToken(it) }
-    }
-
-    private val remoteRepository = RemoteTaskRepository(apiClient)
     private val localRepository: TaskRepository
 
     val activeTasks: StateFlow<List<Task>>
@@ -58,27 +47,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun loadTasks() {
         viewModelScope.launch {
             _isLoading.value = true
-            if (!BuildConfig.DEBUG && isLoggedIn()) {
-                val result = remoteRepository.fetchTasks()
-                result.onSuccess { tasks ->
-                    val mergedTasks = tasks.map { remoteTask ->
-                        val localTask = localRepository.getTaskById(remoteTask.id)
-                        if (localTask != null) {
-                            remoteTask.copy(
-                                markerColor = localTask.markerColor,
-                                markerIcon = localTask.markerIcon,
-                                category = localTask.category,
-                                autoRemoveAfterTrigger = localTask.autoRemoveAfterTrigger
-                            )
-                        } else {
-                            remoteTask
-                        }
-                    }
-                    localRepository.insertTasks(mergedTasks)
-                }.onFailure { e ->
-                    _error.value = e.message
-                }
-            }
             _isLoading.value = false
         }
     }
@@ -115,25 +83,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             )
             localRepository.insertTask(localTask)
 
-            if (!BuildConfig.DEBUG && isLoggedIn()) {
-                val result = remoteRepository.createTask(
-                    title = title,
-                    description = description,
-                    latitude = latitude,
-                    longitude = longitude,
-                    address = address,
-                    radius = radius,
-                    enableNotification = enableNotification,
-                    markerColor = markerColor,
-                    markerIcon = markerIcon,
-                    category = category,
-                    autoRemoveAfterTrigger = autoRemoveAfterTrigger
-                )
-                result.onFailure { e ->
-                    _error.value = e.message
-                }
-            }
-
             _isLoading.value = false
         }
     }
@@ -144,12 +93,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = null
 
             localRepository.updateTask(task)
-            if (!BuildConfig.DEBUG && isLoggedIn()) {
-                val result = remoteRepository.updateTask(task)
-                result.onFailure { e ->
-                    _error.value = e.message
-                }
-            }
 
             _isLoading.value = false
         }
@@ -161,12 +104,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = null
 
             localRepository.deleteTask(task)
-            if (!BuildConfig.DEBUG && isLoggedIn()) {
-                val result = remoteRepository.deleteTask(task.id)
-                result.onFailure { e ->
-                    _error.value = e.message
-                }
-            }
 
             if (_selectedTask.value?.id == task.id) {
                 _selectedTask.value = null
@@ -182,12 +119,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _error.value = null
 
             localRepository.toggleTaskCompletion(task.id, !task.isCompleted)
-            if (!BuildConfig.DEBUG && isLoggedIn()) {
-                val result = remoteRepository.toggleTaskCompletion(task.id)
-                result.onFailure { e ->
-                    _error.value = e.message
-                }
-            }
 
             _isLoading.value = false
         }
@@ -203,11 +134,5 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         _error.value = null
-    }
-
-    fun isLoggedIn(): Boolean = sessionManager.isSessionLoggedIn()
-
-    fun logout() {
-        sessionManager.clearSession()
     }
 }

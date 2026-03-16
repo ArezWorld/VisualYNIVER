@@ -72,6 +72,8 @@ import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
+import org.osmdroid.tileprovider.cachemanager.CacheManager
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.overlay.MapEventsOverlay
@@ -84,6 +86,7 @@ import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 class MapFragment : Fragment() {
@@ -118,6 +121,10 @@ class MapFragment : Fragment() {
     private val mapHudRestoreDelayMs = 260L
     private val mapHudHideDurationMs = 170L
     private val mapHudShowDurationMs = 150L
+    private val tilePrefetchDelayMs = 480L
+    private var prefetchTilesRunnable: Runnable? = null
+    private var activeTilePrefetchTask: CacheManager.CacheManagerTask? = null
+    private var lastTilePrefetchKey: String? = null
     private val searchHistoryPrefsName = "map_search_history"
     private val recentPlacesKey = "recent_places"
     private val recentPlacesLimit = 8
@@ -285,6 +292,7 @@ class MapFragment : Fragment() {
         applySearchInitialState()
         animateChrome()
         scheduleImportantPlacesRefresh()
+        scheduleTilePrefetch()
     }
 
     private fun setupFab() {
@@ -316,11 +324,16 @@ class MapFragment : Fragment() {
 
     private fun applyMapPresentation() {
         val tileSource = MapTileSources.resolveByStyle(SettingsPreferences.getMapStyle(requireContext()))
-        binding.mapView.setTileSource(tileSource)
+        val currentTileSourceName = binding.mapView.tileProvider.tileSource?.name()
+        if (currentTileSourceName != tileSource.name()) {
+            binding.mapView.setTileSource(tileSource)
+            lastTilePrefetchKey = null
+        }
         // Включаем сеть, но кеш osmdroid используется всегда: скачанные оффлайн-тайлы
         // останутся доступными даже без интернета.
         binding.mapView.setUseDataConnection(true)
         binding.mapView.invalidate()
+        scheduleTilePrefetch()
     }
 
     private fun restoreLastMapViewportOrDefault(): Boolean {
@@ -608,6 +621,61 @@ class MapFragment : Fragment() {
             ).take(config.maxItems)
             updateImportantPlaceOverlays(mergedPlaces)
         }
+    }
+
+    private fun scheduleTilePrefetch() {
+        prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
+        if (!isAdded || _binding == null) return
+        val runnable = Runnable { prefetchVisibleTiles() }
+        prefetchTilesRunnable = runnable
+        uiHandler.postDelayed(runnable, tilePrefetchDelayMs)
+    }
+
+    private fun prefetchVisibleTiles() {
+        if (!isAdded || _binding == null) return
+        val center = binding.mapView.mapCenter ?: return
+        val zoomInt = binding.mapView.zoomLevelDouble.roundToInt().coerceIn(3, 19)
+        val tileSourceName = binding.mapView.tileProvider.tileSource?.name().orEmpty()
+        val latBucket = (center.latitude * 30.0).roundToInt()
+        val lonBucket = (center.longitude * 30.0).roundToInt()
+        val prefetchKey = "$tileSourceName:$zoomInt:$latBucket:$lonBucket"
+        if (prefetchKey == lastTilePrefetchKey) return
+        lastTilePrefetchKey = prefetchKey
+
+        val box = binding.mapView.boundingBox ?: return
+        val latSpan = (box.latNorth - box.latSouth).coerceAtLeast(0.01)
+        val lonSpan = (box.lonEast - box.lonWest).coerceAtLeast(0.01)
+        val latPadding = (latSpan * 0.45).coerceAtLeast(0.006)
+        val lonPadding = (lonSpan * 0.45).coerceAtLeast(0.006)
+        val expanded = BoundingBox(
+            (box.latNorth + latPadding).coerceAtMost(85.0),
+            (box.lonEast + lonPadding).coerceAtMost(180.0),
+            (box.latSouth - latPadding).coerceAtLeast(-85.0),
+            (box.lonWest - lonPadding).coerceAtLeast(-180.0)
+        )
+
+        val minZoom = (zoomInt - 1).coerceAtLeast(3)
+        val maxZoom = (zoomInt + 1).coerceAtMost(19)
+        activeTilePrefetchTask?.cancel(true)
+        val cacheManager = runCatching { CacheManager(binding.mapView) }.getOrNull() ?: return
+        activeTilePrefetchTask = cacheManager.downloadAreaAsyncNoUI(
+            requireContext().applicationContext,
+            expanded,
+            minZoom,
+            maxZoom,
+            object : CacheManager.CacheManagerCallback {
+                override fun onTaskComplete() = Unit
+                override fun updateProgress(
+                    progress: Int,
+                    currentZoomLevel: Int,
+                    zoomMin: Int,
+                    zoomMax: Int
+                ) = Unit
+                override fun downloadStarted() = Unit
+                override fun setPossibleTilesInArea(total: Int) = Unit
+                override fun onTaskFailed(errors: Int) = Unit
+            }
+        )
     }
 
     private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig? {
@@ -1902,6 +1970,7 @@ class MapFragment : Fragment() {
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
                 scheduleImportantPlacesRefresh()
+                scheduleTilePrefetch()
                 return false
             }
 
@@ -1912,6 +1981,7 @@ class MapFragment : Fragment() {
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
                 scheduleImportantPlacesRefresh()
+                scheduleTilePrefetch()
                 return false
             }
         })
@@ -2354,6 +2424,10 @@ class MapFragment : Fragment() {
         saveCurrentMapViewport()
         binding.mapView.onPause()
         importantPlacesRefreshJob?.cancel()
+        prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
+        prefetchTilesRunnable = null
+        activeTilePrefetchTask?.cancel(true)
+        activeTilePrefetchTask = null
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
         showBottomNavigationAfterMotion()
@@ -2367,6 +2441,10 @@ class MapFragment : Fragment() {
         restoreBottomNavRunnable = null
         restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreMapHudRunnable = null
+        prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
+        prefetchTilesRunnable = null
+        activeTilePrefetchTask?.cancel(true)
+        activeTilePrefetchTask = null
         clearImportantPlaceOverlays()
         importantPlaceIconCache.clear()
         importantPlacesCache.clear()

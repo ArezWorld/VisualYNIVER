@@ -170,9 +170,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val sharedTasksText = intent?.getStringExtra(EXTRA_IMPORT_TASKS_TEXT)
+            ?: TaskShareManager.extractShareTextFromIntent(intent)
         if (!sharedTasksText.isNullOrBlank()) {
             handleImportedTasksText(sharedTasksText)
-            intent.removeExtra(EXTRA_IMPORT_TASKS_TEXT)
+            intent?.removeExtra(EXTRA_IMPORT_TASKS_TEXT)
             setIntent(intent)
         }
 
