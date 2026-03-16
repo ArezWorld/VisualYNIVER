@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import androidx.core.content.FileProvider
 import com.aot.taskmap.R
 import java.io.File
 
@@ -15,6 +16,7 @@ object InAppUpdateManager {
     private const val PREFS_NAME = "in_app_update_prefs"
     private const val KEY_PENDING_DOWNLOAD_ID = "pending_download_id"
     private const val KEY_PENDING_APK_URI = "pending_apk_uri"
+    private const val KEY_PENDING_APK_PATH = "pending_apk_path"
     private const val KEY_CLEAR_DATA_AFTER_INSTALL = "clear_data_after_install"
     private const val KEY_UNKNOWN_SOURCES_PROMPT_SHOWN = "unknown_sources_prompt_shown"
     private const val UPDATE_FILE_NAME = "AOT-update.apk"
@@ -32,6 +34,7 @@ object InAppUpdateManager {
                 clearDataClearRequiredAfterInstall(appContext)
             }
             clearPendingApkUri(appContext)
+            clearPendingApkPath(appContext)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
                 appContext.packageManager.canRequestPackageInstalls()
             ) {
@@ -44,6 +47,7 @@ object InAppUpdateManager {
             if (targetFile.exists()) {
                 targetFile.delete()
             }
+            savePendingApkPath(appContext, targetFile.absolutePath)
 
             val request = DownloadManager.Request(Uri.parse(apkUrl))
                 .setTitle(appContext.getString(R.string.update_download_title))
@@ -101,10 +105,11 @@ object InAppUpdateManager {
             }
         }
 
-        val apkUri = downloadManager.getUriForDownloadedFile(downloadId)
+        val apkUri = resolveDownloadedApkUri(appContext, downloadManager, downloadId)
         clearPendingDownloadId(appContext)
 
         if (apkUri == null) {
+            clearPendingApkPath(appContext)
             clearDataClearRequiredAfterInstall(appContext)
             return DownloadCompleteResult.Failed
         }
@@ -117,6 +122,7 @@ object InAppUpdateManager {
 
         return if (installDownloadedApk(appContext, apkUri)) {
             clearPendingApkUri(appContext)
+            clearPendingApkPath(appContext)
             DownloadCompleteResult.InstallStarted
         } else {
             clearDataClearRequiredAfterInstall(appContext)
@@ -136,6 +142,7 @@ object InAppUpdateManager {
 
         return if (installDownloadedApk(appContext, Uri.parse(pendingUri))) {
             clearPendingApkUri(appContext)
+            clearPendingApkPath(appContext)
             DownloadCompleteResult.InstallStarted
         } else {
             clearDataClearRequiredAfterInstall(appContext)
@@ -183,13 +190,68 @@ object InAppUpdateManager {
     private fun installDownloadedApk(context: Context, apkUri: Uri): Boolean {
         val appContext = context.applicationContext
         return runCatching {
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(apkUri, "application/vnd.android.package-archive")
+            val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                data = apkUri
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+                putExtra(Intent.EXTRA_RETURN_RESULT, false)
             }
             appContext.startActivity(installIntent)
         }.isSuccess
+    }
+
+    private fun resolveDownloadedApkUri(
+        context: Context,
+        downloadManager: DownloadManager,
+        downloadId: Long
+    ): Uri? {
+        downloadManager.getUriForDownloadedFile(downloadId)?.let { return it }
+
+        val localUri = queryDownloadedFileUri(context, downloadManager, downloadId)
+        if (localUri != null) {
+            return localUri
+        }
+
+        val filePath = getPendingApkPath(context) ?: return null
+        val file = File(filePath)
+        if (!file.exists() || file.length() <= 0L) return null
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+    }
+
+    private fun queryDownloadedFileUri(
+        context: Context,
+        downloadManager: DownloadManager,
+        downloadId: Long
+    ): Uri? {
+        val query = DownloadManager.Query().setFilterById(downloadId)
+        downloadManager.query(query).use { cursor ->
+            if (cursor == null || !cursor.moveToFirst()) return null
+            val localUriIndex = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
+            if (localUriIndex == -1) return null
+            val localUri = cursor.getString(localUriIndex).orEmpty()
+            if (localUri.isBlank()) return null
+
+            val parsed = Uri.parse(localUri)
+            if (parsed.scheme.equals("content", ignoreCase = true)) {
+                return parsed
+            }
+
+            val file = when {
+                parsed.scheme.equals("file", ignoreCase = true) -> File(parsed.path.orEmpty())
+                else -> File(localUri)
+            }
+            if (!file.exists() || file.length() <= 0L) return null
+            return FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+        }
     }
 
     private fun getPendingDownloadId(context: Context): Long {
@@ -228,6 +290,25 @@ object InAppUpdateManager {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_PENDING_APK_URI)
+            .apply()
+    }
+
+    private fun getPendingApkPath(context: Context): String? {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_PENDING_APK_PATH, null)
+    }
+
+    private fun savePendingApkPath(context: Context, apkPath: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PENDING_APK_PATH, apkPath)
+            .apply()
+    }
+
+    private fun clearPendingApkPath(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_PENDING_APK_PATH)
             .apply()
     }
 
