@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
@@ -73,6 +74,8 @@ import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.cachemanager.CacheManager
+import org.osmdroid.tileprovider.tilesource.ITileSource
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
@@ -625,17 +628,21 @@ class MapFragment : Fragment() {
 
     private fun scheduleTilePrefetch() {
         prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
-        if (!isAdded || _binding == null) return
-        val runnable = Runnable { prefetchVisibleTiles() }
-        prefetchTilesRunnable = runnable
-        uiHandler.postDelayed(runnable, tilePrefetchDelayMs)
+        prefetchTilesRunnable = null
+        // Защита от TileSourcePolicyException на ряде источников:
+        // отключаем background prefetch тайлов и оставляем только обычную загрузку карты.
+        activeTilePrefetchTask?.cancel(true)
+        activeTilePrefetchTask = null
+        lastTilePrefetchKey = null
     }
 
     private fun prefetchVisibleTiles() {
         if (!isAdded || _binding == null) return
+        val tileSource = binding.mapView.tileProvider.tileSource
+        if (!isTilePrefetchAllowed(tileSource)) return
         val center = binding.mapView.mapCenter ?: return
         val zoomInt = binding.mapView.zoomLevelDouble.roundToInt().coerceIn(3, 19)
-        val tileSourceName = binding.mapView.tileProvider.tileSource?.name().orEmpty()
+        val tileSourceName = tileSource?.name().orEmpty()
         val latBucket = (center.latitude * 30.0).roundToInt()
         val lonBucket = (center.longitude * 30.0).roundToInt()
         val prefetchKey = "$tileSourceName:$zoomInt:$latBucket:$lonBucket"
@@ -658,24 +665,32 @@ class MapFragment : Fragment() {
         val maxZoom = (zoomInt + 1).coerceAtMost(19)
         activeTilePrefetchTask?.cancel(true)
         val cacheManager = runCatching { CacheManager(binding.mapView) }.getOrNull() ?: return
-        activeTilePrefetchTask = cacheManager.downloadAreaAsyncNoUI(
-            requireContext().applicationContext,
-            expanded,
-            minZoom,
-            maxZoom,
-            object : CacheManager.CacheManagerCallback {
-                override fun onTaskComplete() = Unit
-                override fun updateProgress(
-                    progress: Int,
-                    currentZoomLevel: Int,
-                    zoomMin: Int,
-                    zoomMax: Int
-                ) = Unit
-                override fun downloadStarted() = Unit
-                override fun setPossibleTilesInArea(total: Int) = Unit
-                override fun onTaskFailed(errors: Int) = Unit
-            }
-        )
+        activeTilePrefetchTask = runCatching {
+            cacheManager.downloadAreaAsyncNoUI(
+                requireContext().applicationContext,
+                expanded,
+                minZoom,
+                maxZoom,
+                object : CacheManager.CacheManagerCallback {
+                    override fun onTaskComplete() = Unit
+                    override fun updateProgress(
+                        progress: Int,
+                        currentZoomLevel: Int,
+                        zoomMin: Int,
+                        zoomMax: Int
+                    ) = Unit
+                    override fun downloadStarted() = Unit
+                    override fun setPossibleTilesInArea(total: Int) = Unit
+                    override fun onTaskFailed(errors: Int) = Unit
+                }
+            )
+        }.getOrNull()
+    }
+
+    private fun isTilePrefetchAllowed(tileSource: ITileSource?): Boolean {
+        val onlineSource = tileSource as? OnlineTileSourceBase ?: return false
+        val policy = onlineSource.tileSourcePolicy
+        return policy.acceptsBulkDownload() && policy.acceptsPreventive()
     }
 
     private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig? {
@@ -1880,14 +1895,10 @@ class MapFragment : Fragment() {
                 // Убираем синюю область точности под меткой пользователя
                 isDrawAccuracyEnabled = false
                 disableFollowLocation()
-                val iconDrawable = ContextCompat.getDrawable(
-                    requireContext(),
-                    R.drawable.ic_my_location_arrow
-                )
-                if (iconDrawable != null) {
-                    val bmp = drawableToBitmap(iconDrawable)
-                    setPersonIcon(bmp)
-                    setDirectionIcon(bmp)
+                val iconBitmap = resolveLocationMarkerBitmap()
+                if (iconBitmap != null) {
+                    setPersonIcon(iconBitmap)
+                    setDirectionIcon(iconBitmap)
                 }
                 runOnFirstFix {
                     myLocation?.let { location ->
@@ -1898,6 +1909,31 @@ class MapFragment : Fragment() {
             binding.mapView.overlays.add(myLocationOverlay)
             binding.mapView.invalidate()
         }
+    }
+
+    private fun resolveLocationMarkerBitmap(): Bitmap? {
+        if (!isAdded) return null
+        val context = requireContext()
+        val shouldUseAvatar = SettingsPreferences.isUseAvatarLocationMarkerEnabled(context)
+        if (shouldUseAvatar) {
+            val avatarBitmap = loadProfileAvatarBitmap()
+            if (avatarBitmap != null) return avatarBitmap
+        }
+
+        val iconDrawable = ContextCompat.getDrawable(context, R.drawable.ic_my_location_arrow)
+        return iconDrawable?.let { drawableToBitmap(it) }
+    }
+
+    private fun loadProfileAvatarBitmap(): Bitmap? {
+        val context = requireContext()
+        val avatarUriString = SettingsPreferences.getProfileAvatarUri(context) ?: return null
+        val avatarUri = runCatching { android.net.Uri.parse(avatarUriString) }.getOrNull() ?: return null
+        return runCatching {
+            context.contentResolver.openInputStream(avatarUri)?.use { input ->
+                val decoded = BitmapFactory.decodeStream(input) ?: return@use null
+                Bitmap.createScaledBitmap(decoded, 92, 92, true)
+            }
+        }.getOrNull()
     }
 
     private fun getCurrentLocation(forceCenter: Boolean = false) {

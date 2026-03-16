@@ -2,9 +2,10 @@ package com.aot.taskmap.ui
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,16 +27,23 @@ class StartupActivity : AppCompatActivity() {
     private var pendingImportText: String? = null
     private var pendingCameraUri: Uri? = null
     private var pendingCameraFile: File? = null
+    private var pendingCropOutputUri: Uri? = null
 
-    private val avatarPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    private val avatarPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
         launchAvatarCrop(uri)
     }
 
     private val avatarCameraLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
             pendingCameraUri?.let { launchAvatarCrop(it) }
         } else {
             clearPendingCameraCapture(deleteFile = true)
@@ -47,7 +55,8 @@ class StartupActivity : AppCompatActivity() {
     ) { result ->
         when (result.resultCode) {
             Activity.RESULT_OK -> {
-                val outputUri = UCrop.getOutput(result.data ?: return@registerForActivityResult)
+                val outputUri = UCrop.getOutput(result.data ?: Intent())
+                    ?: pendingCropOutputUri
                     ?: return@registerForActivityResult
                 saveAvatarUri(outputUri)
                 updateAvatar(outputUri)
@@ -59,6 +68,12 @@ class StartupActivity : AppCompatActivity() {
             }
 
             UCrop.RESULT_ERROR -> {
+                val error = UCrop.getError(result.data ?: Intent())
+                android.util.Log.e(
+                    "StartupActivity",
+                    "Avatar crop failed: ${error?.message}",
+                    error
+                )
                 Toast.makeText(
                     this,
                     getString(R.string.profile_avatar_crop_failed),
@@ -66,6 +81,7 @@ class StartupActivity : AppCompatActivity() {
                 ).show()
             }
         }
+        pendingCropOutputUri = null
         clearPendingCameraCapture(deleteFile = true)
     }
 
@@ -95,7 +111,7 @@ class StartupActivity : AppCompatActivity() {
 
     private fun setupActions() {
         binding.buttonPickAvatar.setOnClickListener {
-            avatarPicker.launch("image/*")
+            avatarPicker.launch(arrayOf("image/*"))
         }
         binding.buttonTakePhoto.setOnClickListener {
             launchCameraCapture()
@@ -110,8 +126,8 @@ class StartupActivity : AppCompatActivity() {
 
         binding.buttonRandomNick.setOnClickListener {
             val nickname = SettingsPreferences.generateAndSaveRandomNickname(this)
-            binding.editProfileName.setText("")
-            refreshProfileMeta()
+            binding.editProfileName.setText(nickname)
+            SettingsPreferences.setProfileName(this, nickname)
             Toast.makeText(
                 this,
                 getString(R.string.profile_random_generated, nickname),
@@ -130,10 +146,11 @@ class StartupActivity : AppCompatActivity() {
     }
 
     private fun bindProfile() {
-        binding.editProfileName.setText(SettingsPreferences.getProfileName(this).orEmpty())
+        val initialName = SettingsPreferences.getProfileName(this)
+            ?: SettingsPreferences.getEffectiveProfileName(this)
+        binding.editProfileName.setText(initialName)
         val avatarUri = SettingsPreferences.getProfileAvatarUri(this)?.let(Uri::parse)
         updateAvatar(avatarUri)
-        refreshProfileMeta()
     }
 
     private fun saveProfile() {
@@ -176,17 +193,7 @@ class StartupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
             return
         }
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-            putExtra(MediaStore.EXTRA_OUTPUT, outputUri)
-            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        if (intent.resolveActivity(packageManager) == null) {
-            clearPendingCameraCapture(deleteFile = true)
-            Toast.makeText(this, getString(R.string.profile_camera_unavailable), Toast.LENGTH_SHORT).show()
-            return
-        }
-        avatarCameraLauncher.launch(intent)
+        avatarCameraLauncher.launch(outputUri)
     }
 
     private fun createCameraImageUri(): Uri? {
@@ -210,8 +217,12 @@ class StartupActivity : AppCompatActivity() {
     }
 
     private fun launchAvatarCrop(sourceUri: Uri) {
-        val avatarDir = File(filesDir, "avatars").apply { mkdirs() }
-        val outputUri = Uri.fromFile(File(avatarDir, "avatar_current.jpg"))
+        val outputUri = createAvatarOutputUri()
+        if (outputUri == null) {
+            Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+            return
+        }
+        pendingCropOutputUri = outputUri
         val options = UCrop.Options().apply {
             setCircleDimmedLayer(true)
             setShowCropFrame(true)
@@ -225,7 +236,28 @@ class StartupActivity : AppCompatActivity() {
             .withMaxResultSize(1024, 1024)
             .withOptions(options)
             .getIntent(this)
-        avatarCropLauncher.launch(intent)
+            .apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }
+        runCatching { avatarCropLauncher.launch(intent) }
+            .onFailure {
+                pendingCropOutputUri = null
+                Toast.makeText(
+                    this,
+                    getString(R.string.profile_avatar_crop_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    private fun createAvatarOutputUri(): Uri? {
+        return runCatching {
+            val avatarDir = File(filesDir, "avatars").apply { mkdirs() }
+            val outputFile = File(avatarDir, "avatar_current.jpg")
+            val authority = "${packageName}.fileprovider"
+            FileProvider.getUriForFile(this, authority, outputFile)
+        }.getOrNull()
     }
 
     private fun saveAvatarUri(newUri: Uri) {
@@ -245,12 +277,6 @@ class StartupActivity : AppCompatActivity() {
         runCatching { File(path).delete() }
     }
 
-    private fun refreshProfileMeta() {
-        val effectiveName = SettingsPreferences.getEffectiveProfileName(this)
-        binding.textEffectiveName.text =
-            getString(R.string.profile_effective_name_value, effectiveName)
-    }
-
     private fun updateAvatar(uri: Uri?) {
         if (uri == null) {
             binding.imageAvatar.scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -263,8 +289,10 @@ class StartupActivity : AppCompatActivity() {
         }
 
         val result = runCatching {
+            val decodedBitmap = decodeAvatarPreview(uri)
+                ?: error("Failed to decode avatar preview")
             binding.imageAvatar.scaleType = ImageView.ScaleType.CENTER_CROP
-            binding.imageAvatar.setImageURI(uri)
+            binding.imageAvatar.setImageBitmap(decodedBitmap)
             binding.imageAvatar.imageTintList = null
         }
         if (result.isFailure) {
@@ -279,8 +307,47 @@ class StartupActivity : AppCompatActivity() {
         }
     }
 
+    private fun decodeAvatarPreview(uri: Uri): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, bounds)
+        }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        val sampleSize = calculateInSampleSize(
+            width = bounds.outWidth,
+            height = bounds.outHeight,
+            reqWidth = 360,
+            reqHeight = 360
+        )
+
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        return contentResolver.openInputStream(uri)?.use { input ->
+            BitmapFactory.decodeStream(input, null, decodeOptions)
+        }
+    }
+
+    private fun calculateInSampleSize(
+        width: Int,
+        height: Int,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        var sampleSize = 1
+        var halfWidth = width / 2
+        var halfHeight = height / 2
+        while ((halfWidth / sampleSize) >= reqWidth && (halfHeight / sampleSize) >= reqHeight) {
+            sampleSize *= 2
+        }
+        return sampleSize.coerceAtLeast(1)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        pendingCropOutputUri = null
         clearPendingCameraCapture(deleteFile = true)
     }
 }
