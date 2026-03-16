@@ -9,6 +9,8 @@
     <string name="startup_subtitle">Старт и профиль пользователя</string>
     <string name="startup_profile_title">Быстрая настройка профиля</string>
     <string name="startup_continue">Открыть приложение</string>
+    <string name="startup_open_all_versions">Все версии приложения (откат)</string>
+    <string name="startup_open_all_versions_error">Не удалось открыть страницу версий</string>
 
     <string name="search_hint">Поиск адреса, кафе, организации</string>
     <string name="search_choose_title">Выберите место</string>
@@ -22,12 +24,15 @@
     <string name="settings_section_about">О приложении</string>
     <string name="settings_dark_theme">Тёмная тема</string>
     <string name="settings_follow_location">Следовать за геопозицией</string>
+    <string name="settings_use_avatar_location_marker">Показывать аватар вместо стрелки геопозиции</string>
     <string name="settings_show_radius">Показывать радиус задач</string>
     <string name="settings_show_completed_markers">Показывать выполненные метки</string>
     <string name="settings_highlight_important_places">Подсвечивать важные места</string>
     <string name="settings_map_style">Стиль карты</string>
     <string name="settings_map_style_standard">2GIS (Россия)</string>
-    <string name="settings_map_style_terrain">OpenStreetMap (глобальная)</string>
+    <string name="settings_map_style_terrain">OpenStreetMap Mapnik (глобальная)</string>
+    <string name="settings_map_style_voyager">CartoDB Voyager (глобальная)</string>
+    <string name="settings_map_style_topo">OpenTopoMap (топографическая)</string>
     <string name="settings_animations">Плавные анимации интерфейса</string>
     <string name="settings_confirm_complete">Подтверждать «Выполнено»</string>
     <string name="settings_notifications_enabled">Уведомления о приближении</string>
@@ -35,10 +40,11 @@
     <string name="settings_version">Версия приложения</string>
     <string name="settings_version_format">Версия приложения: %1$s</string>
     <string name="settings_developers">Разработано: студенты БПИ-23\nАстафьев Д.А., Осадчук И.Д.</string>
-    <string name="settings_about_text">AOT (Absolutely Optimize Task) — мобильное приложение-органайзер с геопривязкой задач. Оно помогает планировать задачи и получать уведомления при приближении к месту выполнения.</string>
+    <string name="settings_about_text">AOT (Absolutely Optimize Task) — мобильное приложение-органайзер с геопривязкой задач. Приложение помогает создавать метки задач на карте, получать уведомления при приближении к точке, делиться списками задач по ссылке и гибко настраивать внешний вид интерфейса и карты.</string>
     <string name="settings_desc_dark_theme">Переключение светлой и тёмной темы</string>
     <string name="settings_desc_animations">Плавное открытие и скрытие меню по всему приложению</string>
     <string name="settings_desc_follow_location">Автоматически держать карту на вашей позиции</string>
+    <string name="settings_desc_use_avatar_location_marker">Если включено, маркер пользователя на карте отображается вашей аватаркой</string>
     <string name="settings_desc_show_radius">Показывать окружности радиуса задач</string>
     <string name="settings_desc_show_completed_markers">Показывать на карте метки задач со статусом «Выполнено»</string>
     <string name="settings_desc_highlight_important_places">Показывать больницы, аптеки, АЗС и другие важные POI рядом с текущим экраном карты</string>
@@ -190,6 +196,7 @@
     <string name="profile_title">Профиль пользователя</string>
     <string name="profile_avatar">Аватар пользователя</string>
     <string name="profile_pick_avatar">Выбрать аватар</string>
+    <string name="profile_take_photo">Сделать фото</string>
     <string name="profile_remove_avatar">Убрать</string>
     <string name="profile_name_hint">Имя отправителя</string>
     <string name="profile_save">Сохранить</string>
@@ -203,4 +210,5 @@
     <string name="profile_avatar_removed">Аватар удалён</string>
     <string name="profile_avatar_crop_title">Обрезка аватара</string>
     <string name="profile_avatar_crop_failed">Не удалось обрезать изображение</string>
+    <string name="profile_camera_unavailable">Камера недоступна на устройстве</string>
 </resources>

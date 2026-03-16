@@ -7,12 +7,15 @@ import kotlin.random.Random
 object SettingsPreferences {
     const val MAP_STYLE_STANDARD = "standard"
     const val MAP_STYLE_TERRAIN = "terrain"
+    const val MAP_STYLE_VOYAGER = "voyager"
+    const val MAP_STYLE_TOPO = "topo"
 
     private const val PREF_NAME = "settings_prefs"
     private const val KEY_FOLLOW_LOCATION = "follow_location"
     private const val KEY_SHOW_RADIUS = "show_radius"
     private const val KEY_CONFIRM_COMPLETE = "confirm_complete"
     private const val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
+    private const val KEY_USE_AVATAR_LOCATION_MARKER = "use_avatar_location_marker"
     private const val KEY_MAP_STYLE = "map_style"
     private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
     private const val KEY_SHOW_COMPLETED_MARKERS = "show_completed_markers"
@@ -68,8 +71,28 @@ object SettingsPreferences {
         prefs(context).edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, enabled).apply()
     }
 
-    fun getMapStyle(context: Context): String =
-        prefs(context).getString(KEY_MAP_STYLE, MAP_STYLE_STANDARD) ?: MAP_STYLE_STANDARD
+    fun isUseAvatarLocationMarkerEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_USE_AVATAR_LOCATION_MARKER, false)
+
+    fun setUseAvatarLocationMarkerEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_USE_AVATAR_LOCATION_MARKER, enabled).apply()
+    }
+
+    fun getMapStyle(context: Context): String {
+        val rawValue = prefs(context).getString(KEY_MAP_STYLE, MAP_STYLE_STANDARD)
+            ?: MAP_STYLE_STANDARD
+        return when (rawValue) {
+            MAP_STYLE_STANDARD,
+            MAP_STYLE_TERRAIN,
+            MAP_STYLE_VOYAGER,
+            MAP_STYLE_TOPO -> rawValue
+            // Совместимость с более старыми сохраненными значениями.
+            "openstreetmap" -> MAP_STYLE_TERRAIN
+            "carto_voyager" -> MAP_STYLE_VOYAGER
+            "open_topo" -> MAP_STYLE_TOPO
+            else -> MAP_STYLE_STANDARD
+        }
+    }
 
     fun setMapStyle(context: Context, style: String) {
         prefs(context).edit().putString(KEY_MAP_STYLE, style).apply()

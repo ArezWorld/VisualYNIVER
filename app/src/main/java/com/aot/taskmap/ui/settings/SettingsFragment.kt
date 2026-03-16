@@ -157,6 +157,12 @@ class SettingsFragment : Fragment() {
             SettingsPreferences.setFollowLocationEnabled(context, checked)
         }
 
+        binding.switchUseAvatarLocationMarker.isChecked =
+            SettingsPreferences.isUseAvatarLocationMarkerEnabled(context)
+        binding.switchUseAvatarLocationMarker.setOnCheckedChangeListener { _, checked ->
+            SettingsPreferences.setUseAvatarLocationMarkerEnabled(context, checked)
+        }
+
         binding.switchShowRadius.isChecked =
             SettingsPreferences.isShowRadiusEnabled(context)
         binding.switchShowRadius.setOnCheckedChangeListener { _, checked ->
@@ -179,12 +185,16 @@ class SettingsFragment : Fragment() {
         binding.radioMapStyle.check(
             when (selectedStyle) {
                 SettingsPreferences.MAP_STYLE_TERRAIN -> binding.radioMapTerrain.id
+                SettingsPreferences.MAP_STYLE_VOYAGER -> binding.radioMapVoyager.id
+                SettingsPreferences.MAP_STYLE_TOPO -> binding.radioMapTopo.id
                 else -> binding.radioMapStandard.id
             }
         )
         binding.radioMapStyle.setOnCheckedChangeListener { _, checkedId ->
             val style = when (checkedId) {
                 binding.radioMapTerrain.id -> SettingsPreferences.MAP_STYLE_TERRAIN
+                binding.radioMapVoyager.id -> SettingsPreferences.MAP_STYLE_VOYAGER
+                binding.radioMapTopo.id -> SettingsPreferences.MAP_STYLE_TOPO
                 else -> SettingsPreferences.MAP_STYLE_STANDARD
             }
             SettingsPreferences.setMapStyle(context, style)

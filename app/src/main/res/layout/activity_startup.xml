@@ -91,13 +91,22 @@
                         android:text="@string/profile_pick_avatar" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/buttonRemoveAvatar"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:id="@+id/buttonTakePhoto"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
-                        android:text="@string/profile_remove_avatar" />
+                        android:text="@string/profile_take_photo" />
                 </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonRemoveAvatar"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/profile_remove_avatar" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -141,6 +150,13 @@
             android:text="@string/startup_continue"
             android:textSize="16sp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonOpenAllVersions"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/startup_open_all_versions" />
+
     </LinearLayout>
 </ScrollView>
-

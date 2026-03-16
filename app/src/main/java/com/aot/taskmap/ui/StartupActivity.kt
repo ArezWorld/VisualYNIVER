@@ -4,11 +4,14 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import com.aot.taskmap.BuildConfig
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
 import com.aot.taskmap.data.local.ThemePreferences
@@ -21,16 +24,22 @@ class StartupActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStartupBinding
     private var pendingImportText: String? = null
+    private var pendingCameraUri: Uri? = null
+    private var pendingCameraFile: File? = null
 
-    private val avatarPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    private val avatarPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@registerForActivityResult
-        runCatching {
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
         launchAvatarCrop(uri)
+    }
+
+    private val avatarCameraLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            pendingCameraUri?.let { launchAvatarCrop(it) }
+        } else {
+            clearPendingCameraCapture(deleteFile = true)
+        }
     }
 
     private val avatarCropLauncher = registerForActivityResult(
@@ -57,6 +66,7 @@ class StartupActivity : AppCompatActivity() {
                 ).show()
             }
         }
+        clearPendingCameraCapture(deleteFile = true)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,7 +95,10 @@ class StartupActivity : AppCompatActivity() {
 
     private fun setupActions() {
         binding.buttonPickAvatar.setOnClickListener {
-            avatarPicker.launch(arrayOf("image/*"))
+            avatarPicker.launch("image/*")
+        }
+        binding.buttonTakePhoto.setOnClickListener {
+            launchCameraCapture()
         }
 
         binding.buttonRemoveAvatar.setOnClickListener {
@@ -110,6 +123,10 @@ class StartupActivity : AppCompatActivity() {
             saveProfile()
             navigateToMain()
         }
+
+        binding.buttonOpenAllVersions.setOnClickListener {
+            openAllVersionsPage()
+        }
     }
 
     private fun bindProfile() {
@@ -128,6 +145,18 @@ class StartupActivity : AppCompatActivity() {
         SettingsPreferences.getEffectiveProfileName(this)
     }
 
+    private fun openAllVersionsPage() {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.UPDATE_RELEASES_PAGE))
+        runCatching { startActivity(intent) }
+            .onFailure {
+                Toast.makeText(
+                    this,
+                    getString(R.string.startup_open_all_versions_error),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
     private fun navigateToMain() {
         val mainIntent = Intent(this, MainActivity::class.java).apply {
             putExtra(MainActivity.EXTRA_TRIGGER_UPDATE_CHECK, true)
@@ -139,6 +168,45 @@ class StartupActivity : AppCompatActivity() {
         }
         startActivity(mainIntent)
         finish()
+    }
+
+    private fun launchCameraCapture() {
+        val outputUri = createCameraImageUri()
+        if (outputUri == null) {
+            Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            putExtra(MediaStore.EXTRA_OUTPUT, outputUri)
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        if (intent.resolveActivity(packageManager) == null) {
+            clearPendingCameraCapture(deleteFile = true)
+            Toast.makeText(this, getString(R.string.profile_camera_unavailable), Toast.LENGTH_SHORT).show()
+            return
+        }
+        avatarCameraLauncher.launch(intent)
+    }
+
+    private fun createCameraImageUri(): Uri? {
+        return runCatching {
+            val cameraDir = File(cacheDir, "camera").apply { mkdirs() }
+            val imageFile = File(cameraDir, "avatar_capture_${System.currentTimeMillis()}.jpg")
+            pendingCameraFile = imageFile
+            val authority = "${packageName}.fileprovider"
+            val uri = FileProvider.getUriForFile(this, authority, imageFile)
+            pendingCameraUri = uri
+            uri
+        }.getOrNull()
+    }
+
+    private fun clearPendingCameraCapture(deleteFile: Boolean) {
+        if (deleteFile) {
+            runCatching { pendingCameraFile?.delete() }
+        }
+        pendingCameraUri = null
+        pendingCameraFile = null
     }
 
     private fun launchAvatarCrop(sourceUri: Uri) {
@@ -210,5 +278,9 @@ class StartupActivity : AppCompatActivity() {
                 )
         }
     }
-}
 
+    override fun onDestroy() {
+        super.onDestroy()
+        clearPendingCameraCapture(deleteFile = true)
+    }
+}

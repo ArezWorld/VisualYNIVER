@@ -106,9 +106,19 @@ jobs:
           name: AOT ${{ env.TAG_NAME }}
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body: |
-            Automatic build for commit ${{ github.sha }}.
-            App version: ${{ env.APP_VERSION_NAME }}
-            Pre-release: ${{ env.IS_PRERELEASE }}
+            ## Описание релиза
+            Автоматическая сборка AOT по последнему коммиту.
+
+            - Версия приложения: `${{ env.APP_VERSION_NAME }}`
+            - Тип релиза: `${{ env.IS_PRERELEASE == 'true' && 'pre-release' || 'stable' }}`
+            - Коммит: `${{ github.sha }}`
+
+            ## Что изменено
+            `${{ github.event.head_commit.message }}`
+
+            ## Файлы
+            - `AOT-latest.apk` — последняя актуальная сборка
+            - `${{ env.APK_NAME }}` — APK с привязкой к версии/тегу
           files: |
             ${{ env.APK_NAME }}
             AOT-latest.apk
