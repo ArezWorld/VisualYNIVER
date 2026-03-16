@@ -583,6 +583,7 @@ class MapFragment : Fragment() {
         val latitude = center.latitude
         val longitude = center.longitude
         val centerPoint = GeoPoint(latitude, longitude)
+        val viewport = captureSearchViewport()
         val appContext = safeContext.applicationContext
         val userAgentPackage = appContext.packageName
         val cacheKey = buildImportantPlacesCacheKey(latitude, longitude, zoom, config)
@@ -608,7 +609,13 @@ class MapFragment : Fragment() {
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 30L else 10L)
-            val places = fetchImportantPlaces(latitude, longitude, config, userAgentPackage)
+            val places = fetchImportantPlaces(
+                latitude = latitude,
+                longitude = longitude,
+                config = config,
+                userAgentPackage = userAgentPackage,
+                viewport = viewport
+            )
             if (!isAdded || _binding == null) return@launch
             if (!SettingsPreferences.isHighlightImportantPlacesEnabled(appContext)) {
                 clearImportantPlaceOverlays()
@@ -772,7 +779,8 @@ class MapFragment : Fragment() {
         latitude: Double,
         longitude: Double,
         config: ImportantPlacesConfig,
-        userAgentPackage: String
+        userAgentPackage: String,
+        viewport: SearchViewport?
     ): List<ImportantPlace> = supervisorScope {
         val shopLayer = if (config.includeShopLayer) {
             """
@@ -820,7 +828,6 @@ class MapFragment : Fragment() {
         }
 
         val pending = requests.toMutableList()
-        var hadSuccessfulResponse = false
         while (pending.isNotEmpty()) {
             val (endpoint, places) = select<Pair<String, List<ImportantPlace>?>> {
                 pending.forEach { deferred ->
@@ -831,7 +838,6 @@ class MapFragment : Fragment() {
 
             if (places != null) {
                 lastSuccessfulOverpassEndpoint = endpoint
-                hadSuccessfulResponse = true
                 if (places.isNotEmpty()) {
                     pending.forEach { it.cancel() }
                     return@supervisorScope places
@@ -839,10 +845,126 @@ class MapFragment : Fragment() {
             }
         }
 
-        if (hadSuccessfulResponse) {
-            return@supervisorScope emptyList()
+        val fallbackPlaces = fetchImportantPlacesFromNominatimFallback(
+            viewport = viewport,
+            maxItems = config.maxItems,
+            userAgentPackage = userAgentPackage
+        )
+        if (fallbackPlaces.isNotEmpty()) {
+            return@supervisorScope fallbackPlaces
         }
         return@supervisorScope emptyList()
+    }
+
+    private suspend fun fetchImportantPlacesFromNominatimFallback(
+        viewport: SearchViewport?,
+        maxItems: Int,
+        userAgentPackage: String
+    ): List<ImportantPlace> = supervisorScope {
+        val box = viewport ?: return@supervisorScope emptyList()
+        val endpoint = nominatimSearchUrl.toHttpUrlOrNull() ?: return@supervisorScope emptyList()
+        val queryPairs = listOf(
+            "pharmacy" to "pharmacy",
+            "hospital" to "hospital",
+            "supermarket" to "supermarket",
+            "cafe" to "cafe",
+            "school" to "school",
+            "university" to "university"
+        )
+        val perQueryLimit = (maxItems / 2).coerceIn(3, 8)
+
+        val deferredQueries = queryPairs.map { (queryText, fallbackCategory) ->
+            async(Dispatchers.IO) {
+                val requestUrl = endpoint.newBuilder()
+                    .addQueryParameter("q", queryText)
+                    .addQueryParameter("format", "jsonv2")
+                    .addQueryParameter("addressdetails", "1")
+                    .addQueryParameter("limit", perQueryLimit.toString())
+                    .addQueryParameter("bounded", "1")
+                    .addQueryParameter(
+                        "viewbox",
+                        "${box.west},${box.north},${box.east},${box.south}"
+                    )
+                    .addQueryParameter("accept-language", "ru")
+                    .build()
+
+                val request = Request.Builder()
+                    .url(requestUrl)
+                    .header("User-Agent", "$userAgentPackage/important-places-fallback")
+                    .build()
+
+                runCatching {
+                    importantPlacesHttpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use emptyList()
+                        val body = response.body?.string().orEmpty()
+                        parseNominatimFallbackResponse(body, fallbackCategory, perQueryLimit)
+                    }
+                }.getOrDefault(emptyList())
+            }
+        }
+
+        val aggregated = linkedMapOf<String, ImportantPlace>()
+        deferredQueries.forEach { deferred ->
+            deferred.await().forEach { place ->
+                val key = "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
+                aggregated[key] = place
+            }
+        }
+        return@supervisorScope aggregated.values.take(maxItems)
+    }
+
+    private fun parseNominatimFallbackResponse(
+        body: String,
+        fallbackCategory: String,
+        maxItems: Int
+    ): List<ImportantPlace> {
+        if (body.isBlank()) return emptyList()
+        val array = JSONArray(body)
+        val result = mutableListOf<ImportantPlace>()
+
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            val lat = item.optString("lat").toDoubleOrNull() ?: continue
+            val lon = item.optString("lon").toDoubleOrNull() ?: continue
+            if (!lat.isFinite() || !lon.isFinite()) continue
+
+            val clazz = item.optString("class").lowercase(Locale.ROOT)
+            val type = item.optString("type").lowercase(Locale.ROOT)
+            val category = mapNominatimCategory(clazz, type, fallbackCategory)
+            val title = item.optString("name").trim().ifBlank {
+                resolveImportantPlaceCategoryLabel(category)
+            }
+
+            result += ImportantPlace(
+                title = title,
+                category = category,
+                point = GeoPoint(lat, lon)
+            )
+            if (result.size >= maxItems) break
+        }
+        return result
+    }
+
+    private fun mapNominatimCategory(
+        clazz: String,
+        type: String,
+        fallbackCategory: String
+    ): String {
+        val raw = listOf(clazz, type, fallbackCategory)
+            .joinToString(":")
+            .lowercase(Locale.ROOT)
+
+        return when {
+            raw.contains("pharmacy") -> "pharmacy"
+            raw.contains("hospital") || raw.contains("clinic") -> "hospital"
+            raw.contains("university") -> "university"
+            raw.contains("school") || raw.contains("college") -> "school"
+            raw.contains("supermarket") || raw.contains("shop") || raw.contains("mall") -> "supermarket"
+            raw.contains("cafe") || raw.contains("restaurant") || raw.contains("fast_food") -> "cafe"
+            raw.contains("fuel") -> "fuel"
+            raw.contains("bank") || raw.contains("atm") -> "bank"
+            else -> fallbackCategory
+        }
     }
 
     private fun prioritizedOverpassApiUrls(): List<String> {

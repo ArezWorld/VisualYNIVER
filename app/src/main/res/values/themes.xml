@@ -8,6 +8,15 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
 
+    <style name="Theme.TaskMap.Crop" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowActionBar">false</item>
+        <item name="windowActionBar">false</item>
+        <item name="colorPrimary">#6B4FD3</item>
+        <item name="colorPrimaryVariant">#573DB8</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:statusBarColor">#573DB8</item>
+    </style>
+
     <style name="Theme.TaskMap.Purple" parent="Theme.TaskMap.Base">
         <item name="colorPrimary">#6B4FD3</item>
         <item name="colorPrimaryVariant">#573DB8</item>
