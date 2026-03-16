@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupNavigation()
+        setupNavigation(savedInstanceState == null)
         requestLocationPermissionIfNeeded()
         handleIntent(intent)
         maybeCheckForUpdatesAfterAuthorization(intent, savedInstanceState == null)
@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupNavigation() {
+    private fun setupNavigation(isFreshLaunch: Boolean) {
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
@@ -120,6 +120,19 @@ class MainActivity : AppCompatActivity() {
             supportActionBar?.hide()
         } else {
             supportActionBar?.show()
+        }
+
+        if (isFreshLaunch) {
+            openInitialTabIfNeeded()
+        }
+    }
+
+    private fun openInitialTabIfNeeded() {
+        if (SettingsPreferences.shouldOpenProfileTabOnFirstMainLaunch(this)) {
+            SettingsPreferences.markProfileTabShown(this)
+            binding.bottomNavigation.selectedItemId = R.id.profileFragment
+        } else {
+            binding.bottomNavigation.selectedItemId = R.id.mapFragment
         }
     }
 
@@ -217,7 +230,12 @@ class MainActivity : AppCompatActivity() {
                         )
                     )
                     .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
-                        startInAppUpdateDownload(release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL)
+                        val updateUrl = release.apkUrl
+                        if (!updateUrl.isNullOrBlank()) {
+                            startInAppUpdateDownload(updateUrl)
+                        } else {
+                            openUpdateLink(release.releasePageUrl ?: BuildConfig.UPDATE_RELEASES_PAGE)
+                        }
                     }
                     .setNeutralButton(R.string.settings_update_open_releases) { _, _ ->
                         openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)

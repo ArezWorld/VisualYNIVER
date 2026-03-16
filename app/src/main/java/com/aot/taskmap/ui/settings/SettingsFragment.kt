@@ -342,8 +342,12 @@ class SettingsFragment : Fragment() {
                         .setTitle(R.string.settings_update_available_title)
                         .setMessage(message)
                         .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
-                            val url = release.apkUrl ?: BuildConfig.UPDATE_LATEST_APK_URL
-                            startInAppUpdateDownload(url)
+                            val updateUrl = release.apkUrl
+                            if (!updateUrl.isNullOrBlank()) {
+                                startInAppUpdateDownload(updateUrl)
+                            } else {
+                                openUpdateLink(release.releasePageUrl ?: BuildConfig.UPDATE_RELEASES_PAGE)
+                            }
                         }
                         .setNegativeButton(R.string.settings_update_action_later, null)
                         .show()
@@ -361,7 +365,7 @@ class SettingsFragment : Fragment() {
             .setTitle(R.string.settings_update_check_failed)
             .setMessage(R.string.settings_update_check_failed_download)
             .setPositiveButton(R.string.settings_update_action_download) { _, _ ->
-                startInAppUpdateDownload(BuildConfig.UPDATE_LATEST_APK_URL)
+                openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)
             }
             .setNeutralButton(R.string.settings_update_open_releases) { _, _ ->
                 openUpdateLink(BuildConfig.UPDATE_RELEASES_PAGE)

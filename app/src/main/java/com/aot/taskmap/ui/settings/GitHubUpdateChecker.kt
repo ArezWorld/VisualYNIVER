@@ -11,7 +11,8 @@ import java.util.concurrent.TimeUnit
 data class GitHubReleaseInfo(
     val versionTag: String,
     val releaseName: String?,
-    val apkUrl: String?
+    val apkUrl: String?,
+    val releasePageUrl: String?
 )
 
 object GitHubUpdateChecker {
@@ -38,7 +39,7 @@ object GitHubUpdateChecker {
             }
             val body = response.body?.string().orEmpty()
             if (body.isBlank()) throw IOException("Empty GitHub response")
-            return parseRelease(body)
+            return parseReleaseResponse(body)
         }
     }
 
@@ -66,13 +67,28 @@ object GitHubUpdateChecker {
             return GitHubReleaseInfo(
                 versionTag = tagName,
                 releaseName = tagName,
-                apkUrl = BuildConfig.UPDATE_LATEST_APK_URL
+                apkUrl = buildTaggedApkUrl(tagName),
+                releasePageUrl = "${BuildConfig.UPDATE_RELEASES_PAGE}/tag/$tagName"
             )
         }
     }
 
-    private fun parseRelease(body: String): GitHubReleaseInfo {
-        val json = JSONObject(body)
+    private fun parseReleaseResponse(body: String): GitHubReleaseInfo {
+        val trimmedBody = body.trim()
+        if (trimmedBody.startsWith("[")) {
+            val releases = JSONArray(trimmedBody)
+            for (index in 0 until releases.length()) {
+                val release = releases.optJSONObject(index) ?: continue
+                if (release.optBoolean("draft")) continue
+                return parseRelease(release)
+            }
+            throw IOException("No published releases found")
+        }
+
+        return parseRelease(JSONObject(trimmedBody))
+    }
+
+    private fun parseRelease(json: JSONObject): GitHubReleaseInfo {
         val versionTag = json.optString("tag_name")
         val releaseName = json.optString("name").takeIf { it.isNotBlank() }
         val releasePage = json.optString("html_url").takeIf { it.isNotBlank() }
@@ -97,7 +113,14 @@ object GitHubUpdateChecker {
         return GitHubReleaseInfo(
             versionTag = versionTag,
             releaseName = releaseName,
-            apkUrl = apkUrl ?: releasePage ?: BuildConfig.UPDATE_LATEST_APK_URL
+            apkUrl = apkUrl ?: buildTaggedApkUrl(versionTag),
+            releasePageUrl = releasePage ?: "${BuildConfig.UPDATE_RELEASES_PAGE}/tag/$versionTag"
         )
+    }
+
+    private fun buildTaggedApkUrl(tagName: String): String? {
+        val normalizedTag = tagName.trim()
+        if (normalizedTag.isBlank()) return null
+        return "https://github.com/${BuildConfig.UPDATE_REPO_OWNER}/${BuildConfig.UPDATE_REPO_NAME}/releases/download/$normalizedTag/AOT-latest.apk"
     }
 }

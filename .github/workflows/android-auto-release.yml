@@ -39,11 +39,7 @@ jobs:
         shell: bash
         run: |
           BASE_SERIES="1.5"
-          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
-          IS_PRERELEASE="false"
-          if [[ "$COMMIT_MESSAGE" == *"[pre-release]"* ]]; then
-            IS_PRERELEASE="true"
-          fi
+          IS_PRERELEASE="true"
 
           git fetch --tags --force
           LAST_STABLE_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | grep -E "^v${BASE_SERIES}\\.[0-9]+$" | head -n1 || true)
@@ -60,24 +56,7 @@ jobs:
 
           APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
           APP_VERSION_CODE=$((15000 + NEXT_PATCH))
-
-          if [[ "$IS_PRERELEASE" == "true" ]]; then
-            LAST_RC_TAG=$(git tag -l "v${APP_VERSION_NAME}-rc.*" --sort=-v:refname | head -n1)
-            if [ -z "$LAST_RC_TAG" ]; then
-              NEXT_RC=1
-            else
-              LAST_RC=${LAST_RC_TAG##*.}
-              if [[ "$LAST_RC" =~ ^[0-9]+$ ]]; then
-                NEXT_RC=$((LAST_RC + 1))
-              else
-                NEXT_RC=1
-              fi
-            fi
-            APP_VERSION_NAME="${APP_VERSION_NAME}-rc.${NEXT_RC}"
-            TAG_NAME="v${APP_VERSION_NAME}"
-          else
-            TAG_NAME="v${APP_VERSION_NAME}"
-          fi
+          TAG_NAME="v${APP_VERSION_NAME}"
 
           echo "APP_VERSION_NAME=${APP_VERSION_NAME}" >> "$GITHUB_ENV"
           echo "APP_VERSION_CODE=${APP_VERSION_CODE}" >> "$GITHUB_ENV"
@@ -119,3 +98,27 @@ jobs:
             - `${{ env.APK_NAME }}` — актуальная APK-сборка
           files: |
             ${{ env.APK_NAME }}
+
+      - name: Mark all releases as pre-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+
+            for (const release of releases) {
+              if (release.draft || release.prerelease) {
+                continue;
+              }
+
+              core.info(`Marking ${release.tag_name} as prerelease`);
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+                prerelease: true
+              });
+            }
