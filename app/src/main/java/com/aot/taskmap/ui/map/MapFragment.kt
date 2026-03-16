@@ -7,8 +7,11 @@ import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.location.Geocoder
@@ -54,6 +57,7 @@ import com.aot.taskmap.databinding.FragmentMapBinding
 import com.aot.taskmap.domain.model.Task
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.MaterialColors
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -91,11 +95,18 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 class MapFragment : Fragment() {
+
+    companion object {
+        private const val MIN_MAP_ZOOM = 4.0
+        private const val MAX_MAP_ZOOM = 20.0
+        private val WORLD_BOUNDING_BOX = BoundingBox(85.0, 180.0, -85.0, -180.0)
+    }
 
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
@@ -283,6 +294,7 @@ class MapFragment : Fragment() {
         // Отключаем повтор мира при сильном отдалении, чтобы не было двух карт на экране.
         binding.mapView.setHorizontalMapRepetitionEnabled(false)
         binding.mapView.setVerticalMapRepetitionEnabled(false)
+        configureMapViewportBounds()
         val hasRestoredViewport = restoreLastMapViewportOrDefault()
         applyMapPresentation()
 
@@ -320,13 +332,19 @@ class MapFragment : Fragment() {
         }
 
         binding.fabZoomIn.setOnClickListener {
-            val nextZoom = (binding.mapView.zoomLevelDouble + 1.0).coerceAtMost(20.0)
+            val nextZoom = (binding.mapView.zoomLevelDouble + 1.0).coerceAtMost(MAX_MAP_ZOOM)
             binding.mapView.controller.animateTo(binding.mapView.mapCenter, nextZoom, 280L)
         }
         binding.fabZoomOut.setOnClickListener {
-            val nextZoom = (binding.mapView.zoomLevelDouble - 1.0).coerceAtLeast(2.0)
+            val nextZoom = (binding.mapView.zoomLevelDouble - 1.0).coerceAtLeast(MIN_MAP_ZOOM)
             binding.mapView.controller.animateTo(binding.mapView.mapCenter, nextZoom, 280L)
         }
+    }
+
+    private fun configureMapViewportBounds() {
+        binding.mapView.setScrollableAreaLimitDouble(WORLD_BOUNDING_BOX)
+        binding.mapView.minZoomLevel = MIN_MAP_ZOOM
+        binding.mapView.maxZoomLevel = MAX_MAP_ZOOM
     }
 
     private fun applyMapPresentation() {
@@ -346,16 +364,16 @@ class MapFragment : Fragment() {
     private fun restoreLastMapViewportOrDefault(): Boolean {
         val restoredViewport = SettingsPreferences.getLastMapViewport(requireContext())
         if (restoredViewport != null) {
-            binding.mapView.controller.setZoom(restoredViewport.zoom.coerceIn(2.0, 20.0))
+            binding.mapView.controller.setZoom(restoredViewport.zoom.coerceIn(MIN_MAP_ZOOM, MAX_MAP_ZOOM))
             binding.mapView.controller.setCenter(
-                GeoPoint(restoredViewport.latitude, restoredViewport.longitude)
+                clampMapCenter(GeoPoint(restoredViewport.latitude, restoredViewport.longitude))
             )
             return true
         }
 
         // Резервная стартовая точка только для самого первого запуска.
         binding.mapView.controller.setZoom(15.0)
-        binding.mapView.controller.setCenter(GeoPoint(51.2, 58.3))
+        binding.mapView.controller.setCenter(clampMapCenter(GeoPoint(51.2, 58.3)))
         return false
     }
 
@@ -572,33 +590,25 @@ class MapFragment : Fragment() {
             return
         }
 
-        val center = binding.mapView.mapCenter ?: return
+        val viewport = captureSearchViewport() ?: return
         val zoom = binding.mapView.zoomLevelDouble
         val config = resolveImportantPlacesConfig(zoom)
-        if (config == null) {
-            clearImportantPlaceOverlays()
-            return
-        }
-
-        val latitude = center.latitude
-        val longitude = center.longitude
-        val centerPoint = GeoPoint(latitude, longitude)
-        val viewport = captureSearchViewport()
         val appContext = safeContext.applicationContext
         val userAgentPackage = appContext.packageName
-        val cacheKey = buildImportantPlacesCacheKey(latitude, longitude, zoom, config)
+        val cacheKey = buildImportantPlacesCacheKey(viewport, zoom, config)
         val now = System.currentTimeMillis()
         val cachedEntry = importantPlacesCache[cacheKey]
         val cachedPlaces = cachedEntry
             ?.takeIf { now - it.first <= importantPlacesCacheTtlMs }
             ?.second
+        val reusableCachedPlaces = collectCachedImportantPlacesForViewport(viewport, now)
+        val visibleCachedPlaces = dedupeImportantPlaces(reusableCachedPlaces + cachedPlaces.orEmpty())
 
-        // Сначала показываем локально доступные точки (включая curated),
-        // чтобы значки появлялись сразу без ожидания сети.
+        // Сначала показываем всё, что уже есть локально для видимой области,
+        // чтобы значки не исчезали при сдвиге камеры и не зависели от центра карты.
         val immediatePlaces = mergeCuratedImportantPlaces(
-            places = cachedPlaces.orEmpty(),
-            center = centerPoint,
-            zoom = zoom
+            places = visibleCachedPlaces,
+            viewport = viewport
         ).take(config.maxItems)
         if (immediatePlaces.isNotEmpty()) {
             updateImportantPlaceOverlays(immediatePlaces)
@@ -610,8 +620,6 @@ class MapFragment : Fragment() {
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 30L else 10L)
             val places = fetchImportantPlaces(
-                latitude = latitude,
-                longitude = longitude,
                 config = config,
                 userAgentPackage = userAgentPackage,
                 viewport = viewport
@@ -626,13 +634,13 @@ class MapFragment : Fragment() {
             }
             val effectivePlaces = when {
                 places.isNotEmpty() -> places
+                visibleCachedPlaces.isNotEmpty() -> visibleCachedPlaces
                 !cachedPlaces.isNullOrEmpty() -> cachedPlaces
                 else -> emptyList()
             }
             val mergedPlaces = mergeCuratedImportantPlaces(
                 places = effectivePlaces,
-                center = centerPoint,
-                zoom = zoom
+                viewport = viewport
             ).take(config.maxItems)
             updateImportantPlaceOverlays(mergedPlaces)
         }
@@ -705,8 +713,7 @@ class MapFragment : Fragment() {
         return policy.acceptsBulkDownload() && policy.acceptsPreventive()
     }
 
-    private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig? {
-        if (zoom < 9.0) return null
+    private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig {
         return when {
             zoom >= 17.5 -> ImportantPlacesConfig(
                 radiusMeters = 650,
@@ -736,9 +743,16 @@ class MapFragment : Fragment() {
                 includeShopLayer = false,
                 includeTourismLayer = false
             )
-            else -> ImportantPlacesConfig(
+            zoom >= 10.0 -> ImportantPlacesConfig(
                 radiusMeters = 2800,
                 maxItems = 16,
+                amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
+                includeShopLayer = false,
+                includeTourismLayer = false
+            )
+            else -> ImportantPlacesConfig(
+                radiusMeters = 3600,
+                maxItems = 14,
                 amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
                 includeShopLayer = false,
                 includeTourismLayer = false
@@ -747,19 +761,27 @@ class MapFragment : Fragment() {
     }
 
     private fun buildImportantPlacesCacheKey(
-        latitude: Double,
-        longitude: Double,
+        viewport: SearchViewport,
         zoom: Double,
         config: ImportantPlacesConfig
     ): String {
-        val cellSizeDegrees = max(0.004, config.radiusMeters / 111_320.0 * 0.55)
+        val latitude = (viewport.north + viewport.south) / 2.0
+        val longitude = (viewport.west + viewport.east) / 2.0
+        val latSpan = (viewport.north - viewport.south).coerceAtLeast(0.01)
+        val lonSpan = (viewport.east - viewport.west).coerceAtLeast(0.01)
+        val cellSizeDegrees = max(
+            0.004,
+            max(latSpan, lonSpan) * 0.45
+        )
         val latBucket = (latitude / cellSizeDegrees).roundToLong()
         val lonBucket = (longitude / cellSizeDegrees).roundToLong()
         val zoomBucket = (zoom * 2.0).roundToLong()
+        val spanBucket = ((latSpan + lonSpan) * 100.0).roundToLong()
         return listOf(
             zoomBucket.toString(),
             latBucket.toString(),
             lonBucket.toString(),
+            spanBucket.toString(),
             config.radiusMeters.toString(),
             config.maxItems.toString(),
             config.includeShopLayer.toString(),
@@ -776,26 +798,29 @@ class MapFragment : Fragment() {
     }
 
     private suspend fun fetchImportantPlaces(
-        latitude: Double,
-        longitude: Double,
         config: ImportantPlacesConfig,
         userAgentPackage: String,
         viewport: SearchViewport?
     ): List<ImportantPlace> = supervisorScope {
+        val box = viewport ?: return@supervisorScope emptyList()
+        val south = minOf(box.south, box.north)
+        val north = maxOf(box.south, box.north)
+        val west = minOf(box.west, box.east)
+        val east = maxOf(box.west, box.east)
         val shopLayer = if (config.includeShopLayer) {
             """
-              node(around:${config.radiusMeters},$latitude,$longitude)["shop"~"supermarket|convenience|mall|department_store"];
-              way(around:${config.radiusMeters},$latitude,$longitude)["shop"~"supermarket|convenience|mall|department_store"];
+              node($south,$west,$north,$east)["shop"~"supermarket|convenience|mall|department_store"];
+              way($south,$west,$north,$east)["shop"~"supermarket|convenience|mall|department_store"];
             """.trimIndent()
         } else {
             ""
         }
         val tourismLayer = if (config.includeTourismLayer) {
             """
-              node(around:${config.radiusMeters},$latitude,$longitude)["tourism"~"attraction|museum|viewpoint"];
-              way(around:${config.radiusMeters},$latitude,$longitude)["tourism"~"attraction|museum|viewpoint"];
-              node(around:${config.radiusMeters},$latitude,$longitude)["leisure"="park"];
-              way(around:${config.radiusMeters},$latitude,$longitude)["leisure"="park"];
+              node($south,$west,$north,$east)["tourism"~"attraction|museum|viewpoint"];
+              way($south,$west,$north,$east)["tourism"~"attraction|museum|viewpoint"];
+              node($south,$west,$north,$east)["leisure"="park"];
+              way($south,$west,$north,$east)["leisure"="park"];
             """.trimIndent()
         } else {
             ""
@@ -804,8 +829,8 @@ class MapFragment : Fragment() {
         val query = """
             [out:json][timeout:8];
             (
-              node(around:${config.radiusMeters},$latitude,$longitude)["amenity"~"${config.amenityRegex}"];
-              way(around:${config.radiusMeters},$latitude,$longitude)["amenity"~"${config.amenityRegex}"];
+              node($south,$west,$north,$east)["amenity"~"${config.amenityRegex}"];
+              way($south,$west,$north,$east)["amenity"~"${config.amenityRegex}"];
               $shopLayer
               $tourismLayer
             );
@@ -1052,17 +1077,16 @@ class MapFragment : Fragment() {
 
     private fun mergeCuratedImportantPlaces(
         places: List<ImportantPlace>,
-        center: GeoPoint,
-        zoom: Double
+        viewport: SearchViewport?
     ): List<ImportantPlace> {
         val merged = linkedMapOf<String, ImportantPlace>()
-        places.forEach { place ->
+        val visiblePlaces = filterPlacesToViewport(places, viewport)
+        visiblePlaces.forEach { place ->
             val key = "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
             merged[key] = place
         }
         curatedImportantPlaces.forEach { curated ->
-            if (zoom < curated.minZoom) return@forEach
-            if (center.distanceToAsDouble(curated.point) > curated.visibleRadiusMeters) return@forEach
+            if (!isPointInsideViewport(curated.point, viewport, paddingFactor = 0.2)) return@forEach
             val key =
                 "${curated.point.latitude.format(5)}:${curated.point.longitude.format(5)}:${curated.category}"
             merged[key] = ImportantPlace(
@@ -1072,6 +1096,60 @@ class MapFragment : Fragment() {
             )
         }
         return merged.values.toList()
+    }
+
+    private fun collectCachedImportantPlacesForViewport(
+        viewport: SearchViewport,
+        now: Long = System.currentTimeMillis()
+    ): List<ImportantPlace> {
+        val unique = linkedMapOf<String, ImportantPlace>()
+        importantPlacesCache.entries
+            .sortedByDescending { it.value.first }
+            .forEach { (_, cachedEntry) ->
+                if (now - cachedEntry.first > importantPlacesCacheTtlMs) return@forEach
+                filterPlacesToViewport(cachedEntry.second, viewport).forEach { place ->
+                    val key =
+                        "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
+                    unique[key] = place
+                }
+            }
+        return unique.values.toList()
+    }
+
+    private fun dedupeImportantPlaces(places: List<ImportantPlace>): List<ImportantPlace> {
+        val unique = linkedMapOf<String, ImportantPlace>()
+        places.forEach { place ->
+            val key =
+                "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
+            unique[key] = place
+        }
+        return unique.values.toList()
+    }
+
+    private fun filterPlacesToViewport(
+        places: List<ImportantPlace>,
+        viewport: SearchViewport?
+    ): List<ImportantPlace> {
+        if (viewport == null) return places
+        return places.filter { place ->
+            isPointInsideViewport(place.point, viewport, paddingFactor = 0.18)
+        }
+    }
+
+    // Небольшой запас по краям экрана нужен, чтобы значки не "мигали" при минимальном сдвиге карты.
+    private fun isPointInsideViewport(
+        point: GeoPoint,
+        viewport: SearchViewport?,
+        paddingFactor: Double = 0.0
+    ): Boolean {
+        if (viewport == null) return true
+        val latPadding = (viewport.north - viewport.south).coerceAtLeast(0.0) * paddingFactor
+        val lonPadding = (viewport.east - viewport.west).coerceAtLeast(0.0) * paddingFactor
+        val south = viewport.south - latPadding
+        val north = viewport.north + latPadding
+        val west = viewport.west - lonPadding
+        val east = viewport.east + lonPadding
+        return point.latitude in south..north && point.longitude in west..east
     }
 
     private fun resolveImportantPlaceCategoryLabel(category: String): String {
@@ -2112,9 +2190,76 @@ class MapFragment : Fragment() {
         return runCatching {
             context.contentResolver.openInputStream(avatarUri)?.use { input ->
                 val decoded = BitmapFactory.decodeStream(input) ?: return@use null
-                Bitmap.createScaledBitmap(decoded, 92, 92, true)
+                createLocationAvatarBitmap(decoded)
             }
         }.getOrNull()
+    }
+
+    private fun createLocationAvatarBitmap(source: Bitmap): Bitmap {
+        val density = resources.displayMetrics.density
+        val iconSize = (52f * density).roundToInt().coerceAtLeast(96)
+        val strokeWidthPx = 3f * density
+        val outerPadding = 2f * density
+        val avatarDiameter = (iconSize - outerPadding * 2f - strokeWidthPx * 2f)
+            .roundToInt()
+            .coerceAtLeast(1)
+
+        val croppedAvatar = centerCropBitmap(source, avatarDiameter)
+        val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val centerX = iconSize / 2f
+        val centerY = iconSize / 2f
+        val outerRadius = iconSize / 2f - outerPadding
+        val avatarRadius = avatarDiameter / 2f
+        val ringRadius = avatarRadius + strokeWidthPx
+
+        val surfacePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
+        }
+        val avatarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            isFilterBitmap = true
+            shader = BitmapShader(croppedAvatar, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        }
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = strokeWidthPx
+            color = resolveThemeColor(com.google.android.material.R.attr.colorPrimary)
+        }
+
+        canvas.drawCircle(centerX, centerY, outerRadius, surfacePaint)
+        canvas.drawCircle(centerX, centerY, avatarRadius, avatarPaint)
+        canvas.drawCircle(centerX, centerY, ringRadius - strokeWidthPx / 2f, borderPaint)
+
+        if (croppedAvatar != source && !croppedAvatar.isRecycled) {
+            croppedAvatar.recycle()
+        }
+
+        return output
+    }
+
+    private fun centerCropBitmap(source: Bitmap, targetSize: Int): Bitmap {
+        if (source.width == targetSize && source.height == targetSize) return source
+
+        val scale = max(
+            targetSize / source.width.toFloat(),
+            targetSize / source.height.toFloat()
+        )
+        val scaledWidth = (source.width * scale).roundToInt().coerceAtLeast(targetSize)
+        val scaledHeight = (source.height * scale).roundToInt().coerceAtLeast(targetSize)
+        val scaledBitmap = Bitmap.createScaledBitmap(source, scaledWidth, scaledHeight, true)
+        val left = ((scaledWidth - targetSize) / 2).coerceAtLeast(0)
+        val top = ((scaledHeight - targetSize) / 2).coerceAtLeast(0)
+
+        return Bitmap.createBitmap(scaledBitmap, left, top, targetSize, targetSize).also {
+            if (scaledBitmap != source && !scaledBitmap.isRecycled) {
+                scaledBitmap.recycle()
+            }
+        }
+    }
+
+    private fun resolveThemeColor(attrRes: Int): Int {
+        return MaterialColors.getColor(binding.root, attrRes)
     }
 
     private fun getCurrentLocation(forceCenter: Boolean = false) {
@@ -2183,6 +2328,7 @@ class MapFragment : Fragment() {
             override fun onScroll(event: ScrollEvent?): Boolean {
                 // Пользователь двигает карту — отключаем автослежение
                 shouldAutoCenter = false
+                clampMapViewport()
                 collapseSearchUi()
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
@@ -2194,6 +2340,7 @@ class MapFragment : Fragment() {
             override fun onZoom(event: ZoomEvent?): Boolean {
                 // Зум тоже отключает автослежение, чтобы карта не прыгала
                 shouldAutoCenter = false
+                clampMapViewport()
                 collapseSearchUi()
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
@@ -2202,6 +2349,51 @@ class MapFragment : Fragment() {
                 return false
             }
         })
+    }
+
+    private fun clampMapViewport() {
+        if (!isAdded || _binding == null) return
+
+        val currentZoom = binding.mapView.zoomLevelDouble
+        val clampedZoom = currentZoom.coerceIn(MIN_MAP_ZOOM, MAX_MAP_ZOOM)
+        if (abs(clampedZoom - currentZoom) > 0.0001) {
+            binding.mapView.controller.setZoom(clampedZoom)
+        }
+
+        val currentCenter = binding.mapView.mapCenter?.let {
+            GeoPoint(it.latitude, it.longitude)
+        } ?: return
+        val clampedCenter = clampMapCenter(currentCenter)
+        if (
+            abs(clampedCenter.latitude - currentCenter.latitude) > 0.000001 ||
+            abs(clampedCenter.longitude - currentCenter.longitude) > 0.000001
+        ) {
+            binding.mapView.controller.setCenter(clampedCenter)
+        }
+    }
+
+    private fun clampMapCenter(center: GeoPoint): GeoPoint {
+        val box = binding.mapView.boundingBox
+        val latHalfSpan = ((box?.latNorth ?: center.latitude) - (box?.latSouth ?: center.latitude))
+            .coerceAtLeast(0.0) / 2.0
+        val lonHalfSpan = ((box?.lonEast ?: center.longitude) - (box?.lonWest ?: center.longitude))
+            .coerceAtLeast(0.0) / 2.0
+
+        val minLatitude = (-85.0 + latHalfSpan).coerceAtMost(85.0)
+        val maxLatitude = (85.0 - latHalfSpan).coerceAtLeast(-85.0)
+        val minLongitude = (-180.0 + lonHalfSpan).coerceAtMost(180.0)
+        val maxLongitude = (180.0 - lonHalfSpan).coerceAtLeast(-180.0)
+
+        val clampedLatitude = when {
+            minLatitude > maxLatitude -> 0.0
+            else -> center.latitude.coerceIn(minLatitude, maxLatitude)
+        }
+        val clampedLongitude = when {
+            minLongitude > maxLongitude -> 0.0
+            else -> center.longitude.coerceIn(minLongitude, maxLongitude)
+        }
+
+        return GeoPoint(clampedLatitude, clampedLongitude)
     }
 
     private fun mapHudViews(): List<View> {

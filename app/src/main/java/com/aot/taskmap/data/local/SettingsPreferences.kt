@@ -33,6 +33,7 @@ object SettingsPreferences {
     private const val KEY_PROFILE_AUTO_NICKNAME = "profile_auto_nickname"
     private const val KEY_PROFILE_SENDER_ID = "profile_sender_id"
     private const val KEY_PROFILE_AVATAR_URI = "profile_avatar_uri"
+    private const val KEY_PROFILE_START_TAB_SHOWN = "profile_start_tab_shown"
 
     data class MapViewport(
         val latitude: Double,
@@ -266,6 +267,13 @@ object SettingsPreferences {
             editor.putString(KEY_PROFILE_AVATAR_URI, normalized)
         }
         editor.apply()
+    }
+
+    fun shouldOpenProfileTabOnFirstMainLaunch(context: Context): Boolean =
+        !prefs(context).getBoolean(KEY_PROFILE_START_TAB_SHOWN, false)
+
+    fun markProfileTabShown(context: Context) {
+        prefs(context).edit().putBoolean(KEY_PROFILE_START_TAB_SHOWN, true).apply()
     }
 
     private fun generateNickname(): String {
