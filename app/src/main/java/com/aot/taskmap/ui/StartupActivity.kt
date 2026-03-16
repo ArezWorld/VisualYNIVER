@@ -50,7 +50,13 @@ class StartupActivity : AppCompatActivity() {
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            pendingCameraUri?.let { launchAvatarCrop(it) }
+            val cameraFile = pendingCameraFile
+            if (cameraFile != null && cameraFile.exists() && cameraFile.length() > 0L) {
+                launchAvatarCrop(Uri.fromFile(cameraFile))
+            } else {
+                Toast.makeText(this, getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+                clearPendingCameraCapture(deleteFile = true)
+            }
         } else {
             clearPendingCameraCapture(deleteFile = true)
         }
@@ -207,6 +213,10 @@ class StartupActivity : AppCompatActivity() {
         return runCatching {
             val cameraDir = File(cacheDir, "camera").apply { mkdirs() }
             val imageFile = File(cameraDir, "avatar_capture_${System.currentTimeMillis()}.jpg")
+            if (imageFile.exists()) {
+                imageFile.delete()
+            }
+            imageFile.createNewFile()
             pendingCameraFile = imageFile
             val authority = "${packageName}.fileprovider"
             val uri = FileProvider.getUriForFile(this, authority, imageFile)

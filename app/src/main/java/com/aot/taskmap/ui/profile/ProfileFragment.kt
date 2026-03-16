@@ -51,7 +51,13 @@ class ProfileFragment : Fragment() {
     ) { success ->
         if (!isAdded || _binding == null) return@registerForActivityResult
         if (success) {
-            pendingCameraUri?.let { launchAvatarCrop(it) }
+            val cameraFile = pendingCameraFile
+            if (cameraFile != null && cameraFile.exists() && cameraFile.length() > 0L) {
+                launchAvatarCrop(Uri.fromFile(cameraFile))
+            } else {
+                Toast.makeText(requireContext(), getString(R.string.profile_avatar_crop_failed), Toast.LENGTH_SHORT).show()
+                clearPendingCameraCapture(deleteFile = true)
+            }
         } else {
             clearPendingCameraCapture(deleteFile = true)
         }
@@ -239,6 +245,10 @@ class ProfileFragment : Fragment() {
         return runCatching {
             val cameraDir = File(context.cacheDir, "camera").apply { mkdirs() }
             val imageFile = File(cameraDir, "avatar_capture_${System.currentTimeMillis()}.jpg")
+            if (imageFile.exists()) {
+                imageFile.delete()
+            }
+            imageFile.createNewFile()
             pendingCameraFile = imageFile
             val authority = "${context.packageName}.fileprovider"
             val uri = FileProvider.getUriForFile(context, authority, imageFile)
