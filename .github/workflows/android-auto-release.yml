@@ -65,12 +65,11 @@ jobs:
           echo "APK_NAME=AOT-latest.apk" >> "$GITHUB_ENV"
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon clean assembleDebug
+        run: ./gradlew --no-daemon assembleDebug --stacktrace
         env:
           APP_VERSION_NAME: ${{ env.APP_VERSION_NAME }}
           APP_VERSION_CODE: ${{ env.APP_VERSION_CODE }}
           API_BASE_URL: ${{ vars.API_BASE_URL }}
-          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
 
       - name: Prepare APK artifact
         shell: bash
