@@ -60,9 +60,12 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.selects.select
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -140,10 +143,10 @@ class MapFragment : Fragment() {
     private var completedTasksCache = emptyList<Task>()
     private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
     private val overpassApiUrls = listOf(
-        "https://overpass.openstreetmap.ru/cgi/interpreter",
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
-        "https://lz4.overpass-api.de/api/interpreter"
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://overpass.openstreetmap.ru/cgi/interpreter"
     )
     private val searchHttpClient by lazy {
         OkHttpClient.Builder()
@@ -154,11 +157,12 @@ class MapFragment : Fragment() {
     }
     private val importantPlacesHttpClient by lazy {
         OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(8, TimeUnit.SECONDS)
-            .callTimeout(10, TimeUnit.SECONDS)
+            .connectTimeout(3, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.SECONDS)
             .build()
     }
+    private var lastSuccessfulOverpassEndpoint: String? = null
 
     private data class SearchViewport(
         val west: Double,
@@ -600,10 +604,8 @@ class MapFragment : Fragment() {
         }
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
-            delay(if (animationsEnabled()) 120L else 60L)
-            val places = withContext(Dispatchers.IO) {
-                fetchImportantPlaces(latitude, longitude, config, userAgentPackage)
-            }
+            delay(if (animationsEnabled()) 30L else 10L)
+            val places = fetchImportantPlaces(latitude, longitude, config, userAgentPackage)
             if (!isAdded || _binding == null) return@launch
             if (!SettingsPreferences.isHighlightImportantPlacesEnabled(appContext)) {
                 clearImportantPlaceOverlays()
@@ -694,7 +696,7 @@ class MapFragment : Fragment() {
     }
 
     private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig? {
-        if (zoom < 10.5) return null
+        if (zoom < 9.0) return null
         return when {
             zoom >= 17.5 -> ImportantPlacesConfig(
                 radiusMeters = 650,
@@ -763,12 +765,12 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun fetchImportantPlaces(
+    private suspend fun fetchImportantPlaces(
         latitude: Double,
         longitude: Double,
         config: ImportantPlacesConfig,
         userAgentPackage: String
-    ): List<ImportantPlace> {
+    ): List<ImportantPlace> = supervisorScope {
         val shopLayer = if (config.includeShopLayer) {
             """
               node(around:${config.radiusMeters},$latitude,$longitude)["shop"~"supermarket|convenience|mall|department_store"];
@@ -799,25 +801,78 @@ class MapFragment : Fragment() {
             out center;
         """.trimIndent()
 
-        for (endpoint in overpassApiUrls) {
-            val request = Request.Builder()
-                .url(endpoint)
-                .post(query.toRequestBody("text/plain; charset=utf-8".toMediaType()))
-                .header("User-Agent", "$userAgentPackage/important-places")
-                .build()
+        val endpoints = prioritizedOverpassApiUrls()
+        if (endpoints.isEmpty()) return@supervisorScope emptyList()
 
-            val places = runCatching {
-                importantPlacesHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@use null
-                    val body = response.body?.string().orEmpty()
-                    parseImportantPlacesResponse(body, config.maxItems)
-                }
-            }.getOrNull()
-
-            if (places != null) return places
+        val requests = endpoints.map { endpoint ->
+            async(Dispatchers.IO) {
+                val places = fetchImportantPlacesFromEndpoint(
+                    endpoint = endpoint,
+                    query = query,
+                    maxItems = config.maxItems,
+                    userAgentPackage = userAgentPackage
+                )
+                endpoint to places
+            }
         }
 
-        return emptyList()
+        val pending = requests.toMutableList()
+        while (pending.isNotEmpty()) {
+            val (endpoint, places) = select<Pair<String, List<ImportantPlace>?>> {
+                pending.forEach { deferred ->
+                    deferred.onAwait { result -> result }
+                }
+            }
+            pending.removeAll { it.isCompleted }
+
+            if (places != null) {
+                lastSuccessfulOverpassEndpoint = endpoint
+                if (places.isNotEmpty()) {
+                    pending.forEach { it.cancel() }
+                    return@supervisorScope places
+                }
+                // Если один из endpoint отдал корректный пустой ответ,
+                // считаем, что в текущей области POI нет.
+                pending.forEach { it.cancel() }
+                return@supervisorScope emptyList()
+            }
+        }
+
+        return@supervisorScope emptyList()
+    }
+
+    private fun prioritizedOverpassApiUrls(): List<String> {
+        val preferred = lastSuccessfulOverpassEndpoint
+        if (preferred.isNullOrBlank()) return overpassApiUrls
+        if (!overpassApiUrls.contains(preferred)) return overpassApiUrls
+
+        return buildList {
+            add(preferred)
+            overpassApiUrls.forEach { endpoint ->
+                if (endpoint != preferred) add(endpoint)
+            }
+        }
+    }
+
+    private fun fetchImportantPlacesFromEndpoint(
+        endpoint: String,
+        query: String,
+        maxItems: Int,
+        userAgentPackage: String
+    ): List<ImportantPlace>? {
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(query.toRequestBody("text/plain; charset=utf-8".toMediaType()))
+            .header("User-Agent", "$userAgentPackage/important-places")
+            .build()
+
+        return runCatching {
+            importantPlacesHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val body = response.body?.string().orEmpty()
+                parseImportantPlacesResponse(body, maxItems)
+            }
+        }.getOrNull()
     }
 
     private fun parseImportantPlacesResponse(
