@@ -129,6 +129,8 @@ class MapFragment : Fragment() {
     private lateinit var searchAdapter: ArrayAdapter<String>
     private var searchSuggestionJob: Job? = null
     private var importantPlacesRefreshJob: Job? = null
+    private var isImportantPlacesFetchInFlight = false
+    private var hasPendingImportantPlacesRefresh = false
     private val uiHandler = Handler(Looper.getMainLooper())
     private var importantPlacesRefreshRunnable: Runnable? = null
     private var restoreBottomNavRunnable: Runnable? = null
@@ -247,8 +249,8 @@ class MapFragment : Fragment() {
             title = "Новотроицкий филиал МИСиС",
             category = "university",
             point = GeoPoint(51.1949998, 58.3101847),
-            minZoom = 11.8,
-            visibleRadiusMeters = 30000.0
+            minZoom = 14.2,
+            visibleRadiusMeters = 4500.0
         )
     )
 
@@ -629,7 +631,10 @@ class MapFragment : Fragment() {
 
     private fun refreshImportantPlacesNow() {
         importantPlacesRefreshRunnable = null
-        importantPlacesRefreshJob?.cancel()
+        if (isImportantPlacesFetchInFlight) {
+            hasPendingImportantPlacesRefresh = true
+            return
+        }
         if (!isAdded || _binding == null) return
         val safeContext = context ?: return
         if (!SettingsPreferences.isHighlightImportantPlacesEnabled(safeContext)) {
@@ -680,37 +685,46 @@ class MapFragment : Fragment() {
             return
         }
 
+        isImportantPlacesFetchInFlight = true
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
-            delay(if (importantPlaceStates.isEmpty()) 8L else if (animationsEnabled()) 18L else 6L)
-            val places = fetchImportantPlaces(
-                config = config,
-                userAgentPackage = userAgentPackage,
-                viewport = fetchViewport
-            )
-            if (!isAdded || _binding == null) return@launch
-            if (!SettingsPreferences.isHighlightImportantPlacesEnabled(appContext)) {
-                clearImportantPlaceOverlays()
-                return@launch
+            try {
+                delay(if (importantPlaceStates.isEmpty()) 8L else if (animationsEnabled()) 18L else 6L)
+                val places = fetchImportantPlaces(
+                    config = config,
+                    userAgentPackage = userAgentPackage,
+                    viewport = fetchViewport
+                )
+                if (!isAdded || _binding == null) return@launch
+                if (!SettingsPreferences.isHighlightImportantPlacesEnabled(appContext)) {
+                    clearImportantPlaceOverlays()
+                    return@launch
+                }
+                if (places.isNotEmpty()) {
+                    saveImportantPlacesCache(cacheKey, fetchViewport, places)
+                }
+                val effectivePlaces = when {
+                    places.isNotEmpty() -> places
+                    visibleCachedPlaces.isNotEmpty() -> visibleCachedPlaces
+                    !cachedPlaces.isNullOrEmpty() -> cachedPlaces
+                    else -> emptyList()
+                }
+                val mergedPlaces = mergeCuratedImportantPlaces(
+                    places = effectivePlaces,
+                    viewport = expandViewport(viewport, 0.28),
+                    zoom = zoom
+                ).take(config.maxItems)
+                updateImportantPlaceOverlays(
+                    places = mergedPlaces,
+                    viewport = viewport,
+                    maxVisibleItems = config.maxItems
+                )
+            } finally {
+                isImportantPlacesFetchInFlight = false
+                if (hasPendingImportantPlacesRefresh) {
+                    hasPendingImportantPlacesRefresh = false
+                    scheduleImportantPlacesRefresh(immediate = true)
+                }
             }
-            if (places.isNotEmpty()) {
-                saveImportantPlacesCache(cacheKey, fetchViewport, places)
-            }
-            val effectivePlaces = when {
-                places.isNotEmpty() -> places
-                visibleCachedPlaces.isNotEmpty() -> visibleCachedPlaces
-                !cachedPlaces.isNullOrEmpty() -> cachedPlaces
-                else -> emptyList()
-            }
-            val mergedPlaces = mergeCuratedImportantPlaces(
-                places = effectivePlaces,
-                viewport = expandViewport(viewport, 0.28),
-                zoom = zoom
-            ).take(config.maxItems)
-            updateImportantPlaceOverlays(
-                places = mergedPlaces,
-                viewport = viewport,
-                maxVisibleItems = config.maxItems
-            )
         }
     }
 
@@ -3200,6 +3214,8 @@ class MapFragment : Fragment() {
         binding.mapView.onPause()
         importantPlacesRefreshRunnable?.let { uiHandler.removeCallbacks(it) }
         importantPlacesRefreshRunnable = null
+        hasPendingImportantPlacesRefresh = false
+        isImportantPlacesFetchInFlight = false
         importantPlacesRefreshJob?.cancel()
         prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
         prefetchTilesRunnable = null
@@ -3214,6 +3230,8 @@ class MapFragment : Fragment() {
     override fun onDestroyView() {
         searchSuggestionJob?.cancel()
         importantPlacesRefreshJob?.cancel()
+        hasPendingImportantPlacesRefresh = false
+        isImportantPlacesFetchInFlight = false
         restoreBottomNavRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreBottomNavRunnable = null
         restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
