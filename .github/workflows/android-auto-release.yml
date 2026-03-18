@@ -1,4 +1,4 @@
-name: Android Auto Release
+﻿name: Android Auto Release
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
       - name: Prepare release metadata
         shell: bash
         run: |
-          BASE_SERIES="1.5"
+          BASE_SERIES="1.6"
           IS_PRERELEASE="true"
 
           git fetch --tags --force
@@ -55,7 +55,7 @@ jobs:
           fi
 
           APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
-          APP_VERSION_CODE=$((15000 + NEXT_PATCH))
+          APP_VERSION_CODE=$((16000 + NEXT_PATCH))
           TAG_NAME="v${APP_VERSION_NAME}"
 
           echo "APP_VERSION_NAME=${APP_VERSION_NAME}" >> "$GITHUB_ENV"
@@ -69,7 +69,6 @@ jobs:
         env:
           APP_VERSION_NAME: ${{ env.APP_VERSION_NAME }}
           APP_VERSION_CODE: ${{ env.APP_VERSION_CODE }}
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
 
       - name: Prepare APK artifact
         shell: bash
@@ -83,18 +82,18 @@ jobs:
           name: AOT ${{ env.TAG_NAME }}
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           body: |
-            ## Описание релиза
-            Автоматическая сборка AOT по последнему коммиту.
+            ## Release Notes
+            Automatic AOT build from the latest commit.
 
-            - Версия приложения: `${{ env.APP_VERSION_NAME }}`
-            - Тип релиза: `${{ env.IS_PRERELEASE == 'true' && 'pre-release' || 'stable' }}`
-            - Коммит: `${{ github.sha }}`
+            - App version: `${{ env.APP_VERSION_NAME }}`
+            - Release type: `${{ env.IS_PRERELEASE == 'true' && 'pre-release' || 'stable' }}`
+            - Commit: `${{ github.sha }}`
 
-            ## Что изменено
+            ## Changes
             `${{ github.event.head_commit.message }}`
 
-            ## Файлы
-            - `${{ env.APK_NAME }}` — актуальная APK-сборка
+            ## Files
+            - `${{ env.APK_NAME }}` - current APK build
           files: |
             ${{ env.APK_NAME }}
 

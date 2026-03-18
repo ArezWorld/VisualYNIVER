@@ -97,6 +97,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -115,7 +116,8 @@ class MapFragment : Fragment() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var myLocationOverlay: MyLocationNewOverlay? = null
     private val taskOverlays = mutableListOf<org.osmdroid.views.overlay.Overlay>()
-    private val importantPlaceOverlays = mutableListOf<Marker>()
+    private val importantPlaceOverlays = linkedMapOf<String, Marker>()
+    private val importantPlaceStates = linkedMapOf<String, ImportantPlace>()
     private var searchResultOverlay: Marker? = null
 
     private var shouldAutoCenter = true
@@ -185,7 +187,8 @@ class MapFragment : Fragment() {
     private data class ImportantPlace(
         val title: String,
         val category: String,
-        val point: GeoPoint
+        val point: GeoPoint,
+        val brandKey: String? = null
     )
 
     private data class CuratedImportantPlace(
@@ -203,6 +206,11 @@ class MapFragment : Fragment() {
         val includeShopLayer: Boolean,
         val includeTourismLayer: Boolean
     )
+
+    private enum class PoiIconCropMode {
+        FIT,
+        TOP_BADGE
+    }
 
     private data class MarkerIconOption(
         val key: String,
@@ -581,6 +589,22 @@ class MapFragment : Fragment() {
         )
     }
 
+    private fun expandViewport(
+        viewport: SearchViewport,
+        factor: Double
+    ): SearchViewport {
+        val latSpan = (viewport.north - viewport.south).coerceAtLeast(0.01)
+        val lonSpan = (viewport.east - viewport.west).coerceAtLeast(0.01)
+        val latPadding = latSpan * factor
+        val lonPadding = lonSpan * factor
+        return SearchViewport(
+            west = (viewport.west - lonPadding).coerceAtLeast(-180.0),
+            north = (viewport.north + latPadding).coerceAtMost(85.0),
+            east = (viewport.east + lonPadding).coerceAtMost(180.0),
+            south = (viewport.south - latPadding).coerceAtLeast(-85.0)
+        )
+    }
+
     private fun scheduleImportantPlacesRefresh() {
         importantPlacesRefreshJob?.cancel()
         if (!isAdded || _binding == null) return
@@ -591,38 +615,43 @@ class MapFragment : Fragment() {
         }
 
         val viewport = captureSearchViewport() ?: return
+        val fetchViewport = expandViewport(viewport, 0.55)
         val zoom = binding.mapView.zoomLevelDouble
         val config = resolveImportantPlacesConfig(zoom)
         val appContext = safeContext.applicationContext
         val userAgentPackage = appContext.packageName
-        val cacheKey = buildImportantPlacesCacheKey(viewport, zoom, config)
+        val cacheKey = buildImportantPlacesCacheKey(fetchViewport, zoom, config)
         val now = System.currentTimeMillis()
         val cachedEntry = importantPlacesCache[cacheKey]
         val cachedPlaces = cachedEntry
             ?.takeIf { now - it.first <= importantPlacesCacheTtlMs }
             ?.second
-        val reusableCachedPlaces = collectCachedImportantPlacesForViewport(viewport, now)
+        val reusableCachedPlaces = collectCachedImportantPlacesForViewport(
+            viewport = fetchViewport,
+            now = now,
+            paddingFactor = 0.95
+        )
         val visibleCachedPlaces = dedupeImportantPlaces(reusableCachedPlaces + cachedPlaces.orEmpty())
 
         // Сначала показываем всё, что уже есть локально для видимой области,
         // чтобы значки не исчезали при сдвиге камеры и не зависели от центра карты.
         val immediatePlaces = mergeCuratedImportantPlaces(
             places = visibleCachedPlaces,
-            viewport = viewport
+            viewport = expandViewport(viewport, 0.28)
         ).take(config.maxItems)
         if (immediatePlaces.isNotEmpty()) {
-            updateImportantPlaceOverlays(immediatePlaces)
+            updateImportantPlaceOverlays(immediatePlaces, viewport)
         }
         if (cachedEntry != null && now - cachedEntry.first <= importantPlacesCacheSoftReuseMs) {
             return
         }
 
         importantPlacesRefreshJob = viewLifecycleOwner.lifecycleScope.launch {
-            delay(if (animationsEnabled()) 30L else 10L)
+            delay(if (importantPlaceStates.isEmpty()) 8L else if (animationsEnabled()) 18L else 6L)
             val places = fetchImportantPlaces(
                 config = config,
                 userAgentPackage = userAgentPackage,
-                viewport = viewport
+                viewport = fetchViewport
             )
             if (!isAdded || _binding == null) return@launch
             if (!SettingsPreferences.isHighlightImportantPlacesEnabled(appContext)) {
@@ -640,9 +669,9 @@ class MapFragment : Fragment() {
             }
             val mergedPlaces = mergeCuratedImportantPlaces(
                 places = effectivePlaces,
-                viewport = viewport
+                viewport = expandViewport(viewport, 0.28)
             ).take(config.maxItems)
-            updateImportantPlaceOverlays(mergedPlaces)
+            updateImportantPlaceOverlays(mergedPlaces, viewport)
         }
     }
 
@@ -840,7 +869,7 @@ class MapFragment : Fragment() {
         val endpoints = prioritizedOverpassApiUrls()
         if (endpoints.isEmpty()) return@supervisorScope emptyList()
 
-        val requests = endpoints.map { endpoint ->
+        val overpassRequests = endpoints.map { endpoint ->
             async(Dispatchers.IO) {
                 val places = fetchImportantPlacesFromEndpoint(
                     endpoint = endpoint,
@@ -851,8 +880,16 @@ class MapFragment : Fragment() {
                 endpoint to places
             }
         }
+        val fallbackRequest = async(Dispatchers.IO) {
+            "nominatim_fallback" to fetchImportantPlacesFromNominatimFallback(
+                viewport = viewport,
+                maxItems = config.maxItems,
+                userAgentPackage = userAgentPackage
+            )
+        }
 
-        val pending = requests.toMutableList()
+        val pending = (overpassRequests + fallbackRequest).toMutableList()
+        var firstCompletedNonNull: List<ImportantPlace>? = null
         while (pending.isNotEmpty()) {
             val (endpoint, places) = select<Pair<String, List<ImportantPlace>?>> {
                 pending.forEach { deferred ->
@@ -862,23 +899,19 @@ class MapFragment : Fragment() {
             pending.removeAll { it.isCompleted }
 
             if (places != null) {
-                lastSuccessfulOverpassEndpoint = endpoint
                 if (places.isNotEmpty()) {
+                    if (endpoint != "nominatim_fallback") {
+                        lastSuccessfulOverpassEndpoint = endpoint
+                    }
                     pending.forEach { it.cancel() }
                     return@supervisorScope places
                 }
+                if (firstCompletedNonNull == null) {
+                    firstCompletedNonNull = places
+                }
             }
         }
-
-        val fallbackPlaces = fetchImportantPlacesFromNominatimFallback(
-            viewport = viewport,
-            maxItems = config.maxItems,
-            userAgentPackage = userAgentPackage
-        )
-        if (fallbackPlaces.isNotEmpty()) {
-            return@supervisorScope fallbackPlaces
-        }
-        return@supervisorScope emptyList()
+        return@supervisorScope firstCompletedNonNull.orEmpty()
     }
 
     private suspend fun fetchImportantPlacesFromNominatimFallback(
@@ -894,7 +927,9 @@ class MapFragment : Fragment() {
             "supermarket" to "supermarket",
             "cafe" to "cafe",
             "school" to "school",
-            "university" to "university"
+            "university" to "university",
+            "bank" to "bank",
+            "atm" to "bank"
         )
         val perQueryLimit = (maxItems / 2).coerceIn(3, 8)
 
@@ -959,11 +994,17 @@ class MapFragment : Fragment() {
             val title = item.optString("name").trim().ifBlank {
                 resolveImportantPlaceCategoryLabel(category)
             }
+            val brandKey = resolveImportantPlaceBrandKey(
+                title = title,
+                brand = item.optString("name"),
+                category = category
+            )
 
             result += ImportantPlace(
                 title = title,
                 category = category,
-                point = GeoPoint(lat, lon)
+                point = GeoPoint(lat, lon),
+                brandKey = brandKey
             )
             if (result.size >= maxItems) break
         }
@@ -1060,14 +1101,22 @@ class MapFragment : Fragment() {
                 .lowercase(Locale.ROOT)
             if (category.isBlank()) continue
 
-            val title = tags.optString("name").trim().ifBlank {
-                resolveImportantPlaceCategoryLabel(category)
-            }
+            val brand = tags.optString("brand").trim()
+                .ifBlank { tags.optString("operator").trim() }
+            val title = tags.optString("name").trim()
+                .ifBlank { brand }
+                .ifBlank { resolveImportantPlaceCategoryLabel(category) }
+            val brandKey = resolveImportantPlaceBrandKey(
+                title = title,
+                brand = brand,
+                category = category
+            )
             val key = "${lat.format(5)}:${lon.format(5)}:$category"
             unique[key] = ImportantPlace(
                 title = title,
                 category = category,
-                point = GeoPoint(lat, lon)
+                point = GeoPoint(lat, lon),
+                brandKey = brandKey
             )
             if (unique.size >= maxItems) break
         }
@@ -1082,34 +1131,37 @@ class MapFragment : Fragment() {
         val merged = linkedMapOf<String, ImportantPlace>()
         val visiblePlaces = filterPlacesToViewport(places, viewport)
         visiblePlaces.forEach { place ->
-            val key = "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
+            val key = buildImportantPlaceKey(place)
             merged[key] = place
         }
         curatedImportantPlaces.forEach { curated ->
             if (!isPointInsideViewport(curated.point, viewport, paddingFactor = 0.2)) return@forEach
-            val key =
-                "${curated.point.latitude.format(5)}:${curated.point.longitude.format(5)}:${curated.category}"
-            merged[key] = ImportantPlace(
+            val place = ImportantPlace(
                 title = curated.title,
                 category = curated.category,
                 point = curated.point
             )
+            merged[buildImportantPlaceKey(place)] = place
         }
         return merged.values.toList()
     }
 
     private fun collectCachedImportantPlacesForViewport(
         viewport: SearchViewport,
-        now: Long = System.currentTimeMillis()
+        now: Long = System.currentTimeMillis(),
+        paddingFactor: Double = 0.75
     ): List<ImportantPlace> {
         val unique = linkedMapOf<String, ImportantPlace>()
         importantPlacesCache.entries
             .sortedByDescending { it.value.first }
             .forEach { (_, cachedEntry) ->
                 if (now - cachedEntry.first > importantPlacesCacheTtlMs) return@forEach
-                filterPlacesToViewport(cachedEntry.second, viewport).forEach { place ->
-                    val key =
-                        "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
+                filterPlacesToViewport(
+                    places = cachedEntry.second,
+                    viewport = viewport,
+                    paddingFactor = paddingFactor
+                ).forEach { place ->
+                    val key = buildImportantPlaceKey(place)
                     unique[key] = place
                 }
             }
@@ -1119,20 +1171,37 @@ class MapFragment : Fragment() {
     private fun dedupeImportantPlaces(places: List<ImportantPlace>): List<ImportantPlace> {
         val unique = linkedMapOf<String, ImportantPlace>()
         places.forEach { place ->
-            val key =
-                "${place.point.latitude.format(5)}:${place.point.longitude.format(5)}:${place.category}"
-            unique[key] = place
+            unique[buildImportantPlaceKey(place)] = place
         }
         return unique.values.toList()
     }
 
     private fun filterPlacesToViewport(
         places: List<ImportantPlace>,
-        viewport: SearchViewport?
+        viewport: SearchViewport?,
+        paddingFactor: Double = 0.18
     ): List<ImportantPlace> {
         if (viewport == null) return places
         return places.filter { place ->
-            isPointInsideViewport(place.point, viewport, paddingFactor = 0.18)
+            isPointInsideViewport(place.point, viewport, paddingFactor = paddingFactor)
+        }
+    }
+
+    private fun buildImportantPlaceKey(place: ImportantPlace): String {
+        val normalizedTitle = place.title
+            .lowercase(Locale.ROOT)
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+        return buildString {
+            append(place.point.latitude.format(5))
+            append(':')
+            append(place.point.longitude.format(5))
+            append(':')
+            append(place.category)
+            append(':')
+            append(place.brandKey.orEmpty())
+            append(':')
+            append(normalizedTitle)
         }
     }
 
@@ -1177,52 +1246,122 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun updateImportantPlaceOverlays(places: List<ImportantPlace>) {
+    private fun resolveImportantPlaceBrandKey(
+        title: String,
+        brand: String?,
+        category: String
+    ): String? {
+        if (category == "bank" || category == "atm") {
+            return "bank_generic"
+        }
+
+        val probe = buildString {
+            append(title)
+            append(' ')
+            append(brand.orEmpty())
+        }.lowercase(Locale.ROOT)
+
+        return when {
+            probe.contains("магнит") || probe.contains("magnit") -> "magnit"
+            probe.contains("пятероч") || probe.contains("пятёроч") ||
+                probe.contains("pyater") || probe.contains("5ka") ->
+                "pyaterochka"
+            else -> null
+        }
+    }
+
+    private fun updateImportantPlaceOverlays(
+        places: List<ImportantPlace>,
+        viewport: SearchViewport? = captureSearchViewport()
+    ) {
         if (!isAdded || _binding == null) return
         if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
             clearImportantPlaceOverlays()
             return
         }
-        clearImportantPlaceOverlays()
-        places.forEach { place ->
-            val marker = Marker(binding.mapView).apply {
-                position = place.point
-                title = place.title
-                snippet = resolveImportantPlaceCategoryLabel(place.category)
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                icon = buildImportantPlaceIconDrawable(place.category)
+
+        val retainedPlaces = if (viewport == null) {
+            emptyList()
+        } else {
+            importantPlaceStates.values.filter { existing ->
+                isPointInsideViewport(existing.point, viewport, paddingFactor = 1.12)
             }
-            binding.mapView.overlays.add(marker)
-            importantPlaceOverlays.add(marker)
         }
+        val finalPlaces = dedupeImportantPlaces(retainedPlaces + places)
+        val desiredKeys = finalPlaces.mapTo(linkedSetOf()) { buildImportantPlaceKey(it) }
+
+        importantPlaceOverlays.entries
+            .toList()
+            .forEach { (key, marker) ->
+                if (desiredKeys.contains(key)) return@forEach
+                binding.mapView.overlays.remove(marker)
+                importantPlaceOverlays.remove(key)
+                importantPlaceStates.remove(key)
+            }
+
+        finalPlaces.forEach { place ->
+            val key = buildImportantPlaceKey(place)
+            val marker = importantPlaceOverlays[key]
+            if (marker == null) {
+                val newMarker = Marker(binding.mapView).apply {
+                    position = place.point
+                    title = place.title
+                    snippet = resolveImportantPlaceCategoryLabel(place.category)
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = buildImportantPlaceIconDrawable(place)
+                }
+                importantPlaceOverlays[key] = newMarker
+                importantPlaceStates[key] = place
+                binding.mapView.overlays.add(newMarker)
+            } else {
+                marker.position = place.point
+                marker.title = place.title
+                marker.snippet = resolveImportantPlaceCategoryLabel(place.category)
+                marker.icon = buildImportantPlaceIconDrawable(place)
+                importantPlaceStates[key] = place
+            }
+        }
+
         binding.mapView.invalidate()
     }
 
     private fun clearImportantPlaceOverlays() {
         if (importantPlaceOverlays.isEmpty()) return
-        binding.mapView.overlays.removeAll(importantPlaceOverlays)
+        binding.mapView.overlays.removeAll(importantPlaceOverlays.values.toList())
         importantPlaceOverlays.clear()
+        importantPlaceStates.clear()
         binding.mapView.invalidate()
     }
 
-    private fun resolveImportantPlaceIconRes(category: String): Int {
-        return when (category) {
-            "hospital", "clinic" -> R.drawable.ic_poi_hospital
-            "pharmacy" -> R.drawable.ic_poi_pharmacy
-            "school", "college", "university", "kindergarten", "library" ->
-                R.drawable.ic_poi_education
-            "supermarket", "convenience", "mall", "department_store" ->
-                R.drawable.ic_poi_shop
-            "cafe", "restaurant", "fast_food" -> R.drawable.ic_poi_cafe
-            "bus_station", "fuel", "police", "fire_station", "bank", "atm",
-            "post_office", "parking", "museum", "attraction", "viewpoint", "park" ->
-                R.drawable.ic_poi_place
-            else -> R.drawable.ic_poi_default_pin
+    private fun resolveImportantPlaceIconSpec(place: ImportantPlace): Pair<Int, PoiIconCropMode> {
+        return when (place.brandKey) {
+            "magnit" -> R.drawable.ic_poi_brand_magnit to PoiIconCropMode.FIT
+            "pyaterochka" -> R.drawable.ic_poi_brand_pyaterochka to PoiIconCropMode.TOP_BADGE
+            "bank_generic" -> R.drawable.ic_poi_bank_generic to PoiIconCropMode.FIT
+            else -> {
+                val iconRes = when (place.category) {
+                    "hospital", "clinic" -> R.drawable.ic_poi_hospital
+                    "pharmacy" -> R.drawable.ic_poi_pharmacy
+                    "school", "college", "university", "kindergarten", "library" ->
+                        R.drawable.ic_poi_education
+                    "supermarket", "convenience", "mall", "department_store" ->
+                        R.drawable.ic_poi_shop
+                    "cafe", "restaurant", "fast_food" -> R.drawable.ic_poi_cafe
+                    "bus_station", "fuel", "police", "fire_station", "bank", "atm",
+                    "post_office", "parking", "museum", "attraction", "viewpoint", "park" ->
+                        R.drawable.ic_poi_place
+                    else -> R.drawable.ic_poi_default_pin
+                }
+                iconRes to PoiIconCropMode.FIT
+            }
         }
     }
 
-    private fun buildImportantPlaceIconDrawable(category: String): Drawable? {
+    private fun buildImportantPlaceIconDrawable(place: ImportantPlace): Drawable? {
         val iconDp = when {
+            place.brandKey != null && binding.mapView.zoomLevelDouble >= 17.0 -> 28
+            place.brandKey != null && binding.mapView.zoomLevelDouble >= 15.0 -> 26
+            place.brandKey != null -> 24
             binding.mapView.zoomLevelDouble >= 17.0 -> 24
             binding.mapView.zoomLevelDouble >= 15.0 -> 22
             binding.mapView.zoomLevelDouble >= 13.0 -> 20
@@ -1231,8 +1370,8 @@ class MapFragment : Fragment() {
         val iconPx = (iconDp * resources.displayMetrics.density)
             .toInt()
             .coerceAtLeast(18)
-        val iconRes = resolveImportantPlaceIconRes(category)
-        val cacheKey = "$iconRes:$iconPx"
+        val (iconRes, cropMode) = resolveImportantPlaceIconSpec(place)
+        val cacheKey = "$iconRes:$iconPx:$cropMode"
         importantPlaceIconCache[cacheKey]
             ?.constantState
             ?.newDrawable(resources)
@@ -1244,13 +1383,46 @@ class MapFragment : Fragment() {
             iconRes
         )?.mutate() ?: return null
 
-        val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        source.setBounds(0, 0, iconPx, iconPx)
-        source.draw(canvas)
+        val bitmap = when (source) {
+            is BitmapDrawable -> renderPoiBitmap(
+                source = source.bitmap ?: return null,
+                iconPx = iconPx,
+                cropMode = cropMode
+            )
+            else -> {
+                Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888).also { bitmap ->
+                    val canvas = Canvas(bitmap)
+                    source.setBounds(0, 0, iconPx, iconPx)
+                    source.draw(canvas)
+                }
+            }
+        }
         val drawable = BitmapDrawable(resources, bitmap)
         importantPlaceIconCache[cacheKey] = drawable
         return drawable
+    }
+
+    private fun renderPoiBitmap(
+        source: Bitmap,
+        iconPx: Int,
+        cropMode: PoiIconCropMode
+    ): Bitmap {
+        val preparedSource = when (cropMode) {
+            PoiIconCropMode.TOP_BADGE -> {
+                val cropSide = min(source.width, (source.height * 0.82f).roundToInt())
+                val left = ((source.width - cropSide) / 2).coerceAtLeast(0)
+                Bitmap.createBitmap(source, left, 0, cropSide, cropSide.coerceAtMost(source.height))
+            }
+            PoiIconCropMode.FIT -> source
+        }
+
+        return try {
+            Bitmap.createScaledBitmap(preparedSource, iconPx, iconPx, true)
+        } finally {
+            if (preparedSource !== source && !preparedSource.isRecycled) {
+                preparedSource.recycle()
+            }
+        }
     }
 
     private fun Double.format(fractionDigits: Int): String {
@@ -1458,7 +1630,7 @@ class MapFragment : Fragment() {
 
     private fun showSearchResultOverlay(title: String, point: GeoPoint) {
         clearSearchResultOverlay()
-        val icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_poi_place)?.mutate()
+        val icon = buildSearchResultIconDrawable()
         val marker = Marker(binding.mapView).apply {
             position = point
             this.title = title
@@ -1469,6 +1641,38 @@ class MapFragment : Fragment() {
         searchResultOverlay = marker
         binding.mapView.overlays.add(marker)
         binding.mapView.invalidate()
+    }
+
+    private fun buildSearchResultIconDrawable(): Drawable? {
+        val iconPx = (26f * resources.displayMetrics.density).roundToInt().coerceAtLeast(36)
+        val cacheKey = "search_result_pin:$iconPx"
+        importantPlaceIconCache[cacheKey]
+            ?.constantState
+            ?.newDrawable(resources)
+            ?.mutate()
+            ?.let { return it }
+
+        val source = ContextCompat.getDrawable(
+            requireContext(),
+            R.drawable.ic_search_result_pin
+        )?.mutate() ?: return null
+
+        val bitmap = when (source) {
+            is BitmapDrawable -> {
+                val rawBitmap = source.bitmap ?: return null
+                Bitmap.createScaledBitmap(rawBitmap, iconPx, iconPx, true)
+            }
+            else -> {
+                Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888).also { bitmap ->
+                    val canvas = Canvas(bitmap)
+                    source.setBounds(0, 0, iconPx, iconPx)
+                    source.draw(canvas)
+                }
+            }
+        }
+        return BitmapDrawable(resources, bitmap).also { drawable ->
+            importantPlaceIconCache[cacheKey] = drawable
+        }
     }
 
     private fun clearSearchResultOverlay() {
