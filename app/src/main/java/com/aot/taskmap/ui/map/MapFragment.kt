@@ -130,6 +130,7 @@ class MapFragment : Fragment() {
     private var searchSuggestionJob: Job? = null
     private var importantPlacesRefreshJob: Job? = null
     private val uiHandler = Handler(Looper.getMainLooper())
+    private var importantPlacesRefreshRunnable: Runnable? = null
     private var restoreBottomNavRunnable: Runnable? = null
     private var restoreMapHudRunnable: Runnable? = null
     private var isBottomNavigationHidden = false
@@ -147,11 +148,13 @@ class MapFragment : Fragment() {
     private val searchHistoryPrefsName = "map_search_history"
     private val recentPlacesKey = "recent_places"
     private val recentPlacesLimit = 8
-    private val importantPlacesCache = linkedMapOf<String, Pair<Long, List<ImportantPlace>>>()
+    private val importantPlacesCache = linkedMapOf<String, ImportantPlacesCacheEntry>()
     private val importantPlaceIconCache = mutableMapOf<String, Drawable>()
+    private val importantPlaceIconKeys = mutableMapOf<String, String>()
     private val importantPlacesCacheTtlMs = 3 * 60_000L
     private val importantPlacesCacheSoftReuseMs = 40_000L
     private val importantPlacesCacheMaxEntries = 24
+    private val importantPlacesMotionRefreshDelayMs = 140L
     private var activeTasksCache = emptyList<Task>()
     private var completedTasksCache = emptyList<Task>()
     private val nominatimSearchUrl = "https://nominatim.openstreetmap.org/search"
@@ -189,6 +192,12 @@ class MapFragment : Fragment() {
         val category: String,
         val point: GeoPoint,
         val brandKey: String? = null
+    )
+
+    private data class ImportantPlacesCacheEntry(
+        val timestampMs: Long,
+        val viewport: SearchViewport,
+        val places: List<ImportantPlace>
     )
 
     private data class CuratedImportantPlace(
@@ -318,7 +327,7 @@ class MapFragment : Fragment() {
         setupMapTapToAdd()
         applySearchInitialState()
         animateChrome()
-        scheduleImportantPlacesRefresh()
+        scheduleImportantPlacesRefresh(immediate = true)
         scheduleTilePrefetch()
     }
 
@@ -605,7 +614,21 @@ class MapFragment : Fragment() {
         )
     }
 
-    private fun scheduleImportantPlacesRefresh() {
+    private fun scheduleImportantPlacesRefresh(immediate: Boolean = false) {
+        importantPlacesRefreshRunnable?.let { uiHandler.removeCallbacks(it) }
+        val refresh = Runnable {
+            refreshImportantPlacesNow()
+        }
+        importantPlacesRefreshRunnable = refresh
+        if (immediate) {
+            refresh.run()
+        } else {
+            uiHandler.postDelayed(refresh, importantPlacesMotionRefreshDelayMs)
+        }
+    }
+
+    private fun refreshImportantPlacesNow() {
+        importantPlacesRefreshRunnable = null
         importantPlacesRefreshJob?.cancel()
         if (!isAdded || _binding == null) return
         val safeContext = context ?: return
@@ -624,8 +647,11 @@ class MapFragment : Fragment() {
         val now = System.currentTimeMillis()
         val cachedEntry = importantPlacesCache[cacheKey]
         val cachedPlaces = cachedEntry
-            ?.takeIf { now - it.first <= importantPlacesCacheTtlMs }
-            ?.second
+            ?.takeIf {
+                now - it.timestampMs <= importantPlacesCacheTtlMs &&
+                    doViewportsOverlap(it.viewport, fetchViewport)
+            }
+            ?.places
         val reusableCachedPlaces = collectCachedImportantPlacesForViewport(
             viewport = fetchViewport,
             now = now,
@@ -637,12 +663,20 @@ class MapFragment : Fragment() {
         // чтобы значки не исчезали при сдвиге камеры и не зависели от центра карты.
         val immediatePlaces = mergeCuratedImportantPlaces(
             places = visibleCachedPlaces,
-            viewport = expandViewport(viewport, 0.28)
+            viewport = expandViewport(viewport, 0.28),
+            zoom = zoom
         ).take(config.maxItems)
         if (immediatePlaces.isNotEmpty()) {
-            updateImportantPlaceOverlays(immediatePlaces, viewport)
+            updateImportantPlaceOverlays(
+                places = immediatePlaces,
+                viewport = viewport,
+                maxVisibleItems = config.maxItems
+            )
         }
-        if (cachedEntry != null && now - cachedEntry.first <= importantPlacesCacheSoftReuseMs) {
+        if (cachedEntry != null &&
+            now - cachedEntry.timestampMs <= importantPlacesCacheSoftReuseMs &&
+            doViewportsOverlap(cachedEntry.viewport, fetchViewport)
+        ) {
             return
         }
 
@@ -659,7 +693,7 @@ class MapFragment : Fragment() {
                 return@launch
             }
             if (places.isNotEmpty()) {
-                saveImportantPlacesCache(cacheKey, places)
+                saveImportantPlacesCache(cacheKey, fetchViewport, places)
             }
             val effectivePlaces = when {
                 places.isNotEmpty() -> places
@@ -669,9 +703,14 @@ class MapFragment : Fragment() {
             }
             val mergedPlaces = mergeCuratedImportantPlaces(
                 places = effectivePlaces,
-                viewport = expandViewport(viewport, 0.28)
+                viewport = expandViewport(viewport, 0.28),
+                zoom = zoom
             ).take(config.maxItems)
-            updateImportantPlaceOverlays(mergedPlaces, viewport)
+            updateImportantPlaceOverlays(
+                places = mergedPlaces,
+                viewport = viewport,
+                maxVisibleItems = config.maxItems
+            )
         }
     }
 
@@ -746,42 +785,42 @@ class MapFragment : Fragment() {
         return when {
             zoom >= 17.5 -> ImportantPlacesConfig(
                 radiusMeters = 650,
-                maxItems = 52,
+                maxItems = 28,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library|parking",
                 includeShopLayer = true,
                 includeTourismLayer = true
             )
             zoom >= 16.0 -> ImportantPlacesConfig(
                 radiusMeters = 1000,
-                maxItems = 40,
+                maxItems = 24,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library",
                 includeShopLayer = true,
                 includeTourismLayer = true
             )
             zoom >= 14.5 -> ImportantPlacesConfig(
                 radiusMeters = 1600,
-                maxItems = 30,
+                maxItems = 18,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|cafe|restaurant|fast_food|bank",
                 includeShopLayer = true,
                 includeTourismLayer = false
             )
             zoom >= 12.5 -> ImportantPlacesConfig(
                 radiusMeters = 2200,
-                maxItems = 22,
+                maxItems = 13,
                 amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university|bank",
                 includeShopLayer = false,
                 includeTourismLayer = false
             )
             zoom >= 10.0 -> ImportantPlacesConfig(
                 radiusMeters = 2800,
-                maxItems = 16,
+                maxItems = 9,
                 amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
                 includeShopLayer = false,
                 includeTourismLayer = false
             )
             else -> ImportantPlacesConfig(
                 radiusMeters = 3600,
-                maxItems = 14,
+                maxItems = 6,
                 amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
                 includeShopLayer = false,
                 includeTourismLayer = false
@@ -798,10 +837,7 @@ class MapFragment : Fragment() {
         val longitude = (viewport.west + viewport.east) / 2.0
         val latSpan = (viewport.north - viewport.south).coerceAtLeast(0.01)
         val lonSpan = (viewport.east - viewport.west).coerceAtLeast(0.01)
-        val cellSizeDegrees = max(
-            0.004,
-            max(latSpan, lonSpan) * 0.45
-        )
+        val cellSizeDegrees = max(0.002, max(latSpan, lonSpan) * 0.25)
         val latBucket = (latitude / cellSizeDegrees).roundToLong()
         val lonBucket = (longitude / cellSizeDegrees).roundToLong()
         val zoomBucket = (zoom * 2.0).roundToLong()
@@ -818,8 +854,16 @@ class MapFragment : Fragment() {
         ).joinToString(":")
     }
 
-    private fun saveImportantPlacesCache(cacheKey: String, places: List<ImportantPlace>) {
-        importantPlacesCache[cacheKey] = System.currentTimeMillis() to places
+    private fun saveImportantPlacesCache(
+        cacheKey: String,
+        viewport: SearchViewport,
+        places: List<ImportantPlace>
+    ) {
+        importantPlacesCache[cacheKey] = ImportantPlacesCacheEntry(
+            timestampMs = System.currentTimeMillis(),
+            viewport = viewport,
+            places = places
+        )
         while (importantPlacesCache.size > importantPlacesCacheMaxEntries) {
             val oldestKey = importantPlacesCache.entries.firstOrNull()?.key ?: break
             importantPlacesCache.remove(oldestKey)
@@ -1126,16 +1170,29 @@ class MapFragment : Fragment() {
 
     private fun mergeCuratedImportantPlaces(
         places: List<ImportantPlace>,
-        viewport: SearchViewport?
+        viewport: SearchViewport?,
+        zoom: Double
     ): List<ImportantPlace> {
         val merged = linkedMapOf<String, ImportantPlace>()
         val visiblePlaces = filterPlacesToViewport(places, viewport)
+        val viewportCenter = viewport?.let { currentViewport ->
+            GeoPoint(
+                (currentViewport.north + currentViewport.south) / 2.0,
+                (currentViewport.east + currentViewport.west) / 2.0
+            )
+        }
         visiblePlaces.forEach { place ->
             val key = buildImportantPlaceKey(place)
             merged[key] = place
         }
         curatedImportantPlaces.forEach { curated ->
+            if (zoom < curated.minZoom) return@forEach
             if (!isPointInsideViewport(curated.point, viewport, paddingFactor = 0.2)) return@forEach
+            if (viewportCenter != null &&
+                curated.point.distanceToAsDouble(viewportCenter) > curated.visibleRadiusMeters
+            ) {
+                return@forEach
+            }
             val place = ImportantPlace(
                 title = curated.title,
                 category = curated.category,
@@ -1153,11 +1210,14 @@ class MapFragment : Fragment() {
     ): List<ImportantPlace> {
         val unique = linkedMapOf<String, ImportantPlace>()
         importantPlacesCache.entries
-            .sortedByDescending { it.value.first }
+            .sortedByDescending { it.value.timestampMs }
             .forEach { (_, cachedEntry) ->
-                if (now - cachedEntry.first > importantPlacesCacheTtlMs) return@forEach
+                if (now - cachedEntry.timestampMs > importantPlacesCacheTtlMs) return@forEach
+                if (!doViewportsOverlap(cachedEntry.viewport, viewport, paddingFactor = 0.45)) {
+                    return@forEach
+                }
                 filterPlacesToViewport(
-                    places = cachedEntry.second,
+                    places = cachedEntry.places,
                     viewport = viewport,
                     paddingFactor = paddingFactor
                 ).forEach { place ->
@@ -1221,6 +1281,20 @@ class MapFragment : Fragment() {
         return point.latitude in south..north && point.longitude in west..east
     }
 
+    private fun doViewportsOverlap(
+        first: SearchViewport,
+        second: SearchViewport,
+        paddingFactor: Double = 0.08
+    ): Boolean {
+        val expandedFirst = expandViewport(first, paddingFactor)
+        val expandedSecond = expandViewport(second, paddingFactor)
+        val horizontalOverlap =
+            expandedFirst.west <= expandedSecond.east && expandedSecond.west <= expandedFirst.east
+        val verticalOverlap =
+            expandedFirst.south <= expandedSecond.north && expandedSecond.south <= expandedFirst.north
+        return horizontalOverlap && verticalOverlap
+    }
+
     private fun resolveImportantPlaceCategoryLabel(category: String): String {
         return when (category) {
             "hospital", "clinic" -> "Больница"
@@ -1272,7 +1346,8 @@ class MapFragment : Fragment() {
 
     private fun updateImportantPlaceOverlays(
         places: List<ImportantPlace>,
-        viewport: SearchViewport? = captureSearchViewport()
+        viewport: SearchViewport? = captureSearchViewport(),
+        maxVisibleItems: Int = Int.MAX_VALUE
     ) {
         if (!isAdded || _binding == null) return
         if (!SettingsPreferences.isHighlightImportantPlacesEnabled(requireContext())) {
@@ -1287,8 +1362,13 @@ class MapFragment : Fragment() {
                 isPointInsideViewport(existing.point, viewport, paddingFactor = 1.12)
             }
         }
-        val finalPlaces = dedupeImportantPlaces(retainedPlaces + places)
+        val finalPlaces = limitImportantPlacesForDisplay(
+            places = dedupeImportantPlaces(retainedPlaces + places),
+            viewport = viewport,
+            maxVisibleItems = maxVisibleItems
+        )
         val desiredKeys = finalPlaces.mapTo(linkedSetOf()) { buildImportantPlaceKey(it) }
+        var hasChanges = false
 
         importantPlaceOverlays.entries
             .toList()
@@ -1297,32 +1377,57 @@ class MapFragment : Fragment() {
                 binding.mapView.overlays.remove(marker)
                 importantPlaceOverlays.remove(key)
                 importantPlaceStates.remove(key)
+                importantPlaceIconKeys.remove(key)
+                hasChanges = true
             }
 
         finalPlaces.forEach { place ->
             val key = buildImportantPlaceKey(place)
             val marker = importantPlaceOverlays[key]
+            val snippet = resolveImportantPlaceCategoryLabel(place.category)
+            val iconKey = buildImportantPlaceIconKey(place)
             if (marker == null) {
                 val newMarker = Marker(binding.mapView).apply {
                     position = place.point
                     title = place.title
-                    snippet = resolveImportantPlaceCategoryLabel(place.category)
+                    this.snippet = snippet
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     icon = buildImportantPlaceIconDrawable(place)
                 }
                 importantPlaceOverlays[key] = newMarker
                 importantPlaceStates[key] = place
+                importantPlaceIconKeys[key] = iconKey
                 binding.mapView.overlays.add(newMarker)
+                hasChanges = true
             } else {
-                marker.position = place.point
-                marker.title = place.title
-                marker.snippet = resolveImportantPlaceCategoryLabel(place.category)
-                marker.icon = buildImportantPlaceIconDrawable(place)
+                val previousPlace = importantPlaceStates[key]
+                if (previousPlace == null ||
+                    previousPlace.point.latitude != place.point.latitude ||
+                    previousPlace.point.longitude != place.point.longitude
+                ) {
+                    marker.position = place.point
+                    hasChanges = true
+                }
+                if (marker.title != place.title) {
+                    marker.title = place.title
+                    hasChanges = true
+                }
+                if (marker.snippet != snippet) {
+                    marker.snippet = snippet
+                    hasChanges = true
+                }
+                if (importantPlaceIconKeys[key] != iconKey) {
+                    marker.icon = buildImportantPlaceIconDrawable(place)
+                    importantPlaceIconKeys[key] = iconKey
+                    hasChanges = true
+                }
                 importantPlaceStates[key] = place
             }
         }
 
-        binding.mapView.invalidate()
+        if (hasChanges) {
+            binding.mapView.invalidate()
+        }
     }
 
     private fun clearImportantPlaceOverlays() {
@@ -1330,7 +1435,49 @@ class MapFragment : Fragment() {
         binding.mapView.overlays.removeAll(importantPlaceOverlays.values.toList())
         importantPlaceOverlays.clear()
         importantPlaceStates.clear()
+        importantPlaceIconKeys.clear()
         binding.mapView.invalidate()
+    }
+
+    private fun limitImportantPlacesForDisplay(
+        places: List<ImportantPlace>,
+        viewport: SearchViewport?,
+        maxVisibleItems: Int
+    ): List<ImportantPlace> {
+        if (places.size <= maxVisibleItems) return places
+        val center = viewport?.let {
+            GeoPoint(
+                (it.north + it.south) / 2.0,
+                (it.east + it.west) / 2.0
+            )
+        } ?: binding.mapView.mapCenter ?: return places.take(maxVisibleItems)
+
+        return places
+            .sortedWith(
+                compareBy<ImportantPlace> { resolveImportantPlacePriority(it) }
+                    .thenBy { it.point.distanceToAsDouble(center) }
+            )
+            .take(maxVisibleItems)
+    }
+
+    private fun resolveImportantPlacePriority(place: ImportantPlace): Int {
+        return when {
+            place.title.contains("МИСиС", ignoreCase = true) -> 0
+            place.brandKey != null -> 1
+            place.category in setOf(
+                "hospital",
+                "clinic",
+                "pharmacy",
+                "police",
+                "fire_station",
+                "school",
+                "university",
+                "bus_station",
+                "bank",
+                "atm"
+            ) -> 2
+            else -> 3
+        }
     }
 
     private fun resolveImportantPlaceIconSpec(place: ImportantPlace): Pair<Int, PoiIconCropMode> {
@@ -1357,19 +1504,34 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun buildImportantPlaceIconDrawable(place: ImportantPlace): Drawable? {
-        val iconDp = when {
-            place.brandKey != null && binding.mapView.zoomLevelDouble >= 17.0 -> 28
-            place.brandKey != null && binding.mapView.zoomLevelDouble >= 15.0 -> 26
-            place.brandKey != null -> 24
-            binding.mapView.zoomLevelDouble >= 17.0 -> 24
-            binding.mapView.zoomLevelDouble >= 15.0 -> 22
-            binding.mapView.zoomLevelDouble >= 13.0 -> 20
-            else -> 18
-        }
+    private fun buildImportantPlaceIconKey(place: ImportantPlace): String {
+        val iconDp = resolveImportantPlaceIconSizeDp(place, binding.mapView.zoomLevelDouble)
         val iconPx = (iconDp * resources.displayMetrics.density)
             .toInt()
-            .coerceAtLeast(18)
+            .coerceAtLeast(14)
+        val (iconRes, cropMode) = resolveImportantPlaceIconSpec(place)
+        return "$iconRes:$iconPx:$cropMode"
+    }
+
+    private fun resolveImportantPlaceIconSizeDp(place: ImportantPlace, zoom: Double): Int {
+        return when {
+            place.brandKey != null && zoom >= 17.0 -> 20
+            place.brandKey != null && zoom >= 15.0 -> 18
+            place.brandKey != null && zoom >= 13.0 -> 16
+            place.brandKey != null -> 14
+            zoom >= 17.0 -> 17
+            zoom >= 15.0 -> 15
+            zoom >= 13.0 -> 13
+            zoom >= 11.0 -> 12
+            else -> 11
+        }
+    }
+
+    private fun buildImportantPlaceIconDrawable(place: ImportantPlace): Drawable? {
+        val iconDp = resolveImportantPlaceIconSizeDp(place, binding.mapView.zoomLevelDouble)
+        val iconPx = (iconDp * resources.displayMetrics.density)
+            .toInt()
+            .coerceAtLeast(14)
         val (iconRes, cropMode) = resolveImportantPlaceIconSpec(place)
         val cacheKey = "$iconRes:$iconPx:$cropMode"
         importantPlaceIconCache[cacheKey]
@@ -3022,7 +3184,7 @@ class MapFragment : Fragment() {
             !hasSavedViewport
         applyMapPresentation()
         refreshDisplayedMarkers()
-        scheduleImportantPlacesRefresh()
+        scheduleImportantPlacesRefresh(immediate = true)
         selectedTask?.let {
             binding.mapView.controller.animateTo(GeoPoint(it.latitude, it.longitude))
         }
@@ -3036,6 +3198,8 @@ class MapFragment : Fragment() {
         super.onPause()
         saveCurrentMapViewport()
         binding.mapView.onPause()
+        importantPlacesRefreshRunnable?.let { uiHandler.removeCallbacks(it) }
+        importantPlacesRefreshRunnable = null
         importantPlacesRefreshJob?.cancel()
         prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
         prefetchTilesRunnable = null
@@ -3054,6 +3218,8 @@ class MapFragment : Fragment() {
         restoreBottomNavRunnable = null
         restoreMapHudRunnable?.let { uiHandler.removeCallbacks(it) }
         restoreMapHudRunnable = null
+        importantPlacesRefreshRunnable?.let { uiHandler.removeCallbacks(it) }
+        importantPlacesRefreshRunnable = null
         prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
         prefetchTilesRunnable = null
         activeTilePrefetchTask?.cancel(true)
