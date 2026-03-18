@@ -206,6 +206,7 @@ class MapFragment : Fragment() {
         val title: String,
         val category: String,
         val point: GeoPoint,
+        val brandKey: String? = null,
         val minZoom: Double,
         val visibleRadiusMeters: Double
     )
@@ -214,13 +215,13 @@ class MapFragment : Fragment() {
         val radiusMeters: Int,
         val maxItems: Int,
         val amenityRegex: String,
-        val includeShopLayer: Boolean,
-        val includeTourismLayer: Boolean
+        val includeShopLayer: Boolean
     )
 
     private enum class PoiIconCropMode {
         FIT,
-        TOP_BADGE
+        TOP_BADGE,
+        WIDE_FIT
     }
 
     private data class MarkerIconOption(
@@ -249,10 +250,17 @@ class MapFragment : Fragment() {
             title = "Новотроицкий филиал МИСиС",
             category = "university",
             point = GeoPoint(51.1949998, 58.3101847),
+            brandKey = "misis",
             minZoom = 14.2,
             visibleRadiusMeters = 4500.0
         )
     )
+
+    // Базовый размер иконок для POI: Магнит, Пятёрочка и банк.
+    private val defaultPoiIconDp = 18f
+    // МИСИС оставляем в более широком формате, так как логотип прямоугольный.
+    private val misisPoiIconHeightDp = 20f
+    private val misisPoiIconWidthDp = 40f
 
     private val markerColorOptions = listOf(
         MarkerColorOption(R.id.color_blue, R.color.marker_blue, R.string.marker_color_blue),
@@ -799,45 +807,39 @@ class MapFragment : Fragment() {
         return when {
             zoom >= 17.5 -> ImportantPlacesConfig(
                 radiusMeters = 650,
-                maxItems = 28,
-                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library|parking",
-                includeShopLayer = true,
-                includeTourismLayer = true
+                maxItems = 18,
+                amenityRegex = "bank|atm",
+                includeShopLayer = true
             )
             zoom >= 16.0 -> ImportantPlacesConfig(
                 radiusMeters = 1000,
-                maxItems = 24,
-                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|kindergarten|cafe|restaurant|fast_food|bank|atm|post_office|library",
-                includeShopLayer = true,
-                includeTourismLayer = true
+                maxItems = 14,
+                amenityRegex = "bank|atm",
+                includeShopLayer = true
             )
             zoom >= 14.5 -> ImportantPlacesConfig(
                 radiusMeters = 1600,
-                maxItems = 18,
-                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|college|university|cafe|restaurant|fast_food|bank",
-                includeShopLayer = true,
-                includeTourismLayer = false
+                maxItems = 10,
+                amenityRegex = "bank|atm",
+                includeShopLayer = true
             )
             zoom >= 12.5 -> ImportantPlacesConfig(
                 radiusMeters = 2200,
-                maxItems = 13,
-                amenityRegex = "hospital|clinic|pharmacy|police|fire_station|fuel|bus_station|school|university|bank",
-                includeShopLayer = false,
-                includeTourismLayer = false
+                maxItems = 8,
+                amenityRegex = "bank|atm",
+                includeShopLayer = true
             )
             zoom >= 10.0 -> ImportantPlacesConfig(
                 radiusMeters = 2800,
-                maxItems = 9,
-                amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
-                includeShopLayer = false,
-                includeTourismLayer = false
+                maxItems = 6,
+                amenityRegex = "bank|atm",
+                includeShopLayer = true
             )
             else -> ImportantPlacesConfig(
                 radiusMeters = 3600,
-                maxItems = 6,
-                amenityRegex = "hospital|clinic|pharmacy|fuel|police|fire_station|school|university|bus_station",
-                includeShopLayer = false,
-                includeTourismLayer = false
+                maxItems = 5,
+                amenityRegex = "bank|atm",
+                includeShopLayer = true
             )
         }
     }
@@ -863,8 +865,7 @@ class MapFragment : Fragment() {
             spanBucket.toString(),
             config.radiusMeters.toString(),
             config.maxItems.toString(),
-            config.includeShopLayer.toString(),
-            config.includeTourismLayer.toString()
+            config.includeShopLayer.toString()
         ).joinToString(":")
     }
 
@@ -896,18 +897,8 @@ class MapFragment : Fragment() {
         val east = maxOf(box.west, box.east)
         val shopLayer = if (config.includeShopLayer) {
             """
-              node($south,$west,$north,$east)["shop"~"supermarket|convenience|mall|department_store"];
-              way($south,$west,$north,$east)["shop"~"supermarket|convenience|mall|department_store"];
-            """.trimIndent()
-        } else {
-            ""
-        }
-        val tourismLayer = if (config.includeTourismLayer) {
-            """
-              node($south,$west,$north,$east)["tourism"~"attraction|museum|viewpoint"];
-              way($south,$west,$north,$east)["tourism"~"attraction|museum|viewpoint"];
-              node($south,$west,$north,$east)["leisure"="park"];
-              way($south,$west,$north,$east)["leisure"="park"];
+              node($south,$west,$north,$east)["shop"~"supermarket|convenience"];
+              way($south,$west,$north,$east)["shop"~"supermarket|convenience"];
             """.trimIndent()
         } else {
             ""
@@ -919,7 +910,6 @@ class MapFragment : Fragment() {
               node($south,$west,$north,$east)["amenity"~"${config.amenityRegex}"];
               way($south,$west,$north,$east)["amenity"~"${config.amenityRegex}"];
               $shopLayer
-              $tourismLayer
             );
             out center;
         """.trimIndent()
@@ -980,12 +970,8 @@ class MapFragment : Fragment() {
         val box = viewport ?: return@supervisorScope emptyList()
         val endpoint = nominatimSearchUrl.toHttpUrlOrNull() ?: return@supervisorScope emptyList()
         val queryPairs = listOf(
-            "pharmacy" to "pharmacy",
-            "hospital" to "hospital",
-            "supermarket" to "supermarket",
-            "cafe" to "cafe",
-            "school" to "school",
-            "university" to "university",
+            "магнит" to "supermarket",
+            "пятерочка" to "supermarket",
             "bank" to "bank",
             "atm" to "bank"
         )
@@ -1057,6 +1043,7 @@ class MapFragment : Fragment() {
                 brand = item.optString("name"),
                 category = category
             )
+            if (!isSupportedImportantPlace(category, brandKey)) continue
 
             result += ImportantPlace(
                 title = title,
@@ -1079,16 +1066,17 @@ class MapFragment : Fragment() {
             .lowercase(Locale.ROOT)
 
         return when {
-            raw.contains("pharmacy") -> "pharmacy"
-            raw.contains("hospital") || raw.contains("clinic") -> "hospital"
-            raw.contains("university") -> "university"
-            raw.contains("school") || raw.contains("college") -> "school"
             raw.contains("supermarket") || raw.contains("shop") || raw.contains("mall") -> "supermarket"
-            raw.contains("cafe") || raw.contains("restaurant") || raw.contains("fast_food") -> "cafe"
-            raw.contains("fuel") -> "fuel"
             raw.contains("bank") || raw.contains("atm") -> "bank"
             else -> fallbackCategory
         }
+    }
+
+    private fun isSupportedImportantPlace(category: String, brandKey: String?): Boolean {
+        if (brandKey == "magnit" || brandKey == "pyaterochka" || brandKey == "misis") {
+            return true
+        }
+        return category == "bank" || category == "atm"
     }
 
     private fun prioritizedOverpassApiUrls(): List<String> {
@@ -1169,6 +1157,7 @@ class MapFragment : Fragment() {
                 brand = brand,
                 category = category
             )
+            if (!isSupportedImportantPlace(category, brandKey)) continue
             val key = "${lat.format(5)}:${lon.format(5)}:$category"
             unique[key] = ImportantPlace(
                 title = title,
@@ -1210,7 +1199,8 @@ class MapFragment : Fragment() {
             val place = ImportantPlace(
                 title = curated.title,
                 category = curated.category,
-                point = curated.point
+                point = curated.point,
+                brandKey = curated.brandKey
             )
             merged[buildImportantPlaceKey(place)] = place
         }
@@ -1339,15 +1329,19 @@ class MapFragment : Fragment() {
         brand: String?,
         category: String
     ): String? {
-        if (category == "bank" || category == "atm") {
-            return "bank_generic"
-        }
-
         val probe = buildString {
             append(title)
             append(' ')
             append(brand.orEmpty())
         }.lowercase(Locale.ROOT)
+
+        if (probe.contains("мисис") || probe.contains("misis")) {
+            return "misis"
+        }
+
+        if (category == "bank" || category == "atm") {
+            return "bank_generic"
+        }
 
         return when {
             probe.contains("магнит") || probe.contains("magnit") -> "magnit"
@@ -1476,20 +1470,9 @@ class MapFragment : Fragment() {
 
     private fun resolveImportantPlacePriority(place: ImportantPlace): Int {
         return when {
-            place.title.contains("МИСиС", ignoreCase = true) -> 0
-            place.brandKey != null -> 1
-            place.category in setOf(
-                "hospital",
-                "clinic",
-                "pharmacy",
-                "police",
-                "fire_station",
-                "school",
-                "university",
-                "bus_station",
-                "bank",
-                "atm"
-            ) -> 2
+            place.brandKey == "misis" || place.title.contains("МИСиС", ignoreCase = true) -> 0
+            place.brandKey == "magnit" || place.brandKey == "pyaterochka" -> 1
+            place.category == "bank" || place.category == "atm" || place.brandKey == "bank_generic" -> 2
             else -> 3
         }
     }
@@ -1499,55 +1482,43 @@ class MapFragment : Fragment() {
             "magnit" -> R.drawable.ic_poi_brand_magnit to PoiIconCropMode.FIT
             "pyaterochka" -> R.drawable.ic_poi_brand_pyaterochka to PoiIconCropMode.TOP_BADGE
             "bank_generic" -> R.drawable.ic_poi_bank_generic to PoiIconCropMode.FIT
+            "misis" -> R.drawable.ic_poi_brand_misis to PoiIconCropMode.WIDE_FIT
             else -> {
-                val iconRes = when (place.category) {
-                    "hospital", "clinic" -> R.drawable.ic_poi_hospital
-                    "pharmacy" -> R.drawable.ic_poi_pharmacy
-                    "school", "college", "university", "kindergarten", "library" ->
-                        R.drawable.ic_poi_education
-                    "supermarket", "convenience", "mall", "department_store" ->
-                        R.drawable.ic_poi_shop
-                    "cafe", "restaurant", "fast_food" -> R.drawable.ic_poi_cafe
-                    "bus_station", "fuel", "police", "fire_station", "bank", "atm",
-                    "post_office", "parking", "museum", "attraction", "viewpoint", "park" ->
-                        R.drawable.ic_poi_place
-                    else -> R.drawable.ic_poi_default_pin
+                when {
+                    place.title.contains("МИСиС", ignoreCase = true) ->
+                        R.drawable.ic_poi_brand_misis to PoiIconCropMode.WIDE_FIT
+                    place.category == "bank" || place.category == "atm" ->
+                        R.drawable.ic_poi_bank_generic to PoiIconCropMode.FIT
+                    else ->
+                        R.drawable.ic_poi_default_pin to PoiIconCropMode.FIT
                 }
-                iconRes to PoiIconCropMode.FIT
             }
         }
     }
 
     private fun buildImportantPlaceIconKey(place: ImportantPlace): String {
-        val iconDp = resolveImportantPlaceIconSizeDp(place, binding.mapView.zoomLevelDouble)
-        val iconPx = (iconDp * resources.displayMetrics.density)
-            .toInt()
-            .coerceAtLeast(14)
+        val (iconWidthPx, iconHeightPx) = resolveImportantPlaceIconSizePx(place)
         val (iconRes, cropMode) = resolveImportantPlaceIconSpec(place)
-        return "$iconRes:$iconPx:$cropMode"
+        return "$iconRes:${iconWidthPx}x${iconHeightPx}:$cropMode"
     }
 
-    private fun resolveImportantPlaceIconSizeDp(place: ImportantPlace, zoom: Double): Int {
-        return when {
-            place.brandKey != null && zoom >= 17.0 -> 20
-            place.brandKey != null && zoom >= 15.0 -> 18
-            place.brandKey != null && zoom >= 13.0 -> 16
-            place.brandKey != null -> 14
-            zoom >= 17.0 -> 17
-            zoom >= 15.0 -> 15
-            zoom >= 13.0 -> 13
-            zoom >= 11.0 -> 12
-            else -> 11
+    private fun resolveImportantPlaceIconSizePx(place: ImportantPlace): Pair<Int, Int> {
+        val density = resources.displayMetrics.density
+        return if (place.brandKey == "misis" || place.title.contains("МИСиС", ignoreCase = true)) {
+            val width = (misisPoiIconWidthDp * density).roundToInt().coerceAtLeast(44)
+            val height = (misisPoiIconHeightDp * density).roundToInt().coerceAtLeast(22)
+            width to height
+        } else {
+            // Все обычные POI выравниваем по размеру значка Магнита.
+            val side = (defaultPoiIconDp * density).roundToInt().coerceAtLeast(20)
+            side to side
         }
     }
 
     private fun buildImportantPlaceIconDrawable(place: ImportantPlace): Drawable? {
-        val iconDp = resolveImportantPlaceIconSizeDp(place, binding.mapView.zoomLevelDouble)
-        val iconPx = (iconDp * resources.displayMetrics.density)
-            .toInt()
-            .coerceAtLeast(14)
+        val (iconWidthPx, iconHeightPx) = resolveImportantPlaceIconSizePx(place)
         val (iconRes, cropMode) = resolveImportantPlaceIconSpec(place)
-        val cacheKey = "$iconRes:$iconPx:$cropMode"
+        val cacheKey = "$iconRes:${iconWidthPx}x${iconHeightPx}:$cropMode"
         importantPlaceIconCache[cacheKey]
             ?.constantState
             ?.newDrawable(resources)
@@ -1562,13 +1533,14 @@ class MapFragment : Fragment() {
         val bitmap = when (source) {
             is BitmapDrawable -> renderPoiBitmap(
                 source = source.bitmap ?: return null,
-                iconPx = iconPx,
+                iconWidthPx = iconWidthPx,
+                iconHeightPx = iconHeightPx,
                 cropMode = cropMode
             )
             else -> {
-                Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888).also { bitmap ->
+                Bitmap.createBitmap(iconWidthPx, iconHeightPx, Bitmap.Config.ARGB_8888).also { bitmap ->
                     val canvas = Canvas(bitmap)
-                    source.setBounds(0, 0, iconPx, iconPx)
+                    source.setBounds(0, 0, iconWidthPx, iconHeightPx)
                     source.draw(canvas)
                 }
             }
@@ -1580,7 +1552,8 @@ class MapFragment : Fragment() {
 
     private fun renderPoiBitmap(
         source: Bitmap,
-        iconPx: Int,
+        iconWidthPx: Int,
+        iconHeightPx: Int,
         cropMode: PoiIconCropMode
     ): Bitmap {
         val preparedSource = when (cropMode) {
@@ -1589,11 +1562,34 @@ class MapFragment : Fragment() {
                 val left = ((source.width - cropSide) / 2).coerceAtLeast(0)
                 Bitmap.createBitmap(source, left, 0, cropSide, cropSide.coerceAtMost(source.height))
             }
+            PoiIconCropMode.WIDE_FIT -> source
             PoiIconCropMode.FIT -> source
         }
 
         return try {
-            Bitmap.createScaledBitmap(preparedSource, iconPx, iconPx, true)
+            when (cropMode) {
+                PoiIconCropMode.WIDE_FIT -> {
+                    val safeWidth = iconWidthPx.coerceAtLeast(2)
+                    val safeHeight = iconHeightPx.coerceAtLeast(2)
+                    val scale = min(
+                        safeWidth.toFloat() / preparedSource.width.toFloat(),
+                        safeHeight.toFloat() / preparedSource.height.toFloat()
+                    )
+                    val targetWidth = (preparedSource.width * scale).roundToInt().coerceAtLeast(1)
+                    val targetHeight = (preparedSource.height * scale).roundToInt().coerceAtLeast(1)
+                    val scaled = Bitmap.createScaledBitmap(preparedSource, targetWidth, targetHeight, true)
+                    Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.ARGB_8888).also { canvasBitmap ->
+                        val canvas = Canvas(canvasBitmap)
+                        val left = (safeWidth - targetWidth) / 2f
+                        val top = (safeHeight - targetHeight) / 2f
+                        canvas.drawBitmap(scaled, left, top, null)
+                        if (scaled !== preparedSource && !scaled.isRecycled) {
+                            scaled.recycle()
+                        }
+                    }
+                }
+                else -> Bitmap.createScaledBitmap(preparedSource, iconWidthPx, iconHeightPx, true)
+            }
         } finally {
             if (preparedSource !== source && !preparedSource.isRecycled) {
                 preparedSource.recycle()
@@ -1820,7 +1816,7 @@ class MapFragment : Fragment() {
     }
 
     private fun buildSearchResultIconDrawable(): Drawable? {
-        val iconPx = (26f * resources.displayMetrics.density).roundToInt().coerceAtLeast(36)
+        val iconPx = (defaultPoiIconDp * resources.displayMetrics.density).roundToInt().coerceAtLeast(20)
         val cacheKey = "search_result_pin:$iconPx"
         importantPlaceIconCache[cacheKey]
             ?.constantState
