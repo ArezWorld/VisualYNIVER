@@ -19,7 +19,7 @@ object InAppUpdateManager {
     private const val KEY_PENDING_APK_PATH = "pending_apk_path"
     private const val KEY_CLEAR_DATA_AFTER_INSTALL = "clear_data_after_install"
     private const val KEY_UNKNOWN_SOURCES_PROMPT_SHOWN = "unknown_sources_prompt_shown"
-    private const val UPDATE_FILE_NAME = "AOT-update.apk"
+    private const val DEFAULT_UPDATE_FILE_NAME = "AOT-update.apk"
 
     fun startBackgroundDownload(context: Context, apkUrl: String): Result<Long> {
         return runCatching {
@@ -43,7 +43,8 @@ object InAppUpdateManager {
 
             val targetDir = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                 ?: throw IllegalStateException("External files dir unavailable")
-            val targetFile = File(targetDir, UPDATE_FILE_NAME)
+            val targetFileName = resolveTargetApkName(apkUrl)
+            val targetFile = File(targetDir, targetFileName)
             if (targetFile.exists()) {
                 targetFile.delete()
             }
@@ -59,7 +60,7 @@ object InAppUpdateManager {
                 .setDestinationInExternalFilesDir(
                     appContext,
                     Environment.DIRECTORY_DOWNLOADS,
-                    UPDATE_FILE_NAME
+                    targetFileName
                 )
 
             val downloadId = downloadManager.enqueue(request)
@@ -251,6 +252,23 @@ object InAppUpdateManager {
                 "${context.packageName}.fileprovider",
                 file
             )
+        }
+    }
+
+    private fun resolveTargetApkName(apkUrl: String): String {
+        val rawName = Uri.parse(apkUrl)
+            .lastPathSegment
+            ?.substringAfterLast('/')
+            ?.trim()
+            .orEmpty()
+        if (rawName.isBlank()) return DEFAULT_UPDATE_FILE_NAME
+
+        val sanitized = rawName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        if (sanitized.isBlank()) return DEFAULT_UPDATE_FILE_NAME
+        return if (sanitized.endsWith(".apk", ignoreCase = true)) {
+            sanitized
+        } else {
+            "$sanitized.apk"
         }
     }
 

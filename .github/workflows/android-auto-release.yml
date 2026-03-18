@@ -62,7 +62,7 @@ jobs:
           echo "APP_VERSION_CODE=${APP_VERSION_CODE}" >> "$GITHUB_ENV"
           echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
           echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_ENV"
-          echo "APK_NAME=AOT-latest.apk" >> "$GITHUB_ENV"
+          echo "APK_NAME=AOT-${APP_VERSION_NAME}.apk" >> "$GITHUB_ENV"
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug --stacktrace

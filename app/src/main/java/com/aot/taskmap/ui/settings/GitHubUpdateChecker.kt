@@ -121,6 +121,10 @@ object GitHubUpdateChecker {
     private fun buildTaggedApkUrl(tagName: String): String? {
         val normalizedTag = tagName.trim()
         if (normalizedTag.isBlank()) return null
-        return "https://github.com/${BuildConfig.UPDATE_REPO_OWNER}/${BuildConfig.UPDATE_REPO_NAME}/releases/download/$normalizedTag/AOT-latest.apk"
+        val normalizedVersion = normalizedTag
+            .removePrefix("v")
+            .removePrefix("V")
+            .ifBlank { normalizedTag }
+        return "https://github.com/${BuildConfig.UPDATE_REPO_OWNER}/${BuildConfig.UPDATE_REPO_NAME}/releases/download/$normalizedTag/AOT-$normalizedVersion.apk"
     }
 }
