@@ -258,9 +258,11 @@ class MapFragment : Fragment() {
 
     // Базовый размер иконок для POI: Магнит, Пятёрочка и банк.
     private val defaultPoiIconDp = 18f
+    // Банковские иконки делаем немного крупнее базовых.
+    private val bankPoiIconDp = 20f
     // МИСИС оставляем в более широком формате, так как логотип прямоугольный.
-    private val misisPoiIconHeightDp = 20f
-    private val misisPoiIconWidthDp = 40f
+    private val misisPoiIconHeightDp = 28f
+    private val misisPoiIconWidthDp = 56f
 
     private val markerColorOptions = listOf(
         MarkerColorOption(R.id.color_blue, R.color.marker_blue, R.string.marker_color_blue),
@@ -1508,6 +1510,9 @@ class MapFragment : Fragment() {
             val width = (misisPoiIconWidthDp * density).roundToInt().coerceAtLeast(44)
             val height = (misisPoiIconHeightDp * density).roundToInt().coerceAtLeast(22)
             width to height
+        } else if (place.category == "bank" || place.category == "atm" || place.brandKey == "bank_generic") {
+            val side = (bankPoiIconDp * density).roundToInt().coerceAtLeast(22)
+            side to side
         } else {
             // Все обычные POI выравниваем по размеру значка Магнита.
             val side = (defaultPoiIconDp * density).roundToInt().coerceAtLeast(20)

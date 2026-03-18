@@ -42,27 +42,33 @@ jobs:
           IS_PRERELEASE="true"
 
           git fetch --tags --force
-          LAST_STABLE_TAG=$(git tag -l "v${BASE_SERIES}.*" --sort=-v:refname | grep -E "^v${BASE_SERIES}\\.[0-9]+$" | head -n1 || true)
-          if [ -z "$LAST_STABLE_TAG" ]; then
-            NEXT_PATCH=1
-          else
-            LAST_PATCH=${LAST_STABLE_TAG##*.}
-            if [[ "$LAST_PATCH" =~ ^[0-9]+$ ]]; then
-              NEXT_PATCH=$((LAST_PATCH + 1))
-            else
-              NEXT_PATCH=1
+          MAX_PATCH=0
+          while IFS= read -r TAG; do
+            if [[ "$TAG" =~ ^v${BASE_SERIES}\.([0-9]+)([-/][A-Za-z0-9._-]+)?$ ]]; then
+              PATCH_NUMBER="${BASH_REMATCH[1]}"
+              if [[ "$PATCH_NUMBER" =~ ^[0-9]+$ ]] && [ "$PATCH_NUMBER" -gt "$MAX_PATCH" ]; then
+                MAX_PATCH="$PATCH_NUMBER"
+              fi
             fi
-          fi
+          done < <(git tag -l "v${BASE_SERIES}*" --sort=-v:refname)
+          NEXT_PATCH=$((MAX_PATCH + 1))
 
-          APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
           APP_VERSION_CODE=$((16000 + NEXT_PATCH))
-          TAG_NAME="v${APP_VERSION_NAME}"
+          if [ "$NEXT_PATCH" -eq 5 ]; then
+            # Специальное исключение по запросу: версия 1.6.5/a
+            APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}/a"
+            TAG_VERSION="${BASE_SERIES}.${NEXT_PATCH}-a"
+          else
+            APP_VERSION_NAME="${BASE_SERIES}.${NEXT_PATCH}"
+            TAG_VERSION="${APP_VERSION_NAME}"
+          fi
+          TAG_NAME="v${TAG_VERSION}"
 
           echo "APP_VERSION_NAME=${APP_VERSION_NAME}" >> "$GITHUB_ENV"
           echo "APP_VERSION_CODE=${APP_VERSION_CODE}" >> "$GITHUB_ENV"
           echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
           echo "IS_PRERELEASE=${IS_PRERELEASE}" >> "$GITHUB_ENV"
-          echo "APK_NAME=AOT-${APP_VERSION_NAME}.apk" >> "$GITHUB_ENV"
+          echo "APK_NAME=AOT-${TAG_VERSION}.apk" >> "$GITHUB_ENV"
 
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug --stacktrace
