@@ -14,6 +14,8 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.location.Geocoder
 import android.os.Bundle
 import android.os.Handler
@@ -33,6 +35,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -42,6 +45,7 @@ import androidx.annotation.StringRes
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -105,7 +109,7 @@ class MapFragment : Fragment() {
         private const val MIN_MAP_ZOOM = 4.0
         private const val MAX_MAP_ZOOM = 20.0
         private const val SEARCH_LABEL_PART_SEPARATOR = " \u00b7 "
-        private const val SEARCH_DUPLICATE_DISTANCE_METERS = 90.0
+        private const val SEARCH_DUPLICATE_DISTANCE_METERS = 260.0
         private val WORLD_BOUNDING_BOX = BoundingBox(85.0, 180.0, -85.0, -180.0)
     }
 
@@ -127,6 +131,8 @@ class MapFragment : Fragment() {
     private val recentPlaces = mutableListOf<Pair<String, GeoPoint>>()
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
     private lateinit var searchAdapter: ArrayAdapter<String>
+    private var searchDropdownBackground: Drawable? = null
+    private var searchSuggestionRowBackground: Drawable? = null
     private var searchSuggestionJob: Job? = null
     private var importantPlacesRefreshJob: Job? = null
     private var isImportantPlacesFetchInFlight = false
@@ -415,30 +421,10 @@ class MapFragment : Fragment() {
 
     private fun setupSearch() {
         loadRecentPlaces()
-        searchAdapter = object : ArrayAdapter<String>(
-            requireContext(),
-            R.layout.item_search_suggestion,
-            android.R.id.text1,
-            mutableListOf()
-        ) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                val textView = view.findViewById<TextView>(android.R.id.text1)
-                styleSearchSuggestionText(textView, getItem(position).orEmpty())
-                return view
-            }
-
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getDropDownView(position, convertView, parent)
-                val textView = view.findViewById<TextView>(android.R.id.text1)
-                styleSearchSuggestionText(textView, getItem(position).orEmpty())
-                return view
-            }
-        }
+        searchAdapter = createSearchSuggestionAdapter(mutableListOf())
         binding.searchQuery.setAdapter(searchAdapter)
         binding.searchQuery.threshold = 1
-        binding.searchQuery.dropDownVerticalOffset = (8f * resources.displayMetrics.density).roundToInt()
-        binding.searchQuery.setDropDownBackgroundResource(R.drawable.bg_search_dropdown)
+        applySearchPopupTheme()
 
         binding.buttonSearch.setOnClickListener {
             val query = binding.searchQuery.text?.toString()?.trim().orEmpty()
@@ -503,6 +489,105 @@ class MapFragment : Fragment() {
                 loadSearchSuggestions(query)
             }
         })
+    }
+
+    private fun createSearchSuggestionAdapter(items: MutableList<String>): ArrayAdapter<String> {
+        return object : ArrayAdapter<String>(
+            requireContext(),
+            R.layout.item_search_suggestion,
+            android.R.id.text1,
+            items
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                return getDropDownView(position, convertView, parent)
+            }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getDropDownView(position, convertView, parent)
+                styleSearchSuggestionRow(view, getItem(position).orEmpty())
+                return view
+            }
+        }
+    }
+
+    private fun applySearchPopupTheme() {
+        searchDropdownBackground = buildSearchDropdownBackground()
+        searchSuggestionRowBackground = buildSearchSuggestionRowBackground()
+        binding.searchQuery.dropDownVerticalOffset = dpToPx(8f)
+        binding.searchQuery.setDropDownBackgroundDrawable(
+            searchDropdownBackground
+                ?.constantState
+                ?.newDrawable(resources)
+                ?.mutate()
+                ?: buildSearchDropdownBackground()
+        )
+    }
+
+    private fun styleSearchSuggestionRow(view: View, raw: String) {
+        val textView = view.findViewById<TextView>(android.R.id.text1)
+        styleSearchSuggestionText(textView, raw)
+
+        val background = searchSuggestionRowBackground
+            ?.constantState
+            ?.newDrawable(resources)
+            ?.mutate()
+            ?: buildSearchSuggestionRowBackground()
+        view.background = background
+
+        val iconView = view.findViewById<ImageView>(R.id.icon_search_item)
+        val primaryColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorPrimary)
+        val onSurfaceColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurface)
+        val blendedIcon = ColorUtils.blendARGB(primaryColor, onSurfaceColor, 0.16f)
+        iconView.imageTintList = ColorStateList.valueOf(blendedIcon)
+    }
+
+    private fun buildSearchDropdownBackground(): Drawable {
+        val surfaceColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSurface)
+        val primaryColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+        val isDarkSurface = Color.luminance(surfaceColor) < 0.45f
+        val fillColor = ColorUtils.blendARGB(surfaceColor, primaryColor, if (isDarkSurface) 0.08f else 0.02f)
+        val strokeColor = ColorUtils.blendARGB(primaryColor, surfaceColor, if (isDarkSurface) 0.35f else 0.52f)
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(14f).toFloat()
+            setColor(fillColor)
+            setStroke(dpToPx(1f), strokeColor)
+        }
+    }
+
+    private fun buildSearchSuggestionRowBackground(): Drawable {
+        val surfaceColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSurface)
+        val primaryColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+        val secondaryColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondary)
+        val isDarkSurface = Color.luminance(surfaceColor) < 0.45f
+
+        val normalFill = ColorUtils.blendARGB(surfaceColor, secondaryColor, if (isDarkSurface) 0.11f else 0.05f)
+        val normalStroke = ColorUtils.blendARGB(secondaryColor, primaryColor, if (isDarkSurface) 0.55f else 0.35f)
+        val pressedFill = ColorUtils.blendARGB(surfaceColor, primaryColor, if (isDarkSurface) 0.22f else 0.15f)
+        val pressedStroke = ColorUtils.blendARGB(primaryColor, Color.WHITE, if (isDarkSurface) 0.20f else 0.04f)
+
+        val normal = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(12f).toFloat()
+            setColor(normalFill)
+            setStroke(dpToPx(1f), normalStroke)
+        }
+        val pressed = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(12f).toFloat()
+            setColor(pressedFill)
+            setStroke(dpToPx(2f), pressedStroke)
+        }
+
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_pressed), pressed)
+            addState(intArrayOf(android.R.attr.state_selected), pressed)
+            addState(intArrayOf(), normal)
+        }
+    }
+
+    private fun dpToPx(dp: Float): Int {
+        return (dp * resources.displayMetrics.density).roundToInt().coerceAtLeast(1)
     }
 
     private fun loadRecentPlaces() {
@@ -1847,13 +1932,14 @@ class MapFragment : Fragment() {
         secondLabel: String,
         secondPoint: GeoPoint
     ): Boolean {
-        val distance = firstPoint.distanceToAsDouble(secondPoint)
-        if (distance > SEARCH_DUPLICATE_DISTANCE_METERS) return false
-
         val firstCanonical = normalizeSearchCanonical(firstLabel)
         val secondCanonical = normalizeSearchCanonical(secondLabel)
         if (firstCanonical.isBlank() || secondCanonical.isBlank()) return false
         if (firstCanonical == secondCanonical) return true
+
+        val distance = firstPoint.distanceToAsDouble(secondPoint)
+        if (distance > SEARCH_DUPLICATE_DISTANCE_METERS) return false
+
         if (firstCanonical.contains(secondCanonical) || secondCanonical.contains(firstCanonical)) {
             return true
         }
@@ -2013,10 +2099,11 @@ class MapFragment : Fragment() {
     }
 
     private fun showSearchResultsDialog(results: List<Pair<String, GeoPoint>>) {
-        val titles = results.map { it.first }.toTypedArray()
+        val titles = results.map { it.first }
+        val listAdapter = createSearchSuggestionAdapter(titles.toMutableList())
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(getString(R.string.search_choose_title))
-            .setItems(titles) { _, index ->
+            .setAdapter(listAdapter) { _, index ->
                 val (title, point) = results[index]
                 binding.searchQuery.setText(title, false)
                 moveToSearchResult(title, point)

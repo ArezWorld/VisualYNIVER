@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/search_suggestion_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="6dp"
     android:layout_marginTop="4dp"
     android:layout_marginEnd="6dp"
     android:layout_marginBottom="4dp"
-    android:background="@drawable/bg_search_suggestion_item"
     android:gravity="center_vertical"
     android:minHeight="44dp"
     android:orientation="horizontal"
@@ -17,12 +17,13 @@
     android:paddingBottom="10dp">
 
     <ImageView
+        android:id="@+id/icon_search_item"
         android:layout_width="16dp"
         android:layout_height="16dp"
         android:layout_marginEnd="10dp"
         android:alpha="0.82"
         android:src="@drawable/ic_search"
-        app:tint="@color/search_suggestion_icon_tint" />
+        app:tint="?attr/colorPrimary" />
 
     <TextView
         android:id="@android:id/text1"
