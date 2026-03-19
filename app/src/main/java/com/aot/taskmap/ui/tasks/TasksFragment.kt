@@ -145,7 +145,9 @@ class TasksFragment : Fragment() {
     }
 
     private fun exportTasks() {
-        val tasksToShare = (activeTasksCache + completedTasksCache).distinctBy { it.id }
+        val tasksToShare = activeTasksCache
+            .filterNot { it.isCompleted }
+            .distinctBy { it.id }
         if (tasksToShare.isEmpty()) {
             Toast.makeText(requireContext(), getString(R.string.tasks_export_empty), Toast.LENGTH_SHORT).show()
             return

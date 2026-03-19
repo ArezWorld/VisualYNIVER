@@ -4,9 +4,9 @@ plugins {
     id 'com.google.devtools.ksp'
 }
 
-def baseVersionSeries = "1.6"
-def defaultVersionPatch = 1
-def defaultVersionCode = 16001
+def baseVersionSeries = "1.7"
+def defaultVersionPatch = 0
+def defaultVersionCode = 17000
 def envVersionName = System.getenv("APP_VERSION_NAME")
 def envVersionCodeRaw = System.getenv("APP_VERSION_CODE")
 def envVersionCode = envVersionCodeRaw?.isInteger() ? envVersionCodeRaw.toInteger() : null
@@ -47,6 +47,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // Для GitHub-релизов используем подписанный release APK (debug keystore).
+            // Это не Play Store signing, но даёт стабильный installable release-артефакт.
+            signingConfig signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

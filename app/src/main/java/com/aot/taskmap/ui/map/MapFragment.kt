@@ -34,6 +34,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.RadioGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
@@ -80,9 +81,6 @@ import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
-import org.osmdroid.tileprovider.cachemanager.CacheManager
-import org.osmdroid.tileprovider.tilesource.ITileSource
-import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
@@ -106,6 +104,8 @@ class MapFragment : Fragment() {
     companion object {
         private const val MIN_MAP_ZOOM = 4.0
         private const val MAX_MAP_ZOOM = 20.0
+        private const val SEARCH_LABEL_PART_SEPARATOR = " \u00b7 "
+        private const val SEARCH_DUPLICATE_DISTANCE_METERS = 90.0
         private val WORLD_BOUNDING_BOX = BoundingBox(85.0, 180.0, -85.0, -180.0)
     }
 
@@ -143,10 +143,6 @@ class MapFragment : Fragment() {
     private val mapHudRestoreDelayMs = 260L
     private val mapHudHideDurationMs = 170L
     private val mapHudShowDurationMs = 150L
-    private val tilePrefetchDelayMs = 480L
-    private var prefetchTilesRunnable: Runnable? = null
-    private var activeTilePrefetchTask: CacheManager.CacheManagerTask? = null
-    private var lastTilePrefetchKey: String? = null
     private val searchHistoryPrefsName = "map_search_history"
     private val recentPlacesKey = "recent_places"
     private val recentPlacesLimit = 8
@@ -340,7 +336,6 @@ class MapFragment : Fragment() {
         applySearchInitialState()
         animateChrome()
         scheduleImportantPlacesRefresh(immediate = true)
-        scheduleTilePrefetch()
     }
 
     private fun setupFab() {
@@ -381,13 +376,11 @@ class MapFragment : Fragment() {
         val currentTileSourceName = binding.mapView.tileProvider.tileSource?.name()
         if (currentTileSourceName != tileSource.name()) {
             binding.mapView.setTileSource(tileSource)
-            lastTilePrefetchKey = null
         }
         // Включаем сеть, но кеш osmdroid используется всегда: скачанные оффлайн-тайлы
         // останутся доступными даже без интернета.
         binding.mapView.setUseDataConnection(true)
         binding.mapView.invalidate()
-        scheduleTilePrefetch()
     }
 
     private fun restoreLastMapViewportOrDefault(): Boolean {
@@ -422,13 +415,30 @@ class MapFragment : Fragment() {
 
     private fun setupSearch() {
         loadRecentPlaces()
-        searchAdapter = ArrayAdapter(
+        searchAdapter = object : ArrayAdapter<String>(
             requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
+            R.layout.item_search_suggestion,
+            android.R.id.text1,
             mutableListOf()
-        )
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent)
+                val textView = view.findViewById<TextView>(android.R.id.text1)
+                styleSearchSuggestionText(textView, getItem(position).orEmpty())
+                return view
+            }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getDropDownView(position, convertView, parent)
+                val textView = view.findViewById<TextView>(android.R.id.text1)
+                styleSearchSuggestionText(textView, getItem(position).orEmpty())
+                return view
+            }
+        }
         binding.searchQuery.setAdapter(searchAdapter)
         binding.searchQuery.threshold = 1
+        binding.searchQuery.dropDownVerticalOffset = (8f * resources.displayMetrics.density).roundToInt()
+        binding.searchQuery.setDropDownBackgroundResource(R.drawable.bg_search_dropdown)
 
         binding.buttonSearch.setOnClickListener {
             val query = binding.searchQuery.text?.toString()?.trim().orEmpty()
@@ -516,6 +526,83 @@ class MapFragment : Fragment() {
         }
     }
 
+    private fun styleSearchSuggestionText(textView: TextView?, raw: String) {
+        val target = textView ?: return
+        val text = normalizeSearchLabel(raw)
+        if (text.isBlank()) {
+            target.text = ""
+            return
+        }
+        val separator = SEARCH_LABEL_PART_SEPARATOR.trim()
+        val separatorWithSpace = " $separator "
+        val splitIndex = text.indexOf(separatorWithSpace)
+        if (splitIndex <= 0) {
+            target.text = text
+            return
+        }
+
+        val primaryColor = MaterialColors.getColor(
+            target,
+            com.google.android.material.R.attr.colorOnSurface
+        )
+        val isDarkThemeSurface = Color.luminance(
+            MaterialColors.getColor(target, com.google.android.material.R.attr.colorSurface)
+        ) < 0.45f
+        val secondaryColor = applyAlpha(
+            primaryColor,
+            if (isDarkThemeSurface) 210 else 155
+        )
+        val separatorColor = applyAlpha(
+            MaterialColors.getColor(target, com.google.android.material.R.attr.colorPrimary),
+            if (isDarkThemeSurface) 220 else 190
+        )
+
+        target.text = SpannableString(text).apply {
+            setSpan(
+                RelativeSizeSpan(1.0f),
+                0,
+                splitIndex,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                RelativeSizeSpan(0.9f),
+                splitIndex,
+                text.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                ForegroundColorSpan(primaryColor),
+                0,
+                splitIndex,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                ForegroundColorSpan(secondaryColor),
+                splitIndex,
+                text.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+
+            var separatorStart = text.indexOf(separatorWithSpace)
+            while (separatorStart >= 0) {
+                val separatorEnd = separatorStart + separatorWithSpace.length
+                setSpan(
+                    ForegroundColorSpan(separatorColor),
+                    separatorStart,
+                    separatorEnd,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    RelativeSizeSpan(0.95f),
+                    separatorStart,
+                    separatorEnd,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                separatorStart = text.indexOf(separatorWithSpace, separatorEnd)
+            }
+        }
+    }
+
     private fun persistRecentPlaces() {
         val jsonArray = JSONArray()
         recentPlaces.take(recentPlacesLimit).forEach { (title, point) ->
@@ -533,9 +620,10 @@ class MapFragment : Fragment() {
     }
 
     private fun rememberRecentPlace(title: String, point: GeoPoint) {
-        val cleanTitle = title.trim()
+        val cleanTitle = normalizeSearchLabel(title)
         if (cleanTitle.isBlank()) return
-        recentPlaces.removeAll { it.first.equals(cleanTitle, ignoreCase = true) }
+        val cleanKey = normalizeSearchCanonical(cleanTitle)
+        recentPlaces.removeAll { normalizeSearchCanonical(it.first) == cleanKey }
         recentPlaces.add(0, cleanTitle to GeoPoint(point.latitude, point.longitude))
         if (recentPlaces.size > recentPlacesLimit) {
             recentPlaces.subList(recentPlacesLimit, recentPlaces.size).clear()
@@ -569,6 +657,7 @@ class MapFragment : Fragment() {
         searchSuggestionJob?.cancel()
         val appContext = context?.applicationContext ?: return
         val viewport = captureSearchViewport()
+        val sortOrigin = resolveSearchSortOrigin(viewport)
         searchSuggestionJob = viewLifecycleOwner.lifecycleScope.launch {
             delay(if (animationsEnabled()) 260L else 120L)
             val suggestions = withContext(Dispatchers.IO) {
@@ -576,6 +665,7 @@ class MapFragment : Fragment() {
                     query = query,
                     limit = 10,
                     viewport = viewport,
+                    sortOrigin = sortOrigin,
                     geocoderContext = appContext,
                     userAgentPackage = appContext.packageName
                 )
@@ -608,6 +698,22 @@ class MapFragment : Fragment() {
             east = box.lonEast,
             south = box.latSouth
         )
+    }
+
+    private fun resolveSearchSortOrigin(viewport: SearchViewport?): GeoPoint? {
+        viewModel.currentLocation.value?.let { (lat, lon) ->
+            if (lat.isFinite() && lon.isFinite()) {
+                return GeoPoint(lat, lon)
+            }
+        }
+        myLocationOverlay?.myLocation?.let { return it }
+        viewport?.let {
+            val centerLat = (it.north + it.south) / 2.0
+            val centerLon = (it.west + it.east) / 2.0
+            return GeoPoint(centerLat, centerLon)
+        }
+        val center = binding.mapView.mapCenter
+        return center?.let { GeoPoint(it.latitude, it.longitude) }
     }
 
     private fun expandViewport(
@@ -736,73 +842,6 @@ class MapFragment : Fragment() {
                 }
             }
         }
-    }
-
-    private fun scheduleTilePrefetch() {
-        prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
-        prefetchTilesRunnable = null
-        // Защита от TileSourcePolicyException на ряде источников:
-        // отключаем background prefetch тайлов и оставляем только обычную загрузку карты.
-        activeTilePrefetchTask?.cancel(true)
-        activeTilePrefetchTask = null
-        lastTilePrefetchKey = null
-    }
-
-    private fun prefetchVisibleTiles() {
-        if (!isAdded || _binding == null) return
-        val tileSource = binding.mapView.tileProvider.tileSource
-        if (!isTilePrefetchAllowed(tileSource)) return
-        val center = binding.mapView.mapCenter ?: return
-        val zoomInt = binding.mapView.zoomLevelDouble.roundToInt().coerceIn(3, 19)
-        val tileSourceName = tileSource?.name().orEmpty()
-        val latBucket = (center.latitude * 30.0).roundToInt()
-        val lonBucket = (center.longitude * 30.0).roundToInt()
-        val prefetchKey = "$tileSourceName:$zoomInt:$latBucket:$lonBucket"
-        if (prefetchKey == lastTilePrefetchKey) return
-        lastTilePrefetchKey = prefetchKey
-
-        val box = binding.mapView.boundingBox ?: return
-        val latSpan = (box.latNorth - box.latSouth).coerceAtLeast(0.01)
-        val lonSpan = (box.lonEast - box.lonWest).coerceAtLeast(0.01)
-        val latPadding = (latSpan * 0.45).coerceAtLeast(0.006)
-        val lonPadding = (lonSpan * 0.45).coerceAtLeast(0.006)
-        val expanded = BoundingBox(
-            (box.latNorth + latPadding).coerceAtMost(85.0),
-            (box.lonEast + lonPadding).coerceAtMost(180.0),
-            (box.latSouth - latPadding).coerceAtLeast(-85.0),
-            (box.lonWest - lonPadding).coerceAtLeast(-180.0)
-        )
-
-        val minZoom = (zoomInt - 1).coerceAtLeast(3)
-        val maxZoom = (zoomInt + 1).coerceAtMost(19)
-        activeTilePrefetchTask?.cancel(true)
-        val cacheManager = runCatching { CacheManager(binding.mapView) }.getOrNull() ?: return
-        activeTilePrefetchTask = runCatching {
-            cacheManager.downloadAreaAsyncNoUI(
-                requireContext().applicationContext,
-                expanded,
-                minZoom,
-                maxZoom,
-                object : CacheManager.CacheManagerCallback {
-                    override fun onTaskComplete() = Unit
-                    override fun updateProgress(
-                        progress: Int,
-                        currentZoomLevel: Int,
-                        zoomMin: Int,
-                        zoomMax: Int
-                    ) = Unit
-                    override fun downloadStarted() = Unit
-                    override fun setPossibleTilesInArea(total: Int) = Unit
-                    override fun onTaskFailed(errors: Int) = Unit
-                }
-            )
-        }.getOrNull()
-    }
-
-    private fun isTilePrefetchAllowed(tileSource: ITileSource?): Boolean {
-        val onlineSource = tileSource as? OnlineTileSourceBase ?: return false
-        val policy = onlineSource.tileSourcePolicy
-        return policy.acceptsBulkDownload() && policy.acceptsPreventive()
     }
 
     private fun resolveImportantPlacesConfig(zoom: Double): ImportantPlacesConfig {
@@ -1610,27 +1649,27 @@ class MapFragment : Fragment() {
         query: String,
         limit: Int,
         viewport: SearchViewport?,
+        sortOrigin: GeoPoint?,
         geocoderContext: Context?,
         userAgentPackage: String
     ): List<Pair<String, GeoPoint>> {
-        val unique = linkedMapOf<String, GeoPoint>()
+        val merged = mutableListOf<Pair<String, GeoPoint>>()
 
         fetchNominatimCandidates(query, limit, viewport, userAgentPackage).forEach { (label, point) ->
-            val normalized = normalizeSearchLabel(label)
-            if (normalized.isNotBlank() && !unique.containsKey(normalized)) {
-                unique[normalized] = point
-            }
+            mergeSearchCandidate(merged, label, point)
         }
 
         fetchGeocoderCandidates(query, limit, geocoderContext).forEach { (label, point) ->
-            val normalized = normalizeSearchLabel(label)
-            if (normalized.isNotBlank() && !unique.containsKey(normalized)) {
-                unique[normalized] = point
-            }
+            mergeSearchCandidate(merged, label, point)
         }
 
-        return unique.entries
-            .map { it.key to it.value }
+        val sorted = if (sortOrigin != null) {
+            merged.sortedBy { (_, point) -> point.distanceToAsDouble(sortOrigin) }
+        } else {
+            merged
+        }
+
+        return sorted
             .take(limit)
     }
 
@@ -1724,25 +1763,110 @@ class MapFragment : Fragment() {
         val country = address.countryName?.takeIf { it.isNotBlank() }
 
         return listOfNotNull(feature, street, locality, country)
-            .distinct()
-            .joinToString(", ")
-            .ifBlank { address.getAddressLine(0).orEmpty() }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { normalizeSearchCanonical(it) }
+            .joinToString(SEARCH_LABEL_PART_SEPARATOR)
+            .ifBlank { normalizeSearchLabel(address.getAddressLine(0).orEmpty()) }
     }
 
     private fun buildNominatimLabel(item: JSONObject): String {
         val displayName = item.optString("display_name").trim()
         val name = item.optString("name").trim()
-        return when {
+        val raw = when {
             name.isNotBlank() && displayName.isNotBlank() &&
                 !displayName.startsWith(name, ignoreCase = true) -> "$name, $displayName"
             displayName.isNotBlank() -> displayName
             name.isNotBlank() -> name
             else -> item.optString("type").trim()
         }
+        return normalizeSearchLabel(raw)
     }
 
     private fun normalizeSearchLabel(label: String): String {
-        return label.replace("\\s+".toRegex(), " ").trim()
+        val compact = label.replace("\\s+".toRegex(), " ").trim()
+        if (compact.isBlank()) return ""
+        val parts = splitSearchLabelParts(compact)
+        if (parts.isEmpty()) return compact
+        val unique = linkedMapOf<String, String>()
+        parts.forEach { part ->
+            val key = normalizeSearchCanonical(part)
+            if (key.isNotBlank() && !unique.containsKey(key)) {
+                unique[key] = part
+            }
+        }
+        return unique.values.joinToString(SEARCH_LABEL_PART_SEPARATOR).ifBlank { compact }
+    }
+
+    private fun splitSearchLabelParts(label: String): List<String> {
+        if (label.isBlank()) return emptyList()
+        return label
+            .split(",", ";", "|", "•", "·")
+            .map { it.replace("\\s+".toRegex(), " ").trim() }
+            .filter { it.isNotBlank() }
+    }
+
+    private fun normalizeSearchCanonical(label: String): String {
+        return label
+            .lowercase(Locale.getDefault())
+            .replace("[^\\p{L}\\p{N}]".toRegex(), " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+    }
+
+    private fun mergeSearchCandidate(
+        merged: MutableList<Pair<String, GeoPoint>>,
+        label: String,
+        point: GeoPoint
+    ) {
+        val normalizedLabel = normalizeSearchLabel(label)
+        if (normalizedLabel.isBlank()) return
+        val duplicateIndex = merged.indexOfFirst { (existingLabel, existingPoint) ->
+            isDuplicateSearchCandidate(
+                firstLabel = existingLabel,
+                firstPoint = existingPoint,
+                secondLabel = normalizedLabel,
+                secondPoint = point
+            )
+        }
+        if (duplicateIndex >= 0) {
+            val (existingLabel, existingPoint) = merged[duplicateIndex]
+            if (isSearchLabelMoreInformative(normalizedLabel, existingLabel)) {
+                merged[duplicateIndex] = normalizedLabel to point
+            } else if (existingPoint.distanceToAsDouble(point) < 2.0) {
+                merged[duplicateIndex] = existingLabel to point
+            }
+            return
+        }
+        merged.add(normalizedLabel to point)
+    }
+
+    private fun isDuplicateSearchCandidate(
+        firstLabel: String,
+        firstPoint: GeoPoint,
+        secondLabel: String,
+        secondPoint: GeoPoint
+    ): Boolean {
+        val distance = firstPoint.distanceToAsDouble(secondPoint)
+        if (distance > SEARCH_DUPLICATE_DISTANCE_METERS) return false
+
+        val firstCanonical = normalizeSearchCanonical(firstLabel)
+        val secondCanonical = normalizeSearchCanonical(secondLabel)
+        if (firstCanonical.isBlank() || secondCanonical.isBlank()) return false
+        if (firstCanonical == secondCanonical) return true
+        if (firstCanonical.contains(secondCanonical) || secondCanonical.contains(firstCanonical)) {
+            return true
+        }
+
+        val firstHead = firstCanonical.substringBefore(' ')
+        val secondHead = secondCanonical.substringBefore(' ')
+        return firstHead.isNotBlank() && firstHead == secondHead
+    }
+
+    private fun isSearchLabelMoreInformative(candidate: String, existing: String): Boolean {
+        val candidateScore = splitSearchLabelParts(candidate).size * 100 + candidate.length
+        val existingScore = splitSearchLabelParts(existing).size * 100 + existing.length
+        return candidateScore > existingScore
     }
 
     private fun performSearch(query: String) {
@@ -1759,11 +1883,13 @@ class MapFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             val viewport = captureSearchViewport()
+            val sortOrigin = resolveSearchSortOrigin(viewport)
             val results = withContext(Dispatchers.IO) {
                 fetchSearchCandidates(
                     query = query,
                     limit = 10,
                     viewport = viewport,
+                    sortOrigin = sortOrigin,
                     geocoderContext = appContext,
                     userAgentPackage = appContext.packageName
                 )
@@ -1821,8 +1947,10 @@ class MapFragment : Fragment() {
     }
 
     private fun buildSearchResultIconDrawable(): Drawable? {
-        val iconPx = (defaultPoiIconDp * resources.displayMetrics.density).roundToInt().coerceAtLeast(20)
-        val cacheKey = "search_result_pin:$iconPx"
+        val density = resources.displayMetrics.density
+        val iconPx = (defaultPoiIconDp * 1.35f * density).roundToInt().coerceAtLeast(24)
+        val haloPaddingPx = (5f * density).roundToInt().coerceAtLeast(4)
+        val cacheKey = "search_result_pin_v2:$iconPx:$haloPaddingPx"
         importantPlaceIconCache[cacheKey]
             ?.constantState
             ?.newDrawable(resources)
@@ -1834,7 +1962,7 @@ class MapFragment : Fragment() {
             R.drawable.ic_search_result_pin
         )?.mutate() ?: return null
 
-        val bitmap = when (source) {
+        val pinBitmap = when (source) {
             is BitmapDrawable -> {
                 val rawBitmap = source.bitmap ?: return null
                 Bitmap.createScaledBitmap(rawBitmap, iconPx, iconPx, true)
@@ -1847,6 +1975,31 @@ class MapFragment : Fragment() {
                 }
             }
         }
+
+        val outWidth = iconPx + haloPaddingPx * 2
+        val outHeight = iconPx + haloPaddingPx * 2
+        val bitmap = Bitmap.createBitmap(outWidth, outHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val centerX = outWidth / 2f
+        val centerY = haloPaddingPx + iconPx * 0.44f
+        val haloRadius = iconPx * 0.40f
+        val ringRadius = iconPx * 0.28f
+
+        val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#805C6BFF")
+        }
+        val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = max(2f, density * 2f)
+            color = Color.WHITE
+            alpha = 235
+        }
+
+        canvas.drawCircle(centerX, centerY, haloRadius, haloPaint)
+        canvas.drawCircle(centerX, centerY, ringRadius, ringPaint)
+        canvas.drawBitmap(pinBitmap, haloPaddingPx.toFloat(), haloPaddingPx.toFloat(), null)
+
         return BitmapDrawable(resources, bitmap).also { drawable ->
             importantPlaceIconCache[cacheKey] = drawable
         }
@@ -2714,7 +2867,6 @@ class MapFragment : Fragment() {
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
                 scheduleImportantPlacesRefresh()
-                scheduleTilePrefetch()
                 return false
             }
 
@@ -2726,7 +2878,6 @@ class MapFragment : Fragment() {
                 hideBottomNavigationForMapMotion()
                 hideMapHudForMotion()
                 scheduleImportantPlacesRefresh()
-                scheduleTilePrefetch()
                 return false
             }
         })
@@ -3218,10 +3369,6 @@ class MapFragment : Fragment() {
         hasPendingImportantPlacesRefresh = false
         isImportantPlacesFetchInFlight = false
         importantPlacesRefreshJob?.cancel()
-        prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
-        prefetchTilesRunnable = null
-        activeTilePrefetchTask?.cancel(true)
-        activeTilePrefetchTask = null
         // Останавливаем слой геопозиции, чтобы не было неконсистентного состояния
         myLocationOverlay?.disableMyLocation()
         showBottomNavigationAfterMotion()
@@ -3239,10 +3386,6 @@ class MapFragment : Fragment() {
         restoreMapHudRunnable = null
         importantPlacesRefreshRunnable?.let { uiHandler.removeCallbacks(it) }
         importantPlacesRefreshRunnable = null
-        prefetchTilesRunnable?.let { uiHandler.removeCallbacks(it) }
-        prefetchTilesRunnable = null
-        activeTilePrefetchTask?.cancel(true)
-        activeTilePrefetchTask = null
         clearImportantPlaceOverlays()
         importantPlaceIconCache.clear()
         importantPlacesCache.clear()

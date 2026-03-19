@@ -14,9 +14,8 @@ class AppUpdatedReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         Thread {
             try {
-                if (InAppUpdateManager.consumeDataClearRequiredAfterInstall(context)) {
-                    AppDataResetter.clearAllLocalData(context)
-                }
+                // На новых версиях не очищаем локальные данные после установки обновления.
+                InAppUpdateManager.consumeDataClearRequiredAfterInstall(context)
 
                 Handler(Looper.getMainLooper()).post {
                     val launchIntent = Intent(context, StartupActivity::class.java).apply {

@@ -57,16 +57,21 @@ object TaskShareManager {
     }
 
     fun buildShareLink(context: Context, tasks: List<Task>): String {
+        val exportTasks = tasks.filterNot { it.isCompleted }
         val senderName = SettingsPreferences.getEffectiveProfileName(context)
         val senderId = SettingsPreferences.getOrCreateSenderId(context)
-        val payloadJson = buildCompactPayloadJson(senderName, senderId, tasks)
+        val payloadJson = buildCompactPayloadJson(senderName, senderId, exportTasks)
         val encodedPayload = encodePayload(payloadJson)
         return "$HTTPS_LINK_PREFIX$encodedPayload"
     }
 
     fun buildShareMessage(context: Context, tasks: List<Task>): String {
-        val link = buildShareLink(context, tasks)
-        return context.getString(R.string.tasks_export_message_template, tasks.size, link)
+        val exportTasks = tasks.filterNot { it.isCompleted }
+        if (exportTasks.isEmpty()) {
+            return context.getString(R.string.tasks_export_empty)
+        }
+        val link = buildShareLink(context, exportTasks)
+        return context.getString(R.string.tasks_export_message_template, exportTasks.size, link)
     }
 
     suspend fun importTasksFromShareText(context: Context, rawText: String): Result<TaskImportResult> {

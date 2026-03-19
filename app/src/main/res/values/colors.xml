@@ -24,7 +24,14 @@
     <color name="marker_yellow">#FBC02D</color>
     <color name="marker_lime">#8BC34A</color>
     <color name="marker_black">#212121</color>
-    <color name="ic_launcher_background">#6B4FD3</color>
+    <color name="ic_launcher_background">#EBDCFD</color>
+    <color name="search_dropdown_surface">#FFF8FF</color>
+    <color name="search_dropdown_stroke">#5E6B4FD3</color>
+    <color name="search_suggestion_surface">#FFFDFE</color>
+    <color name="search_suggestion_regular_stroke">#4A8D77E8</color>
+    <color name="search_suggestion_pressed_surface">#F2EDFF</color>
+    <color name="search_suggestion_pressed_stroke">#8A6B4FD3</color>
+    <color name="search_suggestion_icon_tint">#7A5BE1</color>
     <color name="hint_on_surface">#7A1A1330</color>
     <color name="menu_border_primary">#336B4FD3</color>
     <color name="menu_border_secondary">#338D77E8</color>

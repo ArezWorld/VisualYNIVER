@@ -23,6 +23,13 @@
     <color name="marker_yellow">#FBC02D</color>
     <color name="marker_lime">#8BC34A</color>
     <color name="marker_black">#212121</color>
+    <color name="search_dropdown_surface">#211A37</color>
+    <color name="search_dropdown_stroke">#70A891FF</color>
+    <color name="search_suggestion_surface">#271F42</color>
+    <color name="search_suggestion_regular_stroke">#66C4B7FF</color>
+    <color name="search_suggestion_pressed_surface">#302655</color>
+    <color name="search_suggestion_pressed_stroke">#90C4B7FF</color>
+    <color name="search_suggestion_icon_tint">#C6B8FF</color>
     <color name="menu_border_primary">#4DA891FF</color>
     <color name="menu_border_secondary">#4DC4B7FF</color>
     <color name="menu_border_muted">#406755A8</color>

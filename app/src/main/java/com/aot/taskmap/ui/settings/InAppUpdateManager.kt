@@ -65,7 +65,8 @@ object InAppUpdateManager {
 
             val downloadId = downloadManager.enqueue(request)
             savePendingDownloadId(appContext, downloadId)
-            markDataClearRequiredAfterInstall(appContext)
+            // После обновления сохраняем пользовательские данные (задачи/метки/профиль).
+            clearDataClearRequiredAfterInstall(appContext)
             downloadId
         }
     }
