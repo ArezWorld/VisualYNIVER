@@ -190,10 +190,29 @@ class MainActivity : AppCompatActivity() {
             setIntent(intent)
         }
 
-        intent?.getLongExtra("task_id", -1)?.let { taskId ->
-            if (taskId != -1L) {
-                // Навигация к задаче при необходимости
-            }
+        val taskId = intent?.getLongExtra("task_id", -1L)?.takeIf { it > 0L }
+        val taskLat = intent?.getDoubleExtra("task_lat", Double.NaN)
+            ?.takeIf { it.isFinite() && it in -90.0..90.0 }
+        val taskLng = intent?.getDoubleExtra("task_lng", Double.NaN)
+            ?.takeIf { it.isFinite() && it in -180.0..180.0 }
+        val taskTitle = intent?.getStringExtra("task_title")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+        if (taskId != null || (taskLat != null && taskLng != null)) {
+            SettingsPreferences.setPendingTaskNavigation(
+                context = this,
+                taskId = taskId,
+                latitude = taskLat,
+                longitude = taskLng,
+                title = taskTitle
+            )
+            binding.bottomNavigation.selectedItemId = R.id.mapFragment
+            intent?.removeExtra("task_id")
+            intent?.removeExtra("task_lat")
+            intent?.removeExtra("task_lng")
+            intent?.removeExtra("task_title")
+            setIntent(intent)
         }
     }
 

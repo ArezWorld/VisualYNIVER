@@ -228,6 +228,9 @@ class LocationService : Service() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("task_id", task.id)
+            putExtra("task_lat", task.latitude)
+            putExtra("task_lng", task.longitude)
+            putExtra("task_title", task.title)
         }
 
         val pendingIntent = PendingIntent.getActivity(

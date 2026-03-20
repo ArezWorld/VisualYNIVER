@@ -15,7 +15,6 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.location.Geocoder
 import android.os.Bundle
 import android.os.Handler
@@ -132,7 +131,7 @@ class MapFragment : Fragment() {
     private val searchResults = mutableListOf<Pair<String, GeoPoint>>()
     private lateinit var searchAdapter: ArrayAdapter<String>
     private var searchDropdownBackground: Drawable? = null
-    private var searchSuggestionRowBackground: Drawable? = null
+    private var searchSuggestionDividerColor: Int = Color.TRANSPARENT
     private var searchSuggestionJob: Job? = null
     private var importantPlacesRefreshJob: Job? = null
     private var isImportantPlacesFetchInFlight = false
@@ -504,7 +503,11 @@ class MapFragment : Fragment() {
 
             override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getDropDownView(position, convertView, parent)
-                styleSearchSuggestionRow(view, getItem(position).orEmpty())
+                styleSearchSuggestionRow(
+                    view = view,
+                    raw = getItem(position).orEmpty(),
+                    isLast = position == count - 1
+                )
                 return view
             }
         }
@@ -512,7 +515,7 @@ class MapFragment : Fragment() {
 
     private fun applySearchPopupTheme() {
         searchDropdownBackground = buildSearchDropdownBackground()
-        searchSuggestionRowBackground = buildSearchSuggestionRowBackground()
+        searchSuggestionDividerColor = resolveSearchDividerColor()
         binding.searchQuery.dropDownVerticalOffset = dpToPx(8f)
         binding.searchQuery.setDropDownBackgroundDrawable(
             searchDropdownBackground
@@ -523,22 +526,20 @@ class MapFragment : Fragment() {
         )
     }
 
-    private fun styleSearchSuggestionRow(view: View, raw: String) {
+    private fun styleSearchSuggestionRow(view: View, raw: String, isLast: Boolean) {
         val textView = view.findViewById<TextView>(android.R.id.text1)
         styleSearchSuggestionText(textView, raw)
 
-        val background = searchSuggestionRowBackground
-            ?.constantState
-            ?.newDrawable(resources)
-            ?.mutate()
-            ?: buildSearchSuggestionRowBackground()
-        view.background = background
+        view.background = null
 
         val iconView = view.findViewById<ImageView>(R.id.icon_search_item)
+        val dividerView = view.findViewById<View>(R.id.search_suggestion_divider)
         val primaryColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorPrimary)
         val onSurfaceColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurface)
         val blendedIcon = ColorUtils.blendARGB(primaryColor, onSurfaceColor, 0.16f)
         iconView.imageTintList = ColorStateList.valueOf(blendedIcon)
+        dividerView.setBackgroundColor(searchSuggestionDividerColor)
+        dividerView.visibility = if (isLast) View.INVISIBLE else View.VISIBLE
     }
 
     private fun buildSearchDropdownBackground(): Drawable {
@@ -555,35 +556,11 @@ class MapFragment : Fragment() {
         }
     }
 
-    private fun buildSearchSuggestionRowBackground(): Drawable {
+    private fun resolveSearchDividerColor(): Int {
         val surfaceColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSurface)
         val primaryColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
-        val secondaryColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondary)
         val isDarkSurface = Color.luminance(surfaceColor) < 0.45f
-
-        val normalFill = ColorUtils.blendARGB(surfaceColor, secondaryColor, if (isDarkSurface) 0.11f else 0.05f)
-        val normalStroke = ColorUtils.blendARGB(secondaryColor, primaryColor, if (isDarkSurface) 0.55f else 0.35f)
-        val pressedFill = ColorUtils.blendARGB(surfaceColor, primaryColor, if (isDarkSurface) 0.22f else 0.15f)
-        val pressedStroke = ColorUtils.blendARGB(primaryColor, Color.WHITE, if (isDarkSurface) 0.20f else 0.04f)
-
-        val normal = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dpToPx(12f).toFloat()
-            setColor(normalFill)
-            setStroke(dpToPx(1f), normalStroke)
-        }
-        val pressed = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dpToPx(12f).toFloat()
-            setColor(pressedFill)
-            setStroke(dpToPx(2f), pressedStroke)
-        }
-
-        return StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_pressed), pressed)
-            addState(intArrayOf(android.R.attr.state_selected), pressed)
-            addState(intArrayOf(), normal)
-        }
+        return ColorUtils.blendARGB(surfaceColor, primaryColor, if (isDarkSurface) 0.40f else 0.22f)
     }
 
     private fun dpToPx(dp: Float): Int {
@@ -731,8 +708,8 @@ class MapFragment : Fragment() {
         }
         searchAdapter.notifyDataSetChanged()
 
-        if (filtered.isNotEmpty() && isSearchExpanded) {
-            binding.searchQuery.showDropDown()
+        if (filtered.isNotEmpty() && isSearchExpanded && binding.searchQuery.hasFocus()) {
+            binding.searchQuery.post { binding.searchQuery.showDropDown() }
         } else if (binding.searchQuery.isPopupShowing) {
             binding.searchQuery.dismissDropDown()
         }
@@ -760,16 +737,18 @@ class MapFragment : Fragment() {
             val currentQuery = binding.searchQuery.text?.toString()?.trim().orEmpty()
             if (currentQuery != query) return@launch
 
-            searchResults.clear()
-            searchAdapter.clear()
-            suggestions.forEach { (label, point) ->
-                searchResults.add(label to point)
-                searchAdapter.add(label)
-            }
-            searchAdapter.notifyDataSetChanged()
-            if (suggestions.isNotEmpty() && isSearchExpanded) {
-                binding.searchQuery.showDropDown()
-            } else if (binding.searchQuery.isPopupShowing) {
+            if (suggestions.isNotEmpty()) {
+                searchResults.clear()
+                searchAdapter.clear()
+                suggestions.forEach { (label, point) ->
+                    searchResults.add(label to point)
+                    searchAdapter.add(label)
+                }
+                searchAdapter.notifyDataSetChanged()
+                if (isSearchExpanded && binding.searchQuery.hasFocus()) {
+                    binding.searchQuery.post { binding.searchQuery.showDropDown() }
+                }
+            } else if (searchResults.isEmpty() && binding.searchQuery.isPopupShowing) {
                 binding.searchQuery.dismissDropDown()
             }
         }
@@ -1098,6 +1077,7 @@ class MapFragment : Fragment() {
         val queryPairs = listOf(
             "магнит" to "supermarket",
             "пятерочка" to "supermarket",
+            "красное и белое" to "supermarket",
             "bank" to "bank",
             "atm" to "bank"
         )
@@ -1199,7 +1179,12 @@ class MapFragment : Fragment() {
     }
 
     private fun isSupportedImportantPlace(category: String, brandKey: String?): Boolean {
-        if (brandKey == "magnit" || brandKey == "pyaterochka" || brandKey == "misis") {
+        if (
+            brandKey == "magnit" ||
+            brandKey == "pyaterochka" ||
+            brandKey == "kb" ||
+            brandKey == "misis"
+        ) {
             return true
         }
         return category == "bank" || category == "atm"
@@ -1459,7 +1444,9 @@ class MapFragment : Fragment() {
             append(title)
             append(' ')
             append(brand.orEmpty())
-        }.lowercase(Locale.ROOT)
+        }
+            .lowercase(Locale.ROOT)
+            .replace('ё', 'е')
 
         if (probe.contains("мисис") || probe.contains("misis")) {
             return "misis"
@@ -1474,6 +1461,10 @@ class MapFragment : Fragment() {
             probe.contains("пятероч") || probe.contains("пятёроч") ||
                 probe.contains("pyater") || probe.contains("5ka") ->
                 "pyaterochka"
+            (probe.contains("красное") && probe.contains("белое")) ||
+                probe.contains("к&б") || probe.contains("к и б") ||
+                probe.contains("k&b") || probe.contains("k and b") ->
+                "kb"
             else -> null
         }
     }
@@ -1527,6 +1518,11 @@ class MapFragment : Fragment() {
                     this.snippet = snippet
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     icon = buildImportantPlaceIconDrawable(place)
+                    setPanToView(false)
+                    setOnMarkerClickListener { tappedMarker, _ ->
+                        tappedMarker.showInfoWindow()
+                        true
+                    }
                 }
                 importantPlaceOverlays[key] = newMarker
                 importantPlaceStates[key] = place
@@ -1554,6 +1550,11 @@ class MapFragment : Fragment() {
                     marker.icon = buildImportantPlaceIconDrawable(place)
                     importantPlaceIconKeys[key] = iconKey
                     hasChanges = true
+                }
+                marker.setPanToView(false)
+                marker.setOnMarkerClickListener { tappedMarker, _ ->
+                    tappedMarker.showInfoWindow()
+                    true
                 }
                 importantPlaceStates[key] = place
             }
@@ -1597,7 +1598,7 @@ class MapFragment : Fragment() {
     private fun resolveImportantPlacePriority(place: ImportantPlace): Int {
         return when {
             place.brandKey == "misis" || place.title.contains("МИСиС", ignoreCase = true) -> 0
-            place.brandKey == "magnit" || place.brandKey == "pyaterochka" -> 1
+            place.brandKey == "magnit" || place.brandKey == "pyaterochka" || place.brandKey == "kb" -> 1
             place.category == "bank" || place.category == "atm" || place.brandKey == "bank_generic" -> 2
             else -> 3
         }
@@ -1607,6 +1608,7 @@ class MapFragment : Fragment() {
         return when (place.brandKey) {
             "magnit" -> R.drawable.ic_poi_brand_magnit to PoiIconCropMode.FIT
             "pyaterochka" -> R.drawable.ic_poi_brand_pyaterochka to PoiIconCropMode.TOP_BADGE
+            "kb" -> R.drawable.ic_poi_brand_kb to PoiIconCropMode.FIT
             "bank_generic" -> R.drawable.ic_poi_bank_generic to PoiIconCropMode.FIT
             "misis" -> R.drawable.ic_poi_brand_misis to PoiIconCropMode.WIDE_FIT
             else -> {
@@ -2017,15 +2019,32 @@ class MapFragment : Fragment() {
         binding.mapView.controller.animateTo(point)
     }
 
-    private fun showSearchResultOverlay(title: String, point: GeoPoint) {
+    private fun showSearchResultOverlay(
+        title: String,
+        point: GeoPoint,
+        openAddTaskDialogOnTap: Boolean = true
+    ) {
         clearSearchResultOverlay()
         val icon = buildSearchResultIconDrawable()
         val marker = Marker(binding.mapView).apply {
             position = point
             this.title = title
-            snippet = getString(R.string.map_result_default)
+            snippet = if (openAddTaskDialogOnTap) {
+                getString(R.string.map_result_tap_to_add)
+            } else {
+                getString(R.string.map_result_default)
+            }
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             this.icon = icon
+            setOnMarkerClickListener { tappedMarker, _ ->
+                if (openAddTaskDialogOnTap) {
+                    showAddTaskDialog(
+                        latitude = tappedMarker.position.latitude,
+                        longitude = tappedMarker.position.longitude
+                    )
+                }
+                true
+            }
         }
         searchResultOverlay = marker
         binding.mapView.overlays.add(marker)
@@ -2810,7 +2829,14 @@ class MapFragment : Fragment() {
         val avatarUri = runCatching { android.net.Uri.parse(avatarUriString) }.getOrNull() ?: return null
         return runCatching {
             context.contentResolver.openInputStream(avatarUri)?.use { input ->
-                val decoded = BitmapFactory.decodeStream(input) ?: return@use null
+                val decoded = BitmapFactory.decodeStream(
+                    input,
+                    null,
+                    BitmapFactory.Options().apply {
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
+                        inDither = true
+                    }
+                ) ?: return@use null
                 createLocationAvatarBitmap(decoded)
             }
         }.getOrNull()
@@ -2818,9 +2844,9 @@ class MapFragment : Fragment() {
 
     private fun createLocationAvatarBitmap(source: Bitmap): Bitmap {
         val density = resources.displayMetrics.density
-        val iconSize = (52f * density).roundToInt().coerceAtLeast(96)
-        val strokeWidthPx = 3f * density
-        val outerPadding = 2f * density
+        val iconSize = (64f * density).roundToInt().coerceAtLeast(128)
+        val strokeWidthPx = 3.5f * density
+        val outerPadding = 2.5f * density
         val avatarDiameter = (iconSize - outerPadding * 2f - strokeWidthPx * 2f)
             .roundToInt()
             .coerceAtLeast(1)
@@ -2840,6 +2866,7 @@ class MapFragment : Fragment() {
         }
         val avatarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             isFilterBitmap = true
+            isDither = true
             shader = BitmapShader(croppedAvatar, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         }
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -3438,13 +3465,59 @@ class MapFragment : Fragment() {
         applyMapPresentation()
         refreshDisplayedMarkers()
         scheduleImportantPlacesRefresh(immediate = true)
-        selectedTask?.let {
-            binding.mapView.controller.animateTo(GeoPoint(it.latitude, it.longitude))
+        val handledPendingNavigation = handlePendingTaskNavigation()
+        if (!handledPendingNavigation) {
+            selectedTask?.let {
+                binding.mapView.controller.animateTo(GeoPoint(it.latitude, it.longitude))
+            }
         }
 
         if (!isSearchExpanded) {
             binding.searchFab.visibility = View.VISIBLE
         }
+    }
+
+    private fun handlePendingTaskNavigation(): Boolean {
+        val pending = SettingsPreferences.consumePendingTaskNavigation(requireContext()) ?: return false
+        val allTasks = (
+            viewModel.activeTasks.value +
+                viewModel.completedTasks.value +
+                activeTasksCache +
+                completedTasksCache
+            )
+            .distinctBy { it.id }
+        val matchedTask = pending.taskId?.let { taskId ->
+            allTasks.firstOrNull { it.id == taskId }
+        }
+
+        shouldAutoCenter = false
+
+        if (matchedTask != null) {
+            viewModel.selectTask(matchedTask)
+            binding.mapView.controller.animateTo(GeoPoint(matchedTask.latitude, matchedTask.longitude))
+            return true
+        }
+
+        val latitude = pending.latitude
+        val longitude = pending.longitude
+        if (latitude != null && longitude != null) {
+            val point = GeoPoint(latitude, longitude)
+            val title = pending.title ?: getString(R.string.map_result_default)
+            binding.mapView.controller.animateTo(point)
+            showSearchResultOverlay(
+                title = title,
+                point = point,
+                openAddTaskDialogOnTap = false
+            )
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.map_notification_task_removed),
+                Toast.LENGTH_SHORT
+            ).show()
+            return true
+        }
+
+        return false
     }
 
     override fun onPause() {

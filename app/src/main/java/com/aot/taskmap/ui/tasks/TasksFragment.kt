@@ -1,8 +1,5 @@
-﻿package com.aot.taskmap.ui.tasks
+package com.aot.taskmap.ui.tasks
 
-import android.content.ClipDescription
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -20,14 +17,11 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.aot.taskmap.R
 import com.aot.taskmap.data.local.SettingsPreferences
-import com.aot.taskmap.databinding.DialogImportTasksBinding
 import com.aot.taskmap.databinding.FragmentTasksBinding
 import com.aot.taskmap.domain.model.Task
 import com.aot.taskmap.ui.map.MapViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class TasksFragment : Fragment() {
 
@@ -130,11 +124,7 @@ class TasksFragment : Fragment() {
                         true
                     }
                     R.id.action_export_tasks -> {
-                        exportTasks()
-                        true
-                    }
-                    R.id.action_import_tasks -> {
-                        showImportDialog()
+                        shareTasksWithSelection()
                         true
                     }
                     else -> false
@@ -144,7 +134,7 @@ class TasksFragment : Fragment() {
         }
     }
 
-    private fun exportTasks() {
+    private fun shareTasksWithSelection() {
         val tasksToShare = activeTasksCache
             .filterNot { it.isCompleted }
             .distinctBy { it.id }
@@ -153,92 +143,50 @@ class TasksFragment : Fragment() {
             return
         }
 
-        val shareMessage = TaskShareManager.buildShareMessage(requireContext(), tasksToShare)
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, shareMessage)
-        }
-        runCatching {
-            startActivity(Intent.createChooser(shareIntent, getString(R.string.tasks_export_chooser)))
-        }.onFailure {
-            Toast.makeText(requireContext(), getString(R.string.tasks_import_error), Toast.LENGTH_SHORT).show()
-        }
-    }
+        val checkedItems = BooleanArray(tasksToShare.size) { true }
+        val itemLabels = tasksToShare.map { task ->
+            val title = task.title.ifBlank { getString(R.string.tasks_import_default_title) }
+            val address = task.address.trim()
+            if (address.isBlank()) {
+                title
+            } else {
+                "$title\n$address"
+            }
+        }.toTypedArray()
 
-    private fun showImportDialog() {
-        val dialogBinding = DialogImportTasksBinding.inflate(layoutInflater)
         val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.tasks_import_title)
-            .setView(dialogBinding.root)
-            .setPositiveButton(R.string.tasks_import_action, null)
-            .setNeutralButton(R.string.tasks_import_from_clipboard, null)
-            .setNegativeButton(R.string.map_action_close, null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = clipboard.primaryClip
-                val hasText = clip != null &&
-                    (clipboard.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) == true ||
-                        clipboard.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML) == true)
-                val text = if (hasText && clip!!.itemCount > 0) {
-                    clip.getItemAt(0).coerceToText(requireContext())?.toString().orEmpty()
-                } else {
-                    ""
-                }
-                if (text.isBlank()) {
+            .setTitle(R.string.tasks_share_select_title)
+            .setMultiChoiceItems(itemLabels, checkedItems) { _, index, isChecked ->
+                checkedItems[index] = isChecked
+            }
+            .setPositiveButton(R.string.tasks_share_action) { _, _ ->
+                val selectedTasks = tasksToShare.filterIndexed { index, _ -> checkedItems[index] }
+                if (selectedTasks.isEmpty()) {
                     Toast.makeText(
                         requireContext(),
-                        getString(R.string.tasks_import_clipboard_empty),
+                        getString(R.string.tasks_share_none_selected),
                         Toast.LENGTH_SHORT
                     ).show()
-                } else {
-                    dialogBinding.editImportLink.setText(text)
+                    return@setPositiveButton
+                }
+                val shareMessage = TaskShareManager.buildShareMessage(requireContext(), selectedTasks)
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareMessage)
+                }
+                runCatching {
+                    startActivity(Intent.createChooser(shareIntent, getString(R.string.tasks_export_chooser)))
+                }.onFailure {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.tasks_share_error),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
-
-            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                dialogBinding.inputImportLinkLayout.error = null
-                val raw = dialogBinding.editImportLink.text?.toString().orEmpty().trim()
-                if (raw.isBlank()) {
-                    dialogBinding.inputImportLinkLayout.error =
-                        getString(R.string.tasks_import_error_invalid_link)
-                    return@setOnClickListener
-                }
-                importTasksFromSharedText(raw)
-                dialog.dismiss()
-            }
-        }
-
-        dialog.show()
-    }
-
-    private fun importTasksFromSharedText(rawText: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                TaskShareManager.importTasksFromShareText(requireContext(), rawText)
-            }
-
-            result.onSuccess { imported ->
-                viewModel.loadTasks()
-                Toast.makeText(
-                    requireContext(),
-                    getString(
-                        R.string.tasks_import_success,
-                        imported.addedCount,
-                        imported.senderName
-                    ),
-                    Toast.LENGTH_LONG
-                ).show()
-            }.onFailure { error ->
-                Toast.makeText(
-                    requireContext(),
-                    error.message ?: getString(R.string.tasks_import_error),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
+            .setNegativeButton(R.string.map_add_task_negative, null)
+            .show()
+        dialog.setCanceledOnTouchOutside(false)
     }
 
     private fun observeTasks() {

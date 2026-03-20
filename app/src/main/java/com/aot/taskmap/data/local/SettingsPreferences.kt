@@ -33,11 +33,23 @@ object SettingsPreferences {
     private const val KEY_PROFILE_SENDER_ID = "profile_sender_id"
     private const val KEY_PROFILE_AVATAR_URI = "profile_avatar_uri"
     private const val KEY_PROFILE_START_TAB_SHOWN = "profile_start_tab_shown"
+    private const val KEY_PENDING_TASK_NAV_TASK_ID = "pending_task_nav_task_id"
+    private const val KEY_PENDING_TASK_NAV_HAS_COORDS = "pending_task_nav_has_coords"
+    private const val KEY_PENDING_TASK_NAV_LAT_BITS = "pending_task_nav_lat_bits"
+    private const val KEY_PENDING_TASK_NAV_LNG_BITS = "pending_task_nav_lng_bits"
+    private const val KEY_PENDING_TASK_NAV_TITLE = "pending_task_nav_title"
 
     data class MapViewport(
         val latitude: Double,
         val longitude: Double,
         val zoom: Double
+    )
+
+    data class PendingTaskNavigation(
+        val taskId: Long?,
+        val latitude: Double?,
+        val longitude: Double?,
+        val title: String?
     )
 
     private fun prefs(context: Context) =
@@ -257,6 +269,90 @@ object SettingsPreferences {
 
     fun markProfileTabShown(context: Context) {
         prefs(context).edit().putBoolean(KEY_PROFILE_START_TAB_SHOWN, true).apply()
+    }
+
+    fun setPendingTaskNavigation(
+        context: Context,
+        taskId: Long?,
+        latitude: Double?,
+        longitude: Double?,
+        title: String?
+    ) {
+        val editor = prefs(context).edit()
+        if (taskId != null && taskId > 0L) {
+            editor.putLong(KEY_PENDING_TASK_NAV_TASK_ID, taskId)
+        } else {
+            editor.remove(KEY_PENDING_TASK_NAV_TASK_ID)
+        }
+
+        val hasCoords = latitude != null && longitude != null &&
+            latitude.isFinite() && longitude.isFinite()
+        if (hasCoords) {
+            editor.putBoolean(KEY_PENDING_TASK_NAV_HAS_COORDS, true)
+            editor.putLong(
+                KEY_PENDING_TASK_NAV_LAT_BITS,
+                java.lang.Double.doubleToRawLongBits(latitude)
+            )
+            editor.putLong(
+                KEY_PENDING_TASK_NAV_LNG_BITS,
+                java.lang.Double.doubleToRawLongBits(longitude)
+            )
+        } else {
+            editor.remove(KEY_PENDING_TASK_NAV_HAS_COORDS)
+            editor.remove(KEY_PENDING_TASK_NAV_LAT_BITS)
+            editor.remove(KEY_PENDING_TASK_NAV_LNG_BITS)
+        }
+
+        val normalizedTitle = title?.trim().orEmpty()
+        if (normalizedTitle.isBlank()) {
+            editor.remove(KEY_PENDING_TASK_NAV_TITLE)
+        } else {
+            editor.putString(KEY_PENDING_TASK_NAV_TITLE, normalizedTitle)
+        }
+        editor.apply()
+    }
+
+    fun consumePendingTaskNavigation(context: Context): PendingTaskNavigation? {
+        val settings = prefs(context)
+        val taskId = if (settings.contains(KEY_PENDING_TASK_NAV_TASK_ID)) {
+            settings.getLong(KEY_PENDING_TASK_NAV_TASK_ID, -1L).takeIf { it > 0L }
+        } else {
+            null
+        }
+
+        val hasCoords = settings.getBoolean(KEY_PENDING_TASK_NAV_HAS_COORDS, false)
+        val latitude = if (hasCoords) {
+            java.lang.Double.longBitsToDouble(settings.getLong(KEY_PENDING_TASK_NAV_LAT_BITS, 0L))
+                .takeIf { it.isFinite() && it in -90.0..90.0 }
+        } else {
+            null
+        }
+        val longitude = if (hasCoords) {
+            java.lang.Double.longBitsToDouble(settings.getLong(KEY_PENDING_TASK_NAV_LNG_BITS, 0L))
+                .takeIf { it.isFinite() && it in -180.0..180.0 }
+        } else {
+            null
+        }
+
+        val title = settings.getString(KEY_PENDING_TASK_NAV_TITLE, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+
+        settings.edit()
+            .remove(KEY_PENDING_TASK_NAV_TASK_ID)
+            .remove(KEY_PENDING_TASK_NAV_HAS_COORDS)
+            .remove(KEY_PENDING_TASK_NAV_LAT_BITS)
+            .remove(KEY_PENDING_TASK_NAV_LNG_BITS)
+            .remove(KEY_PENDING_TASK_NAV_TITLE)
+            .apply()
+
+        if (taskId == null && (latitude == null || longitude == null)) return null
+        return PendingTaskNavigation(
+            taskId = taskId,
+            latitude = latitude,
+            longitude = longitude,
+            title = title
+        )
     }
 
     private fun generateNickname(): String {
