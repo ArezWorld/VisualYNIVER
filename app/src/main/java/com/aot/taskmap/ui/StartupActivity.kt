@@ -248,13 +248,14 @@ class StartupActivity : AppCompatActivity() {
             setCircleDimmedLayer(true)
             setShowCropFrame(true)
             setShowCropGrid(true)
-            setCompressionQuality(92)
+            setCompressionFormat(Bitmap.CompressFormat.PNG)
+            setCompressionQuality(100)
             setToolbarTitle(getString(R.string.profile_avatar_crop_title))
             setActiveControlsWidgetColor(ContextCompat.getColor(this@StartupActivity, R.color.primary))
         }
         val intent = UCrop.of(preparedSourceUri, outputUri)
             .withAspectRatio(1f, 1f)
-            .withMaxResultSize(1024, 1024)
+            .withMaxResultSize(1536, 1536)
             .withOptions(options)
             .getIntent(this)
             .apply {
@@ -275,7 +276,7 @@ class StartupActivity : AppCompatActivity() {
     private fun createAvatarOutputUri(): Uri? {
         return runCatching {
             val avatarDir = File(filesDir, "avatars").apply { mkdirs() }
-            val outputFile = File(avatarDir, "avatar_current.jpg")
+            val outputFile = File(avatarDir, "avatar_current.png")
             if (outputFile.exists()) {
                 outputFile.delete()
             }

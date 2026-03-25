@@ -1,19 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:id="@+id/filter_active"
-        android:title="@string/tasks_filter_active"
-        android:checkable="true" />
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/filter_active"
+            android:title="@string/tasks_filter_active"
+            android:checkable="true" />
 
-    <item
-        android:id="@+id/filter_completed"
-        android:title="@string/tasks_filter_completed"
-        android:checkable="true" />
+        <item
+            android:id="@+id/filter_completed"
+            android:title="@string/tasks_filter_completed"
+            android:checkable="true" />
 
-    <item
-        android:id="@+id/filter_active_and_completed"
-        android:title="@string/tasks_filter_active_and_completed"
-        android:checkable="true" />
+        <item
+            android:id="@+id/filter_active_and_completed"
+            android:title="@string/tasks_filter_active_and_completed"
+            android:checkable="true" />
+    </group>
 
     <item
         android:id="@+id/action_export_tasks"

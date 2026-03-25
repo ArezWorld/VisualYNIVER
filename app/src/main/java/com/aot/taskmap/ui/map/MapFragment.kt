@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
@@ -2845,6 +2846,7 @@ class MapFragment : Fragment() {
                     BitmapFactory.Options().apply {
                         inPreferredConfig = Bitmap.Config.ARGB_8888
                         inDither = true
+                        inScaled = false
                     }
                 ) ?: return@use null
                 createLocationAvatarBitmap(decoded)
@@ -2854,7 +2856,7 @@ class MapFragment : Fragment() {
 
     private fun createLocationAvatarBitmap(source: Bitmap): Bitmap {
         val density = resources.displayMetrics.density
-        val iconSize = (64f * density).roundToInt().coerceAtLeast(128)
+        val iconSize = (72f * density).roundToInt().coerceAtLeast(160)
         val strokeWidthPx = 3.5f * density
         val outerPadding = 2.5f * density
         val avatarDiameter = (iconSize - outerPadding * 2f - strokeWidthPx * 2f)
@@ -2899,21 +2901,23 @@ class MapFragment : Fragment() {
     private fun centerCropBitmap(source: Bitmap, targetSize: Int): Bitmap {
         if (source.width == targetSize && source.height == targetSize) return source
 
-        val scale = max(
-            targetSize / source.width.toFloat(),
-            targetSize / source.height.toFloat()
-        )
-        val scaledWidth = (source.width * scale).roundToInt().coerceAtLeast(targetSize)
-        val scaledHeight = (source.height * scale).roundToInt().coerceAtLeast(targetSize)
-        val scaledBitmap = Bitmap.createScaledBitmap(source, scaledWidth, scaledHeight, true)
-        val left = ((scaledWidth - targetSize) / 2).coerceAtLeast(0)
-        val top = ((scaledHeight - targetSize) / 2).coerceAtLeast(0)
+        val scale = max(targetSize / source.width.toFloat(), targetSize / source.height.toFloat())
+        val scaledWidth = source.width * scale
+        val scaledHeight = source.height * scale
+        val translateX = (targetSize - scaledWidth) / 2f
+        val translateY = (targetSize - scaledHeight) / 2f
 
-        return Bitmap.createBitmap(scaledBitmap, left, top, targetSize, targetSize).also {
-            if (scaledBitmap != source && !scaledBitmap.isRecycled) {
-                scaledBitmap.recycle()
-            }
+        val output = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val matrix = Matrix().apply {
+            setScale(scale, scale)
+            postTranslate(translateX, translateY)
         }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG).apply {
+            isFilterBitmap = true
+        }
+        canvas.drawBitmap(source, matrix, paint)
+        return output
     }
 
     private fun resolveThemeColor(attrRes: Int): Int {
