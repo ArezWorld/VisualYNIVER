@@ -167,11 +167,14 @@
     <string name="cd_zoom_out">Отдалить карту</string>
     <string name="tasks_title_active">Активные задачи</string>
     <string name="tasks_title_completed">Выполненные задачи (последние 10)</string>
+    <string name="tasks_title_active_and_completed">Активные и выполненные задачи</string>
     <string name="tasks_empty_active">Нет активных задач</string>
     <string name="tasks_empty_completed">Нет выполненных задач</string>
+    <string name="tasks_empty_active_and_completed">Нет задач</string>
     <string name="tasks_filter_menu">Меню фильтров задач</string>
     <string name="tasks_filter_active">Активные задачи</string>
     <string name="tasks_filter_completed">Выполненные задачи</string>
+    <string name="tasks_filter_active_and_completed">Активные и выполненные</string>
     <string name="tasks_filter_export">Поделиться задачами</string>
     <string name="tasks_action_navigate">Перейти к метке</string>
     <string name="tasks_confirm_title">Подтвердить действие</string>
@@ -217,3 +220,5 @@
     <string name="profile_avatar_crop_failed">Не удалось обрезать изображение</string>
     <string name="profile_camera_unavailable">Камера недоступна на устройстве</string>
 </resources>
+
+

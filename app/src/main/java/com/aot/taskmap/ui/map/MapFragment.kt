@@ -550,7 +550,7 @@ class MapFragment : Fragment() {
         val strokeColor = ColorUtils.blendARGB(primaryColor, surfaceColor, if (isDarkSurface) 0.35f else 0.52f)
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dpToPx(14f).toFloat()
+            cornerRadius = 0f
             setColor(fillColor)
             setStroke(dpToPx(1f), strokeColor)
         }
@@ -2794,10 +2794,17 @@ class MapFragment : Fragment() {
                 // Убираем синюю область точности под меткой пользователя
                 isDrawAccuracyEnabled = false
                 disableFollowLocation()
-                val iconBitmap = resolveLocationMarkerBitmap()
-                if (iconBitmap != null) {
-                    setPersonIcon(iconBitmap)
-                    setDirectionIcon(iconBitmap)
+                val useAvatarMarker = SettingsPreferences.isUseAvatarLocationMarkerEnabled(requireContext())
+                val personBitmap = resolveLocationMarkerBitmap()
+                if (personBitmap != null) {
+                    setPersonIcon(personBitmap)
+                    setPersonAnchor(0.5f, 0.5f)
+                    if (useAvatarMarker) {
+                        setDirectionIcon(createTransparentLocationDirectionBitmap())
+                    } else {
+                        setDirectionIcon(personBitmap)
+                    }
+                    setDirectionAnchor(0.5f, 0.5f)
                 }
                 runOnFirstFix {
                     myLocation?.let { location ->
@@ -2821,6 +2828,9 @@ class MapFragment : Fragment() {
 
         val iconDrawable = ContextCompat.getDrawable(context, R.drawable.ic_my_location_arrow)
         return iconDrawable?.let { drawableToBitmap(it) }
+    }
+    private fun createTransparentLocationDirectionBitmap(): Bitmap {
+        return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     }
 
     private fun loadProfileAvatarBitmap(): Bitmap? {
@@ -3554,3 +3564,5 @@ class MapFragment : Fragment() {
         _binding = null
     }
 }
+
+

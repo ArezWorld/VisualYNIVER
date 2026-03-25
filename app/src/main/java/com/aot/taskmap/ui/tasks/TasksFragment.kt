@@ -1,4 +1,4 @@
-package com.aot.taskmap.ui.tasks
+﻿package com.aot.taskmap.ui.tasks
 
 import android.content.Intent
 import android.os.Bundle
@@ -35,7 +35,9 @@ class TasksFragment : Fragment() {
     private var completedTasksCache = emptyList<Task>()
 
     private enum class TaskFilter {
-        ACTIVE, COMPLETED
+        ACTIVE,
+        COMPLETED,
+        ACTIVE_AND_COMPLETED
     }
 
     override fun onCreateView(
@@ -111,6 +113,9 @@ class TasksFragment : Fragment() {
             MenuInflater(requireContext()).inflate(R.menu.menu_tasks_filter, popup.menu)
             popup.menu.findItem(R.id.filter_active).isChecked = currentFilter == TaskFilter.ACTIVE
             popup.menu.findItem(R.id.filter_completed).isChecked = currentFilter == TaskFilter.COMPLETED
+            popup.menu.findItem(R.id.filter_active_and_completed).isChecked =
+                currentFilter == TaskFilter.ACTIVE_AND_COMPLETED
+
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     R.id.filter_active -> {
@@ -120,6 +125,11 @@ class TasksFragment : Fragment() {
                     }
                     R.id.filter_completed -> {
                         currentFilter = TaskFilter.COMPLETED
+                        renderTasks()
+                        true
+                    }
+                    R.id.filter_active_and_completed -> {
+                        currentFilter = TaskFilter.ACTIVE_AND_COMPLETED
                         renderTasks()
                         true
                     }
@@ -210,22 +220,33 @@ class TasksFragment : Fragment() {
 
     private fun renderTasks() {
         if (_binding == null) return
+
         val shown = when (currentFilter) {
             TaskFilter.ACTIVE -> activeTasksCache
             TaskFilter.COMPLETED -> completedTasksCache
                 .sortedByDescending { it.completedAt ?: it.createdAt }
                 .take(10)
+            TaskFilter.ACTIVE_AND_COMPLETED -> {
+                val active = activeTasksCache
+                val completed = completedTasksCache
+                    .sortedByDescending { it.completedAt ?: it.createdAt }
+                    .take(10)
+                active + completed
+            }
         }
-        binding.textTitle.text = if (currentFilter == TaskFilter.ACTIVE) {
-            getString(R.string.tasks_title_active)
-        } else {
-            getString(R.string.tasks_title_completed)
+
+        binding.textTitle.text = when (currentFilter) {
+            TaskFilter.ACTIVE -> getString(R.string.tasks_title_active)
+            TaskFilter.COMPLETED -> getString(R.string.tasks_title_completed)
+            TaskFilter.ACTIVE_AND_COMPLETED -> getString(R.string.tasks_title_active_and_completed)
         }
-        binding.textEmpty.text = if (currentFilter == TaskFilter.ACTIVE) {
-            getString(R.string.tasks_empty_active)
-        } else {
-            getString(R.string.tasks_empty_completed)
+
+        binding.textEmpty.text = when (currentFilter) {
+            TaskFilter.ACTIVE -> getString(R.string.tasks_empty_active)
+            TaskFilter.COMPLETED -> getString(R.string.tasks_empty_completed)
+            TaskFilter.ACTIVE_AND_COMPLETED -> getString(R.string.tasks_empty_active_and_completed)
         }
+
         adapter.submitList(shown)
         binding.textEmpty.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
     }
