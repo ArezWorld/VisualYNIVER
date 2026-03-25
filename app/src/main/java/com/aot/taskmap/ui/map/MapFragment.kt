@@ -2856,10 +2856,11 @@ class MapFragment : Fragment() {
 
     private fun createLocationAvatarBitmap(source: Bitmap): Bitmap {
         val density = resources.displayMetrics.density
-        val iconSize = (72f * density).roundToInt().coerceAtLeast(160)
-        val strokeWidthPx = 3.5f * density
-        val outerPadding = 2.5f * density
-        val avatarDiameter = (iconSize - outerPadding * 2f - strokeWidthPx * 2f)
+        // Стиль маркера аватара должен совпадать с отображением в профиле:
+        // круг + тонкая обводка primary без дополнительного фонового "кольца".
+        val iconSize = (64f * density).roundToInt().coerceAtLeast(160)
+        val strokeWidthPx = 2f * density
+        val avatarDiameter = (iconSize - strokeWidthPx * 2f)
             .roundToInt()
             .coerceAtLeast(1)
 
@@ -2868,28 +2869,21 @@ class MapFragment : Fragment() {
         val canvas = Canvas(output)
         val centerX = iconSize / 2f
         val centerY = iconSize / 2f
-        val outerRadius = iconSize / 2f - outerPadding
         val avatarRadius = avatarDiameter / 2f
-        val ringRadius = avatarRadius + strokeWidthPx
 
-        val surfacePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = resolveThemeColor(com.google.android.material.R.attr.colorSurface)
-        }
-        val avatarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val avatarPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG).apply {
             isFilterBitmap = true
             isDither = true
             shader = BitmapShader(croppedAvatar, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         }
-        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = strokeWidthPx
             color = resolveThemeColor(com.google.android.material.R.attr.colorPrimary)
         }
 
-        canvas.drawCircle(centerX, centerY, outerRadius, surfacePaint)
         canvas.drawCircle(centerX, centerY, avatarRadius, avatarPaint)
-        canvas.drawCircle(centerX, centerY, ringRadius - strokeWidthPx / 2f, borderPaint)
+        canvas.drawCircle(centerX, centerY, avatarRadius - strokeWidthPx / 2f, borderPaint)
 
         if (croppedAvatar != source && !croppedAvatar.isRecycled) {
             croppedAvatar.recycle()
